@@ -14,7 +14,7 @@ import io
 import pytest
 from PIL import Image
 
-from storytime.web.bookjobs import MAX_UPLOAD_BYTES, save_upload
+from heldenbuch.web.bookjobs import MAX_UPLOAD_BYTES, save_upload
 
 ORIENTATION_TAG = 274
 

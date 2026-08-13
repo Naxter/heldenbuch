@@ -12,7 +12,7 @@ Setup, once:
      official FLUX.2 template with one or more reference images (that is what
      keeps the character consistent).
   2. In ComfyUI: settings -> enable dev mode, then "Export (API)" and save the
-     file as `comfy_workflow.json` in the StoryTime project root.
+     file as `comfy_workflow.json` in the Heldenbuch project root.
   3. Open that file and replace values with placeholders:
         the positive prompt text          -> "{PROMPT}"
         width / height numbers            -> "{WIDTH}" / "{HEIGHT}"
@@ -198,8 +198,8 @@ class ComfyBackend(Backend):
         books both calling their sheet `sheet.png` must not overwrite each
         other mid-flight.
         """
-        boundary = f"----storytime{uuid.uuid4().hex}"
-        stored = f"storytime_{uuid.uuid4().hex[:10]}_{path.name}"
+        boundary = f"----heldenbuch{uuid.uuid4().hex}"
+        stored = f"heldenbuch_{uuid.uuid4().hex[:10]}_{path.name}"
         body = (
             f'--{boundary}\r\nContent-Disposition: form-data; name="image"; '
             f'filename="{stored}"\r\nContent-Type: image/png\r\n\r\n'
@@ -277,7 +277,7 @@ class ComfyBackend(Backend):
 
         filled = fill_workflow(workflow, req.prompt, width, height, seed, names)
         submitted = _post_json(f"{_base_url()}/prompt",
-                               {"prompt": filled, "client_id": f"storytime-{uuid.uuid4().hex[:8]}"})
+                               {"prompt": filled, "client_id": f"heldenbuch-{uuid.uuid4().hex[:8]}"})
         if submitted.get("node_errors"):
             raise BackendError(f"ComfyUI node errors: {json.dumps(submitted['node_errors'])[:600]}")
         prompt_id = submitted.get("prompt_id")

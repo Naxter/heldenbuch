@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from storytime.metrics.cheap import score_page
-from storytime.web.jobs import JobManager
+from heldenbuch.metrics.cheap import score_page
+from heldenbuch.web.jobs import JobManager
 
 
 def _wait(predicate, timeout: float = 5.0) -> bool:

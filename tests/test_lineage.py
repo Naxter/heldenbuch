@@ -11,13 +11,13 @@ from __future__ import annotations
 import pytest
 from PIL import Image
 
-from storytime.book.library import Library
-from storytime.book.models import Book, Hero, Page, Style
-from storytime.pricing import add as add_spend
-from storytime.pricing import summary
-from storytime.web.bookapi import BookApi
-from storytime.web.bookjobs import BookJobs
-from storytime.web.jobs import Job
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, Hero, Page, Style
+from heldenbuch.pricing import add as add_spend
+from heldenbuch.pricing import summary
+from heldenbuch.web.bookapi import BookApi
+from heldenbuch.web.bookjobs import BookJobs
+from heldenbuch.web.jobs import Job
 
 
 class _NoJobs:
@@ -199,7 +199,7 @@ def test_every_call_leaves_a_ledger_entry():
 
 
 def test_budget_cap_stops_drawing_before_overspending(library, monkeypatch):
-    from storytime.book import illustrate
+    from heldenbuch.book import illustrate
 
     hero, style, book = _hero_style_book(library)
     book.pages = [Page(index=i, text={"de": str(i)}, illustration="x")
@@ -235,11 +235,11 @@ def test_a_failed_job_keeps_the_spend_already_recorded(library, monkeypatch):
 
     def explode(book_arg, *args, **kwargs):
         # Spend lands on the book the worker actually loaded, then the run dies.
-        from storytime.pricing import add
+        from heldenbuch.pricing import add
         add(book_arg.spend, {"model": "gpt-image-2", "usd": 0.5, "images": 1}, "pages")
         raise RuntimeError("provider died mid-run")
 
-    monkeypatch.setattr("storytime.book.illustrate.illustrate_book", explode)
+    monkeypatch.setattr("heldenbuch.book.illustrate.illustrate_book", explode)
     job = Job(id="1", action="book_illustrate",
               params={"book_id": book.id, "backend": "stub"})
     with pytest.raises(RuntimeError):
@@ -254,7 +254,7 @@ def test_a_truncated_page_is_redrawn_on_resume(tmp_path, monkeypatch):
     """Resuming skips pages whose file exists. A render killed mid-write left a
     half PNG that was adopted as finished work and could never be redrawn.
     """
-    from storytime.book.illustrate import _usable_image
+    from heldenbuch.book.illustrate import _usable_image
 
     good = tmp_path / "good.png"
     Image.new("RGB", (16, 16), (10, 20, 30)).save(good)
@@ -273,8 +273,8 @@ def test_a_truncated_page_is_redrawn_on_resume(tmp_path, monkeypatch):
 
 def test_image_writes_are_atomic(tmp_path, monkeypatch):
     """An interrupted write must leave the previous page intact."""
-    from storytime.backends.stub import StubBackend
-    from storytime.types import GenRequest, OutputSpec
+    from heldenbuch.backends.stub import StubBackend
+    from heldenbuch.types import GenRequest, OutputSpec
 
     backend = StubBackend()
     target = tmp_path / "page_01.png"
@@ -284,7 +284,7 @@ def test_image_writes_are_atomic(tmp_path, monkeypatch):
     def explode(_src, _dst):
         raise OSError("disk full")
 
-    monkeypatch.setattr("storytime.backends.base.os.replace", explode)
+    monkeypatch.setattr("heldenbuch.backends.base.os.replace", explode)
     with pytest.raises(OSError):
         backend.generate(GenRequest(prompt="a different fox", output=OutputSpec()), target)
 
@@ -299,7 +299,7 @@ class TestTextCallsAreMetered:
 
     @staticmethod
     def _usage_shapes():
-        from storytime.llm import _usage
+        from heldenbuch.llm import _usage
 
         class GeminiMeta:
             prompt_token_count = 2200
@@ -319,13 +319,13 @@ class TestTextCallsAreMetered:
                              "input_tokens": 2200, "output_tokens": 300}
 
     def test_a_call_with_no_usage_block_records_nothing(self):
-        from storytime.llm import _usage
+        from heldenbuch.llm import _usage
 
         assert _usage("m", {}) == {}
         assert _usage("m", None) == {}
 
     def test_the_check_lands_in_the_ledger(self):
-        from storytime.pricing import add, price
+        from heldenbuch.pricing import add, price
 
         usage = self._usage_shapes()[0]
         assert price(usage) > 0
@@ -346,7 +346,7 @@ class TestBatchHandleSurvives:
     """
 
     def test_the_handle_is_written_down_before_the_wait(self, library, monkeypatch):
-        from storytime.book import illustrate
+        from heldenbuch.book import illustrate
 
         _hero, _style, book = _hero_style_book(library)
         book.render_quality = "draft"
@@ -360,7 +360,7 @@ class TestBatchHandleSurvives:
             seen["persisted"] = library.get_book(book.id).pending_batch
             raise KeyboardInterrupt("server restarted")
 
-        monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+        monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
         with pytest.raises(KeyboardInterrupt):
             illustrate.illustrate_book_batch(
                 book, _hero, _style, library.resolve(_hero.sheet),
@@ -374,7 +374,7 @@ class TestBatchHandleSurvives:
         assert library.get_book(book.id).pending_batch["job"] == "batches/abc123"
 
     def test_the_next_run_collects_instead_of_resubmitting(self, library, monkeypatch):
-        from storytime.book import illustrate
+        from heldenbuch.book import illustrate
 
         _hero, _style, book = _hero_style_book(library)
         book.pending_batch = {"job": "batches/abc123", "targets": ["page_01.png"]}
@@ -387,7 +387,7 @@ class TestBatchHandleSurvives:
             calls["submitted"] = len([r for r in requests if r is not None])
             return [{"data": b"", "error": "leer"}]
 
-        monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+        monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
         illustrate.illustrate_book_batch(
             book, _hero, _style, library.resolve(_hero.sheet),
             pages_dir=library.book_dir(book.id) / "pages",
@@ -412,7 +412,7 @@ def test_the_budget_cap_holds_under_concurrency(library, monkeypatch, workers):
     """
     import threading
 
-    from storytime.book import illustrate
+    from heldenbuch.book import illustrate
 
     hero, style, book = _hero_style_book(library)
     book.pages = [Page(index=i, text={"de": str(i)}, illustration="x")

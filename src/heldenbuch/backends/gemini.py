@@ -181,7 +181,7 @@ def run_batch(
         job = client.batches.create(
             model=backend.model,
             src=build_inline_requests(requests, uri_for),
-            config={"display_name": "storytime-batch"},
+            config={"display_name": "heldenbuch-batch"},
         )
         # Written down before the first sleep: from here on Google will bill
         # this work whether or not this process survives to collect it.

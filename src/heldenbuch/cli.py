@@ -1,12 +1,12 @@
 """Command line interface.
 
-    storytime serve               open the local control panel in a browser
-    storytime doctor              what is installed and which keys are set
-    storytime prompts             print the prompts, call nothing
-    storytime run                 generate + score + report
-    storytime generate            generate images only
-    storytime score               score an existing run
-    storytime report              rebuild the report from pages.json
+    heldenbuch serve               open the local control panel in a browser
+    heldenbuch doctor              what is installed and which keys are set
+    heldenbuch prompts             print the prompts, call nothing
+    heldenbuch run                 generate + score + report
+    heldenbuch generate            generate images only
+    heldenbuch score               score an existing run
+    heldenbuch report              rebuild the report from pages.json
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _resolve_layout(args) -> RunLayout:
 
 def cmd_doctor(args) -> int:
     load_dotenv()
-    print(f"storytime {__version__}   python {sys.version.split()[0]}")
+    print(f"heldenbuch {__version__}   python {sys.version.split()[0]}")
     print(f"spec:      {args.spec}  {'(found)' if Path(args.spec).is_file() else '(MISSING)'}")
     print(f"runs dir:  {args.runs_dir}")
     print("\nbackends:")
@@ -228,10 +228,10 @@ def _default_port() -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="storytime",
+        prog="heldenbuch",
         description="Benchmark character consistency across image backends.",
     )
-    parser.add_argument("--version", action="version", version=f"storytime {__version__}")
+    parser.add_argument("--version", action="version", version=f"heldenbuch {__version__}")
     parser.add_argument("--spec", default=str(DEFAULT_SPEC), help="benchmark spec YAML")
     parser.add_argument("--runs-dir", default=str(DEFAULT_RUNS_DIR), help="where runs are written")
 
@@ -258,7 +258,7 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--judge-model", help="override the judge model")
         p.add_argument("--no-judge", action="store_true", help="colour metrics only")
         p.add_argument("--embed", action="store_true",
-                       help="also compute DINOv2 similarity (needs storytime[embed])")
+                       help="also compute DINOv2 similarity (needs heldenbuch[embed])")
 
     def add_run_selector(p):
         p.add_argument("--run", metavar="DIR", help="run directory (default: the most recent)")

@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "storytime"
+name = "heldenbuch"
 version = "0.1.0"
 description = "Personalised children's picture books, from a character sheet to a print-ready PDF"
 readme = "README.md"
@@ -32,13 +32,13 @@ dev = ["pytest>=8.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-filterwarnings = ["error::DeprecationWarning:storytime.*"]
+filterwarnings = ["error::DeprecationWarning:heldenbuch.*"]
 
 [project.scripts]
-storytime = "storytime.cli:main"
+heldenbuch = "heldenbuch.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"storytime.web" = ["static/*"]
+"heldenbuch.web" = ["static/*"]

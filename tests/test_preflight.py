@@ -216,3 +216,42 @@ def test_check_status_maps_books_written_before_the_status_field():
     # Scores present, nothing wrong recorded: derived, not guessed.
     assert check_status(Page(check={"identity": 4})) == "passed"
     assert check_status(Page(check={"identity": 2})) == "failed"
+
+
+def test_a_beanstandetes_titelbild_blocks_the_export(library):
+    """The cover is the image on the shelf and the one a buyer sees first.
+
+    It was drawn, paid for, and never checked -- which is how a book called
+    "Simon und Chase" shipped with the dog drawn as a second human boy.
+    """
+    from storytime.book.illustrate import cover_flagged
+
+    book, resolve = _book(library, check=PASSED)
+    book.cover_check = {
+        "identity": 5, "style": 5, "scene": 5,
+        "extra_or_duplicated_character": True,
+        "notes": ["Chase is drawn as a boy, not a dog"],
+    }
+    assert cover_flagged(book) is True
+
+    # A print preset blocks on it. (A screen file is not a bound book, so
+    # there everything is downgraded to a warning by design.)
+    report = validate_export_readiness(book, PRESETS["print_square"], ["de"], resolve)
+    assert report["ok"] is False
+    assert any("Titelbild wurde beanstandet" in e for e in report["errors"])
+
+    screen = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
+    assert screen["ok"] is True
+    assert any("Titelbild wurde beanstandet" in w for w in screen["warnings"])
+
+
+def test_a_book_with_no_cover_verdict_is_not_nagged(library):
+    """Older books carry no evidence either way. Inventing a complaint about
+    every one of them just teaches people to ignore the flag."""
+    from storytime.book.illustrate import cover_flagged
+
+    book, resolve = _book(library, check=PASSED)
+    book.cover_check = {}
+    assert cover_flagged(book) is False
+    report = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
+    assert not any("Titelbild wurde beanstandet" in e for e in report["errors"])

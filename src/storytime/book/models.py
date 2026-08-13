@@ -324,6 +324,9 @@ class Book:
     #: set when book.json could not be read. The folder is listed anyway so a
     #: damaged book is visible and restorable instead of silently missing.
     broken: bool = False
+    #: language code -> back-cover text. Separate from the dedication, which is
+    #: written to one child and belongs inside the book, not on the outside.
+    blurb: dict[str, str] = field(default_factory=dict)
 
     # -- locked references. A book keeps its own copies of the character
     # sheet it was drawn from (under refs/ in the book folder), so changing

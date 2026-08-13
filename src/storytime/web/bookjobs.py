@@ -811,7 +811,14 @@ class BookJobs:
             job.result["cover"] = info["file"]
 
         provider = params.get("provider_hint") or "lulu"
-        note = handoff.sheet(book, preset, results, cover_info, provider=provider)
+        # The weakest page decides what the sheet may claim. Every illustration
+        # is scaled up to fill the page, so the PDF always *reports* the
+        # preset's dpi regardless of what the artwork actually holds.
+        measured = [layout_mod.effective_dpi(p, preset)
+                    for p in (resolve(page.image) for page in book.pages if page.image)
+                    if p.is_file()]
+        note = handoff.sheet(book, preset, results, cover_info, provider=provider,
+                             measured_dpi=min(measured) if measured else None)
         note_path = folder / f"{stem}_druckerei_{provider}.md"
         note_path.write_text(note, encoding="utf-8")
         log("")

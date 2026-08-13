@@ -69,12 +69,25 @@ PROVIDERS: dict[str, dict[str, Any]] = {
 
 
 def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | None = None,
-          provider: str = "lulu") -> str:
-    """A markdown page telling you exactly what to do next."""
+          provider: str = "lulu", measured_dpi: int | None = None) -> str:
+    """A markdown page telling you exactly what to do next.
+
+    `measured_dpi` is the real resolution of the weakest page. The table used
+    to print the preset's nominal 300 dpi as though it were a fact about the
+    file, directly above the instruction to upload it -- which is how a 117 dpi
+    book gets sent to a print shop with a sheet certifying it as print-ready.
+    """
     spec = PROVIDERS.get(provider, PROVIDERS["lulu"])
     trim_w, trim_h = preset.trim_mm
     bleed = preset.bleed_mm
     pages = max((e.get("pages", 0) for e in exports), default=0)
+    if measured_dpi is None:
+        resolution = f"{preset.dpi} dpi (Sollwert — nicht nachgemessen)"
+    elif measured_dpi >= preset.dpi:
+        resolution = f"{measured_dpi} dpi"
+    else:
+        resolution = (f"**{measured_dpi} dpi** — gefordert sind {preset.dpi}. "
+                      "Die Vorprüfung der Druckerei merkt das nicht.")
 
     lines = [
         f"# {book.display_title()} — ab in den Druck",
@@ -89,9 +102,9 @@ def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | Non
         f"| Datei inkl. Beschnitt | {trim_w + 2 * bleed:.1f} × {trim_h + 2 * bleed:.1f} mm |",
         f"| Beschnittzugabe | {bleed:.3f} mm auf jeder Seite |",
         f"| Sicherheitsabstand | {preset.safety_mm:.1f} mm — nichts Wichtiges dichter an den Rand |",
-        f"| Auflösung | {preset.dpi} dpi |",
+        f"| Auflösung | {resolution} |",
         f"| Seitenzahl Innenteil | {pages} |",
-        f"| Farbraum | RGB (die Druckerei wandelt nach CMYK) |",
+        "| Farbraum | RGB, ohne eingebettetes Profil |",
     ]
 
     if cover_info:

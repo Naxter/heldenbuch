@@ -81,7 +81,7 @@ def validate_export_readiness(
     elif not openable(cover):
         errors.append("Die Titelbild-Datei ist beschädigt und lässt sich nicht öffnen.")
     elif is_print and effective_dpi(cover, preset) < DPI_WARN:
-        warnings.append(
+        errors.append(
             f"Das Titelbild hat nur etwa {effective_dpi(cover, preset)} dpi — "
             "im Druck wird es weich."
         )
@@ -129,10 +129,16 @@ def validate_export_readiness(
             "nicht oder brach ab: " + ", ".join(map(str, pages_unknown)) + "."
         )
     if low_dpi:
-        warnings.append(
+        # An error, not a warning. The PDF reports the resolution of the
+        # *upscaled* bitmap, so a 1024 px illustration stretched onto a 300 dpi
+        # page passes a print shop's preflight and only reveals itself as a
+        # soft, blurry book when the box arrives. Nothing downstream catches
+        # this, so it has to stop the export here.
+        errors.append(
             f"{len(low_dpi)} Seite(n) liegen unter {DPI_WARN} dpi für dieses "
             "Format: " + ", ".join(map(str, low_dpi))
-            + ". Vor dem Bestellen in Druckqualität neu zeichnen."
+            + ". Die Druckerei merkt das nicht — im Buch sieht man es. "
+            "Vor dem Bestellen in Druckqualität neu zeichnen."
         )
 
     stale = [p.index for p in book.pages if p.image_stale()]

@@ -335,3 +335,67 @@ class TestTextCallsAreMetered:
             add(spend, usage, "check")
         assert spend["by"]["check"]["calls"] == 17
         assert spend["usd"] == pytest.approx(17 * price(usage), rel=1e-6)
+
+
+class TestBatchHandleSurvives:
+    """Google bills a batch whether or not anyone is still waiting for it.
+
+    The job name lived only in the waiting function's stack, so a restart
+    during the wait -- and the wait can be hours -- paid full price for images
+    that could then never be collected.
+    """
+
+    def test_the_handle_is_written_down_before_the_wait(self, library, monkeypatch):
+        from storytime.book import illustrate
+
+        _hero, _style, book = _hero_style_book(library)
+        book.render_quality = "draft"
+        library.save_book(book)
+        seen: dict = {}
+
+        def fake_run_batch(_model, requests, _targets, on_submitted=None,
+                           resume_job=None, **_kw):
+            # Accepted by Google, then this process dies.
+            on_submitted("batches/abc123")
+            seen["persisted"] = library.get_book(book.id).pending_batch
+            raise KeyboardInterrupt("server restarted")
+
+        monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+        with pytest.raises(KeyboardInterrupt):
+            illustrate.illustrate_book_batch(
+                book, _hero, _style, library.resolve(_hero.sheet),
+                pages_dir=library.book_dir(book.id) / "pages",
+                check=False, resolve=library.resolve,
+                save=library.save_book, log=lambda *a: None,
+            )
+
+        assert seen["persisted"]["job"] == "batches/abc123"
+        # And it is still there for the next run to find.
+        assert library.get_book(book.id).pending_batch["job"] == "batches/abc123"
+
+    def test_the_next_run_collects_instead_of_resubmitting(self, library, monkeypatch):
+        from storytime.book import illustrate
+
+        _hero, _style, book = _hero_style_book(library)
+        book.pending_batch = {"job": "batches/abc123", "targets": ["page_01.png"]}
+        library.save_book(book)
+        calls: dict = {}
+
+        def fake_run_batch(_model, requests, _targets, on_submitted=None,
+                           resume_job=None, **_kw):
+            calls["resume_job"] = resume_job
+            calls["submitted"] = len([r for r in requests if r is not None])
+            return [{"data": b"", "error": "leer"}]
+
+        monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+        illustrate.illustrate_book_batch(
+            book, _hero, _style, library.resolve(_hero.sheet),
+            pages_dir=library.book_dir(book.id) / "pages",
+            check=False, resolve=library.resolve,
+            save=library.save_book, log=lambda *a: None,
+        )
+
+        assert calls["resume_job"] == "batches/abc123"
+        assert calls["submitted"] == 0, "nothing new may be ordered while one is open"
+        # Collected, so it must not be resumed a second time.
+        assert library.get_book(book.id).pending_batch == {}

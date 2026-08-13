@@ -529,6 +529,8 @@ class BookJobs:
                                 if params.get("budget_usd") else None),
                     resolve=self._book_resolver(book),
                     on_progress=report,
+                    # So the batch handle reaches disk before the wait starts.
+                    save=self.library.save_book,
                     log=log, should_stop=lambda: job.cancelled,
                 )
             finally:

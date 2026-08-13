@@ -74,6 +74,36 @@ def extract_json(text: str) -> Any:
 # --------------------------------------------------------------------------- providers
 
 
+#: Field names the three providers use for the same two numbers.
+_TOKEN_FIELDS = (
+    ("input_tokens", "prompt_tokens", "prompt_token_count", "input_token_count"),
+    ("output_tokens", "completion_tokens", "candidates_token_count", "output_token_count"),
+)
+
+
+def _usage(model: str, payload: Any) -> dict[str, Any]:
+    """What one text call cost, in the shape `pricing.price` expects.
+
+    Every provider reports its token counts and this was thrown away, so the
+    story, the revision pass, each translation and -- most of all -- the
+    per-page vision check all cost real money and recorded none of it. On a
+    finished book that is roughly a tenth of the true total, missing from the
+    one number the app shows.
+    """
+    raw = payload.get("usage") if isinstance(payload, dict) else payload
+    if raw is None:
+        return {}
+    get = raw.get if isinstance(raw, dict) else lambda k, d=0: getattr(raw, k, d)
+    counts = {}
+    for canonical, *aliases in _TOKEN_FIELDS:
+        for name in (canonical, *aliases):
+            value = get(name, None)
+            if value:
+                counts[canonical] = int(value)
+                break
+    return {"model": model, **counts} if counts else {}
+
+
 def _openai(system: str, user: str, images: list[Path], model: str) -> str:
     key = require_key("OPENAI_API_KEY", "openai")
     content: list[dict[str, Any]] = [{"type": "text", "text": user}]
@@ -94,7 +124,7 @@ def _openai(system: str, user: str, images: list[Path], model: str) -> str:
         {"Authorization": f"Bearer {key}"},
     )
     try:
-        return payload["choices"][0]["message"]["content"]
+        return payload["choices"][0]["message"]["content"], _usage(model, payload)
     except (KeyError, IndexError) as exc:
         raise LLMError(f"unexpected OpenAI reply: {json.dumps(payload)[:300]}") from exc
 
@@ -122,7 +152,8 @@ def _anthropic(system: str, user: str, images: list[Path], model: str) -> str:
         {"x-api-key": key, "anthropic-version": "2023-06-01"},
     )
     try:
-        return "".join(block.get("text", "") for block in payload["content"])
+        text = "".join(block.get("text", "") for block in payload["content"])
+        return text, _usage(model, payload)
     except (KeyError, TypeError) as exc:
         raise LLMError(f"unexpected Anthropic reply: {json.dumps(payload)[:300]}") from exc
 
@@ -139,7 +170,9 @@ def _gemini(system: str, user: str, images: list[Path], model: str) -> str:
         data, mime = to_data_uri(path, max_edge=768)
         payload.append({"type": "image", "data": data, "mime_type": mime})
     interaction = client.interactions.create(model=model, input=payload)
-    return interaction.output_text or ""
+    meta = getattr(interaction, "usage", None) or getattr(
+        interaction, "usage_metadata", None)
+    return interaction.output_text or "", _usage(model, meta)
 
 
 PROVIDERS = {"openai": _openai, "anthropic": _anthropic, "gemini": _gemini}
@@ -154,12 +187,22 @@ def complete_json(
     images: list[Path] | None = None,
     provider: str = "openai",
     model: str | None = None,
+    spend: dict[str, Any] | None = None,
+    what: str = "text",
 ) -> Any:
-    """Ask for structured output and return it parsed."""
+    """Ask for structured output and return it parsed.
+
+    Pass `spend` to record what the call cost into a running tally; without it
+    the cost is simply not tracked, which is what used to happen everywhere.
+    """
     if provider not in PROVIDERS:
         raise LLMError(f"unknown provider {provider!r}; valid: {', '.join(PROVIDERS)}")
     model = model or DEFAULT_MODELS[provider]
-    reply = PROVIDERS[provider](system, user, images or [], model)
+    reply, usage = PROVIDERS[provider](system, user, images or [], model)
+    if spend is not None and usage:
+        from .pricing import add as add_spend
+
+        add_spend(spend, usage, what)
     return extract_json(reply)
 
 

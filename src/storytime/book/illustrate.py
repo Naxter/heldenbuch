@@ -32,6 +32,7 @@ from ..backends import get_backend
 from ..llm import complete_json
 from ..metrics.cheap import score_page
 from ..pricing import add as add_spend
+from ..pricing import image_estimate
 from ..types import GenRequest, OutputSpec
 from .models import Book, CastMember, Hero, Page, Style, single_scene
 
@@ -282,6 +283,7 @@ def check_page(
     provider: str = "openai",
     model: str | None = None,
     scene: str = "",
+    spend: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Has the hero survived onto this page -- and does the page show the scene?
 
@@ -346,7 +348,8 @@ def check_page(
 
     try:
         payload = complete_json(
-            CHECK_SYSTEM, user, images=[sheet, page_image], provider=provider, model=model
+            CHECK_SYSTEM, user, images=[sheet, page_image], provider=provider,
+            model=model, spend=spend, what="check",
         ) or {}
         verdict["identity"] = max(1, min(5, int(payload.get("identity", 3))))
         verdict["style"] = max(1, min(5, int(payload.get("style", 3))))
@@ -716,8 +719,9 @@ def illustrate_book(
             if not check:
                 break
 
-            page.check = check_page(target, sheet, hero, provider=check_provider,
-                                    scene=scene_text)
+            with lock:
+                page.check = check_page(target, sheet, hero, provider=check_provider,
+                                        scene=scene_text, spend=book.spend)
             page.check["attempts"] = attempt
             if best is None or _better(page.check, best[1]):
                 # Keep this attempt's pixels aside before the next one
@@ -784,6 +788,7 @@ def illustrate_book_batch(
     check_provider: str = "openai",
     only: list[int] | None = None,
     redraw: bool = False,
+    budget_usd: float | None = None,
     resolve=None,
     on_progress=None,
     log=print,
@@ -831,6 +836,23 @@ def illustrate_book_batch(
         log("Nichts zu zeichnen — alle Seiten sind schon da.")
         return book
 
+    # The cap has to be applied here, before submitting. A batch is one
+    # all-or-nothing request, so there is no mid-run point at which to stop --
+    # which is how the cost ceiling ended up doing nothing at all in the one
+    # mode chosen specifically to save money.
+    if budget_usd is not None:
+        each = image_estimate(output.quality, output.long_edge_px,
+                              model or gemini_mod.GeminiBackend.default_model) / 2
+        affordable = int(budget_usd // each) if each > 0 else len(requests)
+        if affordable < len(requests):
+            log(f"Kostendeckel {budget_usd:.2f} $ — es werden {affordable} von "
+                f"{len(requests)} Bildern beauftragt (~{each:.3f} $ je Bild).")
+            requests = requests[:affordable]
+            todo = todo[:affordable]
+        if not requests:
+            log("Der Kostendeckel lässt kein einziges Bild zu.")
+            return book
+
     results = gemini_mod.run_batch(
         model, requests, [target for _, target in todo],
         log=log, should_stop=stop, on_progress=on_progress,
@@ -867,7 +889,8 @@ def illustrate_book_batch(
             if stop() or page is None or not target.is_file():
                 continue
             page.check = check_page(target, sheet, hero, provider=check_provider,
-                                    scene=page.illustration)
+                                    scene=single_scene(page.illustration),
+                                    spend=book.spend)
             status = check_status(page)
             word = {"passed": "in Ordnung", "failed": "beanstandet",
                     "unknown": "Prüfung fehlgeschlagen"}.get(status, status)

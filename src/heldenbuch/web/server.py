@@ -12,6 +12,7 @@ polling a local socket costs nothing.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import mimetypes
 import os
@@ -344,10 +345,30 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(body)))
-        if not cache:
+        if cache:
+            # `cache=True` used only to *omit* no-store, which gave the browser
+            # nothing to cache on -- so a page grid re-downloaded every
+            # full-resolution PNG on every render, tens of megabytes at a time,
+            # and repainted grey at exactly the moment a long render finished.
+            # An ETag makes the repeat request a 304 with no body.
+            self.send_header("Cache-Control", "private, max-age=60")
+            self.send_header("ETag", f'"{hashlib.sha1(body).hexdigest()[:16]}"')
+        else:
             self.send_header("Cache-Control", "no-store")
         self.end_headers()
-        self.wfile.write(body)
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def _send_cacheable(self, body: bytes, mime: str) -> None:
+        """Serve a file, answering 304 when the browser already has it."""
+        tag = f'"{hashlib.sha1(body).hexdigest()[:16]}"'
+        if self.headers.get("If-None-Match") == tag:
+            self.send_response(304)
+            self.send_header("ETag", tag)
+            self.send_header("Cache-Control", "private, max-age=60")
+            self.end_headers()
+            return
+        self._send(200, body, mime, cache=True)
 
     def _send_json(self, payload: Any, status: int = 200) -> None:
         self._send(status, json.dumps(payload).encode("utf-8"), "application/json")
@@ -476,11 +497,11 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _serve_asset(self, path: str) -> None:
         if path.startswith("/files/"):  # benchmark runs
             body, mime = self.api.file(path[len("/files/"):])
-            self._send(200, body, mime, cache=True)
+            self._send_cacheable(body, mime)
             return
         if path.startswith("/library/"):  # heroes, styles, books
             body, mime = self.api.book.file(path[len("/library/"):])
-            self._send(200, body, mime, cache=True)
+            self._send_cacheable(body, mime)
             return
 
         name = self.PAGES.get(path) or path.lstrip("/")

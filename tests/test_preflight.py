@@ -197,8 +197,16 @@ def test_unknown_pages_are_flagged_for_review():
 
 
 def test_check_status_maps_books_written_before_the_status_field():
+    """A verdict with no scores behind it can only be read from what it stored.
+
+    Where scores *are* present the verdict is worked out from them instead, so
+    a rule tightened today reaches a book checked last week -- see
+    test_a_stored_verdict_is_re_judged_under_todays_rules.
+    """
     assert check_status(Page(check={"ok": True})) == "passed"
     assert check_status(Page(check={"ok": False})) == "failed"
     assert check_status(Page(check={"error": "boom"})) == "unknown"
     assert check_status(Page(check={})) == "unchecked"
-    assert check_status(Page(check={"identity": 4})) == "unknown"
+    # Scores present, nothing wrong recorded: derived, not guessed.
+    assert check_status(Page(check={"identity": 4})) == "passed"
+    assert check_status(Page(check={"identity": 2})) == "failed"

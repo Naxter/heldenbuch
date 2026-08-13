@@ -25,6 +25,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from PIL import Image
 
 from ..backends import get_backend
@@ -38,11 +39,24 @@ from .models import Book, CastMember, Hero, Page, Style, single_scene
 # maybe a small detail off"; 3 means the face has shifted.
 IDENTITY_FLOOR = 4
 
-# Same idea for the scene. This used to be 3, which passed every page whose
-# setting or action was merely "off" -- including one that drew Pip and Trixi
-# twice each. The checker had written "Pip and Trixi are duplicated" into the
-# notes and the page still shipped. 4 means "shows the scene, one detail off".
-SCENE_FLOOR = 4
+# The scene score is a blunt instrument: it mixes "a stated story change was
+# ignored" with "the camera is wider than the brief asked for". Only the first
+# ruins a book, so the floor stays at 3 and the faults that actually matter are
+# asked about separately, as yes/no questions (see FATAL_FACTS). Raising this
+# to 4 instead turned four framing quibbles per book into paid redraws.
+SCENE_FLOOR = 3
+
+#: Bumped whenever the pass/fail rule changes, and stored on each verdict, so a
+#: book checked under an older rule can be told apart from one checked today.
+RULES_REV = 2
+
+#: Yes/no answers from the checker that fail a page on their own, whatever it
+#: scored. Each is a defect a reader sees immediately and print cannot undo.
+FATAL_FACTS = {
+    "extra_or_duplicated_character": True,
+    "panelled": True,
+    "story_state_ok": False,
+}
 
 # A duplicated or invented character is a hard fail whatever the scene scored.
 # The vision model reliably *describes* it and then unreliably grades it -- one
@@ -283,20 +297,38 @@ def check_page(
     except Exception:
         verdict["metrics"] = {}
 
+    # Also free, and measured rather than asked: a page split into two pictures.
+    seam = seam_in_frame(page_image)
+
     scene_block = (
         f"\nThe page was supposed to show this scene:\n{scene}\n\n"
-        "scene: 5 = shows exactly what the scene describes, including anything "
-        "it says is lost, missing, taken off or changed; 3 = the setting or "
-        "action is off; 1 = a different scene, or a stated change was ignored "
-        "(for example: the scene says one boot is lost, the picture shows both).\n"
-        "Score 2 or lower, whatever else is right, if any character appears "
-        "more than once, if a character or creature is in the picture that the "
-        "scene did not ask for, or if the picture is split into panels or "
-        "halves.\n"
+        "scene: 5 = shows exactly what the scene describes; 3 = the framing or "
+        "camera angle is not what was asked for, but the right thing is "
+        "happening; 1 = a different scene entirely.\n"
+        "story_state_ok: false if the scene says something is lost, missing, "
+        "taken off or changed and the picture does not show that -- the scene "
+        "says one boot is lost, the picture shows both.\n"
         if scene else ""
     )
-    shape = ('{"identity": <1-5>, "style": <1-5>, "scene": <1-5>, "notes": ["..."]}'
-             if scene else '{"identity": <1-5>, "style": <1-5>, "notes": ["..."]}')
+    # Asked as yes/no rather than folded into a score. The checker reliably
+    # *describes* a duplicated character and then unreliably grades it: one
+    # page scored 4 while its own notes read "an extra uniformed dog appears".
+    facts_block = (
+        "extra_or_duplicated_character: true if any character appears more "
+        "than once in the picture, or if there is a character, animal or "
+        "creature that the scene did not ask for.\n"
+        "panelled: true if the picture is divided into panels, halves or "
+        "side-by-side views, or has a seam or dividing line across it.\n"
+    )
+    shape = (
+        '{"identity": <1-5>, "style": <1-5>, "scene": <1-5>, '
+        '"story_state_ok": <true|false>, "extra_or_duplicated_character": '
+        '<true|false>, "panelled": <true|false>, "notes": ["..."]}'
+        if scene else
+        '{"identity": <1-5>, "style": <1-5>, '
+        '"extra_or_duplicated_character": <true|false>, '
+        '"panelled": <true|false>, "notes": ["..."]}'
+    )
 
     user = (
         f"The character is {hero.name or 'the child'}.\n\n"
@@ -305,7 +337,7 @@ def check_page(
         "small detail off; 3 = the face or proportions have shifted; 1 = a "
         "different character or not visible at all.\n"
         "style: 5 = the same illustration technique and palette as image 1.\n"
-        f"{scene_block}\n"
+        f"{scene_block}{facts_block}\n"
         "List every concrete difference you can see as short phrases, for "
         'example "hair is blonde, should be dark brown" or "wears two boots, '
         'the scene says one is lost".\n\n'
@@ -320,6 +352,9 @@ def check_page(
         verdict["style"] = max(1, min(5, int(payload.get("style", 3))))
         if scene:
             verdict["scene"] = max(1, min(5, int(payload.get("scene", 3))))
+        for fact in FATAL_FACTS:
+            if fact in payload:
+                verdict[fact] = bool(payload[fact])
         notes = payload.get("notes") or []
         verdict["notes"] = [str(n) for n in (notes if isinstance(notes, list) else [notes])][:6]
     except Exception as exc:
@@ -328,40 +363,121 @@ def check_page(
         # as unreviewed and the UI says so.
         verdict["error"] = f"{type(exc).__name__}: {exc}"
         verdict["status"] = "unknown"
+        verdict["rules_rev"] = RULES_REV
         return verdict
 
-    duplicate = duplicate_note(verdict["notes"])
-    if duplicate:
-        verdict["duplicate"] = duplicate
-
-    verdict["ok"] = (verdict["identity"] >= IDENTITY_FLOOR
-                     and verdict.get("scene", 5) >= SCENE_FLOOR
-                     and not duplicate)
-    verdict["status"] = "passed" if verdict["ok"] else "failed"
+    if seam:
+        # The measurement wins over the answer. The checker was asked about
+        # panels in as many words and still passed three seamed pages.
+        verdict["panelled"] = True
+        verdict["notes"] = ["the picture is split by a seam"] + verdict["notes"][:5]
+    if duplicate_note(verdict["notes"]):
+        verdict["duplicate"] = duplicate_note(verdict["notes"])
+    verdict["rules_rev"] = RULES_REV
+    verdict["status"] = verdict_from(verdict)
+    # Kept for older readers of book.json; `status` is the one to trust.
+    verdict["ok"] = verdict["status"] == "passed"
     return verdict
 
 
-def check_status(page: Page) -> str:
-    """One word for where this page's check stands.
+def verdict_from(check: dict[str, Any]) -> str:
+    """passed | failed | unknown | unchecked, worked out from the evidence.
 
-    passed | failed | unknown | unchecked. Books written before the explicit
-    status existed carry only `ok`, and a check that errored out carries
-    neither -- both are mapped here so old books keep opening.
+    Deriving this rather than storing a boolean is what lets a tightened rule
+    reach books that were checked under an older one. Every page of the first
+    finished book carried `ok: true` while its own notes read "Pip and Trixi
+    are duplicated" -- and because the flag was frozen, no later fix could ever
+    change that page's verdict.
     """
-    check = page.check or {}
     if not check:
         return "unchecked"
-    status = check.get("status")
-    if status in ("passed", "failed", "unknown"):
-        return status
     if check.get("error"):
         return "unknown"
-    ok = check.get("ok")
-    if ok is True:
-        return "passed"
-    if ok is False:
+    if check.get("identity") is None:
+        # No scores to reason from -- an older book, or a check that recorded
+        # only its conclusion. Take the stored word rather than inventing one.
+        stored = check.get("status")
+        if stored in ("passed", "failed", "unknown"):
+            return stored
+        ok = check.get("ok")
+        if ok is True:
+            return "passed"
+        if ok is False:
+            return "failed"
+        return "unknown"
+
+    for fact, fatal in FATAL_FACTS.items():
+        if fact in check and bool(check[fact]) is fatal:
+            return "failed"
+    if duplicate_note(check.get("notes") or []):
         return "failed"
-    return "unknown"
+    if int(check.get("identity", 0)) < IDENTITY_FLOOR:
+        return "failed"
+    scene = check.get("scene")
+    if scene is not None and int(scene) < SCENE_FLOOR:
+        return "failed"
+    return "passed"
+
+
+def check_status(page: Page) -> str:
+    """One word for where this page's check stands."""
+    return verdict_from(page.check or {})
+
+
+def _check_rank(check: dict[str, Any]) -> tuple:
+    """Sort key for two verdicts on the same page: bigger is better."""
+    status = verdict_from(check)
+    return (
+        {"passed": 3, "unchecked": 2, "unknown": 1, "failed": 0}[status],
+        0 if check.get("panelled") else 1,
+        0 if (check.get("duplicate")
+              or check.get("extra_or_duplicated_character")) else 1,
+        0 if check.get("story_state_ok") is False else 1,
+        int(check.get("identity") or 0),
+        int(check.get("scene") or 0),
+        int(check.get("style") or 0),
+    )
+
+
+def _better(candidate: dict[str, Any], incumbent: dict[str, Any]) -> bool:
+    return _check_rank(candidate) > _check_rank(incumbent)
+
+
+def seam_in_frame(path: Path, ratio: float = 4.0, floor: float = 20.0) -> bool:
+    """Is this two pictures side by side rather than one scene?
+
+    Cheap and deterministic, so it runs on every page for nothing. A diptych
+    leaves a hard vertical discontinuity where the two halves meet: the columns
+    either side belong to unrelated images, so their difference dwarfs any
+    ordinary edge. Comparing that peak against the median column difference
+    makes the test independent of how busy the illustration is.
+
+    Measured over the middle half of the frame rather than the exact centre,
+    because the split is not always even -- one real diptych joined at 37% of
+    the width. On the sixteen pages of the first finished book the three
+    diptychs scored 7.9, 8.0 and 14.0 while the widest ordinary edge reached
+    2.6, so the threshold sits in a wide gap rather than on a guess.
+
+    The checker was asked about this in words and missed it three times out of
+    three, which is why it is also measured here.
+    """
+    try:
+        with Image.open(path) as image:
+            grey = np.asarray(image.convert("L"), dtype=np.float64)
+    except Exception:
+        return False
+    if grey.ndim != 2 or grey.shape[1] < 64:
+        return False
+
+    # Mean absolute difference between each pair of neighbouring columns.
+    steps = np.abs(np.diff(grey, axis=1)).mean(axis=0)
+    width = steps.size
+    band = steps[int(width * 0.25):int(width * 0.75)]
+    if band.size == 0:
+        return False
+    typical = float(np.median(steps))
+    peak = float(band.max())
+    return peak >= floor and peak >= ratio * max(typical, 1e-6)
 
 
 def _usable_image(path: Path) -> bool:
@@ -576,6 +692,11 @@ def illustrate_book(
             shutil.copy2(target, keep)
             page.history.append(f"pages/{keep.name}")
 
+        # The brief the illustrator is actually given, so the checker grades
+        # against the same words rather than the raw stored text.
+        scene_text = single_scene(page.illustration)
+        best: tuple[Path, dict[str, Any]] | None = None
+
         for attempt in (1, 2):
             try:
                 result = draw_page(
@@ -596,9 +717,15 @@ def illustrate_book(
                 break
 
             page.check = check_page(target, sheet, hero, provider=check_provider,
-                                    scene=page.illustration)
+                                    scene=scene_text)
             page.check["attempts"] = attempt
-            if page.check.get("ok") is not False:
+            if best is None or _better(page.check, best[1]):
+                # Keep this attempt's pixels aside before the next one
+                # overwrites them, so a worse redraw can be undone.
+                spare = pages_dir / f"page_{page.index:02d}_try{attempt}.png"
+                shutil.copy2(target, spare)
+                best = (spare, dict(page.check))
+            if check_status(page) != "failed":
                 break
             if attempt == 1 and auto_retry and not stop():
                 with lock:
@@ -606,16 +733,30 @@ def illustrate_book(
                 continue
             break
 
+        # Two paid attempts used to be resolved by keeping whichever came last.
+        # Keep whichever came out better instead -- same money, and the second
+        # try is not reliably an improvement.
+        if best is not None:
+            if best[1] is not page.check and _better(best[1], page.check):
+                shutil.copy2(best[0], target)
+                page.check = best[1]
+            for leftover in pages_dir.glob(f"page_{page.index:02d}_try*.png"):
+                leftover.unlink(missing_ok=True)
+
         with lock:
             done += 1
             note = ""
-            if page.check and page.check.get("ok") is False:
-                if page.check.get("duplicate"):
-                    note = f" — bitte ansehen ({page.check['duplicate']})"
-                elif page.check.get("scene", 5) < SCENE_FLOOR:
-                    note = f" — bitte ansehen (Szene {page.check.get('scene')}/5)"
+            if check_status(page) == "failed":
+                check_data = page.check or {}
+                if check_data.get("panelled"):
+                    note = " — bitte ansehen (Bild ist geteilt)"
+                elif check_data.get("duplicate") or check_data.get(
+                        "extra_or_duplicated_character"):
+                    note = f" — bitte ansehen ({check_data.get('duplicate', 'Figur doppelt')})"
+                elif check_data.get("story_state_ok") is False:
+                    note = " — bitte ansehen (Szene stimmt nicht)"
                 else:
-                    note = f" — bitte ansehen (Ähnlichkeit {page.check.get('identity')}/5)"
+                    note = f" — bitte ansehen (Ähnlichkeit {check_data.get('identity')}/5)"
             log(f"  [{done}/{total}] Seite {page.index} fertig{note}")
             if on_progress:  # inside the lock: callers may save the book here
                 on_progress(done, total)

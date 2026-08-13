@@ -541,11 +541,57 @@ def test_a_duplicated_character_fails_the_check_whatever_it_scored():
     assert duplicate_note([]) is None
 
 
-def test_scene_floor_rejects_what_used_to_squeak_through():
-    from storytime.book.illustrate import IDENTITY_FLOOR, SCENE_FLOOR
+def test_the_gate_turns_on_facts_not_on_a_blended_score():
+    """The scene score mixes a ruined page with a camera quibble.
 
-    assert SCENE_FLOOR == 4  # was 3, which passed "the setting or action is off"
-    assert IDENTITY_FLOOR == 4
+    Raising its floor to 4 made four framing complaints per book into paid
+    redraws while still passing a page whose own notes said two characters
+    were duplicated. The faults that matter are asked as yes/no questions and
+    fail the page on their own; the score keeps a floor of 3 for "a different
+    scene entirely".
+    """
+    from storytime.book.illustrate import (
+        FATAL_FACTS, IDENTITY_FLOOR, SCENE_FLOOR, verdict_from,
+    )
+
+    assert (IDENTITY_FLOOR, SCENE_FLOOR) == (4, 3)
+    assert set(FATAL_FACTS) == {
+        "extra_or_duplicated_character", "panelled", "story_state_ok"}
+
+    good = {"identity": 5, "style": 5, "scene": 5, "notes": []}
+    assert verdict_from(good) == "passed"
+
+    # A framing quibble is a note, not a redraw.
+    assert verdict_from({**good, "scene": 3,
+                         "notes": ["view is wider than the brief asked"]}) == "passed"
+
+    # Each fatal fact fails on its own, at a perfect score.
+    assert verdict_from({**good, "extra_or_duplicated_character": True}) == "failed"
+    assert verdict_from({**good, "panelled": True}) == "failed"
+    assert verdict_from({**good, "story_state_ok": False}) == "failed"
+    assert verdict_from({**good, "notes": ["Pip and Trixi are duplicated"]}) == "failed"
+    assert verdict_from({**good, "identity": 3}) == "failed"
+    assert verdict_from({**good, "scene": 2}) == "failed"
+
+
+def test_a_stored_verdict_is_re_judged_under_todays_rules():
+    """The frozen-boolean bug: every page of the first finished book carried
+    ok: true while its notes described duplicated characters, and no later fix
+    could reach it because the flag was read instead of the evidence."""
+    from storytime.book.illustrate import check_status
+
+    stale = Page(index=1, check={
+        "ok": True, "status": "passed", "identity": 5, "style": 5, "scene": 3,
+        "notes": ["Pip and Trixi are duplicated: one pair stands on the bridge"],
+    })
+    assert check_status(stale) == "failed"
+
+
+def test_a_check_that_errored_is_never_read_as_a_pass():
+    from storytime.book.illustrate import check_status
+
+    assert check_status(Page(index=1, check={"error": "timeout"})) == "unknown"
+    assert check_status(Page(index=1, check={})) == "unchecked"
 
 
 @pytest.mark.parametrize("brief", [

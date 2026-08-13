@@ -228,7 +228,12 @@ class Library:
                             continue
                         for name in page_fields:
                             setattr(page, name, getattr(other, name))
-            book.updated = time.time()
+            # Strictly greater than the copy this was loaded from, even when
+            # two saves land inside one clock tick -- the staleness test
+            # above is `>`, and an equal timestamp would hide an intervening
+            # save. 0.1 ms is far above float granularity at epoch scale and
+            # far below any real editing timescale.
+            book.updated = max(time.time(), (loaded or 0.0) + 1e-4)
             save_json(path, book.to_dict())
             book._loaded_updated = book.updated
         return book

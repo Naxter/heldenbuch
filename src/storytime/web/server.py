@@ -352,8 +352,22 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _send_json(self, payload: Any, status: int = 200) -> None:
         self._send(status, json.dumps(payload).encode("utf-8"), "application/json")
 
+    def _content_length(self) -> int:
+        try:
+            return max(0, int(self.headers.get("Content-Length") or 0))
+        except ValueError:
+            return 0
+
+    def _drain_body(self) -> None:
+        remaining = self._content_length()
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, 65536))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+
     def _read_body(self) -> Any:
-        length = int(self.headers.get("Content-Length") or 0)
+        length = self._content_length()
         if not length:
             return None
         raw = self.rfile.read(length)
@@ -376,9 +390,50 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_DELETE(self) -> None:
         self._dispatch("DELETE")
 
+    def do_OPTIONS(self) -> None:
+        # Answered explicitly, with no CORS headers, so a cross-origin
+        # preflight is refused by design rather than by the default 501.
+        self._send_json({"error": "method not allowed"}, status=405)
+
+    #: Hosts this server will answer to. Anything else is a browser that
+    #: resolved some other name to this address -- the DNS-rebinding shape,
+    #: where a remote page becomes same-origin with a localhost service and can
+    #: then read every response. Checking the header costs nothing and is the
+    #: only defence, since the request otherwise looks entirely normal.
+    def _host_allowed(self) -> bool:
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]").lower()
+        return host in ("127.0.0.1", "localhost", "::1", "")
+
+    def _origin_allowed(self) -> bool:
+        """A state-changing request must not come from another site.
+
+        A cross-origin page can send a form-style POST without a preflight, so
+        the side effect would happen even though it cannot read the reply --
+        which for this app means spending money. Requiring a JSON content type
+        and an absent or matching Origin closes that: neither can be set
+        cross-origin without a preflight, and `do_OPTIONS` refuses those.
+        """
+        origin = self.headers.get("Origin")
+        if origin:
+            host = urlparse(origin).hostname or ""
+            if host.lower() not in ("127.0.0.1", "localhost", "::1"):
+                return False
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        return ctype in ("application/json", "")
+
     def _dispatch(self, method: str) -> None:
         parsed = urlparse(self.path)
         path, query = parsed.path, parse_qs(parsed.query)
+
+        if self.headers.get("Transfer-Encoding"):
+            self._send_json({"error": "chunked bodies are not accepted"}, status=501)
+            return
+        if not self._host_allowed():
+            self._send_json({"error": "host not allowed"}, status=421)
+            return
+        if method in ("POST", "PUT", "DELETE") and not self._origin_allowed():
+            self._send_json({"error": "cross-origin request refused"}, status=403)
+            return
 
         try:
             for route_method, pattern, name in self.ROUTES:
@@ -398,12 +453,20 @@ class RequestHandler(BaseHTTPRequestHandler):
             if method == "GET":
                 self._serve_asset(path)
                 return
+            # Nothing matched. The body still has to come off the socket --
+            # this connection is keep-alive, so bytes left unread would be
+            # parsed as the start of the next request.
+            self._drain_body()
             self._send_json({"error": "not found"}, status=404)
 
         except ApiError as exc:
             self._send_json({"error": str(exc)}, status=exc.status)
         except FileNotFoundError as exc:
             self._send_json({"error": str(exc)}, status=404)
+        except ValueError as exc:
+            # Rejected input, not a server fault -- a malformed id or an
+            # unparseable number reaches here.
+            self._send_json({"error": str(exc)}, status=400)
         except Exception as exc:
             self._send_json({"error": f"{type(exc).__name__}: {exc}"}, status=500)
 

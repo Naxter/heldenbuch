@@ -20,6 +20,9 @@ from ..pricing import summary as spend_summary
 from .jobs import Job
 
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024
+#: Ceiling on decoded pixels, well under Pillow's own bomb threshold. A phone
+#: photo is around 12 megapixels, so this leaves plenty of headroom.
+MAX_UPLOAD_PIXELS = 50_000_000
 IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")
 
 
@@ -48,11 +51,23 @@ def save_upload(item: dict, folder: Path, stem: str) -> Path | None:
 
     try:
         with Image.open(target) as image:
+            # A small file can decode to an enormous bitmap. Pillow raises
+            # above roughly 178 megapixels, but the band below that still
+            # materialises hundreds of megabytes at four bytes a pixel, so
+            # check the declared size before any decoding happens.
+            if image.width * image.height > MAX_UPLOAD_PIXELS:
+                raise ValueError("image too large")
+            image.verify()
+        # verify() consumes the file object, so reopen to do the real work.
+        with Image.open(target) as image:
             upright = ImageOps.exif_transpose(image)
             if upright is not image or image.getexif():
                 upright.convert("RGB").save(target)
     except Exception:
-        pass  # not an image we can reopen; leave the bytes as they came
+        # Not a usable image. Delete it rather than keeping bytes that will
+        # fail later, further from the upload that caused them.
+        target.unlink(missing_ok=True)
+        return None
     return target
 
 

@@ -40,14 +40,32 @@ class Library:
 
     # ---------------------------------------------------------------- paths
 
+    #: folder name -> what one of them is called, for error messages
+    _KINDS = {"heroes": "hero", "styles": "style", "books": "book"}
+
+    def _member_dir(self, kind: str, ident: str) -> Path:
+        """The folder for one hero, style or book -- and nothing else.
+
+        The id arrives from a URL and ends up in `shutil.rmtree`, so it has to
+        be a single path segment. `..`, a backslash, an absolute path or a
+        Windows drive-relative path like `C:foo` all resolve somewhere other
+        than directly inside `library/<kind>/`, and every one of them is
+        refused here rather than at each call site.
+        """
+        parent = (self.root / kind).resolve()
+        target = (parent / str(ident)).resolve()
+        if target.parent != parent or target == parent:
+            raise ValueError(f"invalid {self._KINDS.get(kind, kind)} id: {ident!r}")
+        return target
+
     def hero_dir(self, hero_id: str) -> Path:
-        return self.root / "heroes" / hero_id
+        return self._member_dir("heroes", hero_id)
 
     def style_dir(self, style_id: str) -> Path:
-        return self.root / "styles" / style_id
+        return self._member_dir("styles", style_id)
 
     def book_dir(self, book_id: str) -> Path:
-        return self.root / "books" / book_id
+        return self._member_dir("books", book_id)
 
     def relative(self, path: Path) -> str:
         """A path the web layer can serve, using forward slashes on every OS."""
@@ -67,7 +85,13 @@ class Library:
         return hero
 
     def get_hero(self, hero_id: str) -> Hero:
-        path = self.hero_dir(hero_id) / "hero.json"
+        # An id that is not a single path segment names nothing, which to a
+        # reader is the same as a hero that is not there. Only the writing and
+        # deleting paths need the louder ValueError.
+        try:
+            path = self.hero_dir(hero_id) / "hero.json"
+        except ValueError as exc:
+            raise FileNotFoundError(str(exc)) from exc
         if not path.is_file():
             raise FileNotFoundError(f"no hero {hero_id}")
         return _build(Hero, load_json(path))
@@ -91,7 +115,10 @@ class Library:
         return style
 
     def get_style(self, style_id: str) -> Style:
-        path = self.style_dir(style_id) / "style.json"
+        try:
+            path = self.style_dir(style_id) / "style.json"
+        except ValueError as exc:
+            raise FileNotFoundError(str(exc)) from exc
         if not path.is_file():
             raise FileNotFoundError(f"no style {style_id}")
         return _build(Style, load_json(path))
@@ -151,18 +178,35 @@ class Library:
         return book
 
     def get_book(self, book_id: str) -> Book:
-        path = self.book_dir(book_id) / "book.json"
+        try:
+            path = self.book_dir(book_id) / "book.json"
+        except ValueError as exc:
+            raise FileNotFoundError(str(exc)) from exc
         if not path.is_file():
             raise FileNotFoundError(f"no book {book_id}")
-        return Book.from_dict(load_json(path))
+        book = Book.from_dict(load_json(path))
+        # The id steers every write path for this book, so take it from the
+        # folder we actually loaded from rather than from the file's contents.
+        book.id = path.parent.name
+        return book
 
     def books(self) -> list[Book]:
+        """Every book on the shelf, including any that will not load.
+
+        A book whose JSON is unreadable used to be skipped in silence, so a
+        half-written file made the book disappear from the shelf with no error
+        anywhere. It comes back as a placeholder instead: the id is the folder
+        name, and `broken` tells the UI to offer a restore rather than a story.
+        """
         found = []
         for path in sorted((self.root / "books").glob("*/book.json")):
             try:
-                found.append(Book.from_dict(load_json(path)))
-            except (TypeError, ValueError):
-                continue
+                book = Book.from_dict(load_json(path))
+                book.id = path.parent.name
+            except (TypeError, ValueError, OSError):
+                book = Book(id=path.parent.name, broken=True,
+                            updated=path.stat().st_mtime if path.exists() else 0.0)
+            found.append(book)
         return sorted(found, key=lambda b: b.updated, reverse=True)
 
     def delete_book(self, book_id: str) -> None:

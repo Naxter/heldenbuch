@@ -23,6 +23,28 @@ from typing import Any, Callable
 
 Worker = Callable[["Job", Callable[..., None]], None]
 
+#: Job parameters that carry an upload and must never be echoed back. These are
+#: base64 images -- a photograph of a child, or a style reference -- and the
+#: status endpoint is polled every second, so returning them would re-send the
+#: picture continuously as well as put it somewhere it does not belong.
+UPLOAD_PARAMS = frozenset({"photos", "photo", "reference"})
+
+#: Anything longer than this is treated as an upload even under a new name, so
+#: the next parameter is redacted by default rather than by being remembered.
+_BULK_CHARS = 4096
+
+
+def _safe_param(key: str, value: Any) -> Any:
+    if key in UPLOAD_PARAMS:
+        return "<upload>"
+    if isinstance(value, str) and len(value) > _BULK_CHARS:
+        return "<upload>"
+    if isinstance(value, dict) and "data" in value:
+        return "<upload>"
+    if isinstance(value, list) and any(isinstance(v, dict) and "data" in v for v in value):
+        return "<upload>"
+    return value
+
 
 @dataclass
 class Job:
@@ -52,7 +74,7 @@ class Job:
         return {
             "id": self.id,
             "action": self.action,
-            "params": {k: v for k, v in self.params.items() if k != "photos"},
+            "params": {k: _safe_param(k, v) for k, v in self.params.items()},
             "status": self.status,
             "error": self.error,
             "result": self.result,

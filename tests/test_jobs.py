@@ -101,10 +101,30 @@ class TestJobQueue:
         with pytest.raises(ValueError):
             JobManager({}).start("nope", {})
 
-    def test_photos_are_not_echoed_back_to_the_browser(self):
+    def test_uploads_are_not_echoed_back_to_the_browser(self):
+        """Every upload parameter, not just `photos`.
+
+        The status endpoint is polled about once a second, so an upload left in
+        `params` is a photograph of a child re-sent on every poll. `photo` and
+        `reference` were missed by the original single-key filter.
+        """
         manager = JobManager({"w": lambda job, log: None})
-        job = manager.start("w", {"photos": ["data:image/png;base64,AAA"], "name": "Claudio"})
-        assert "photos" not in job.public()["params"]
+        job = manager.start("w", {
+            "photos": ["data:image/png;base64,AAA"],
+            "photo": {"name": "p.jpg", "data": "data:image/png;base64,AAA"},
+            "reference": {"name": "r.jpg", "data": "data:image/png;base64,AAA"},
+            "name": "Claudio",
+        })
+        params = job.public()["params"]
+        for key in ("photos", "photo", "reference"):
+            assert params[key] == "<upload>", key
+        assert params["name"] == "Claudio"
+
+    def test_an_unnamed_bulk_parameter_is_redacted_too(self):
+        """So the next upload parameter is safe by default, not by memory."""
+        manager = JobManager({"w": lambda job, log: None})
+        job = manager.start("w", {"artwork": "x" * 5000, "name": "Claudio"})
+        assert job.public()["params"]["artwork"] == "<upload>"
         assert job.public()["params"]["name"] == "Claudio"
 
 

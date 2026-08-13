@@ -291,3 +291,59 @@ class TestBodyTypeFloor:
                                  preset, layout="vignette", age="4-5")
         assert 0.30 < self._art_fraction(short, page_h) < 0.95   # inset picture
         assert self._art_fraction(long, page_h) > 0.95           # full bleed
+
+
+class TestSeamDetection:
+    """A page split into two pictures is a printing fault to a small reader.
+
+    The checker is asked about panels in as many words and missed it on three
+    pages out of three, so it is also measured from the pixels.
+    """
+
+    @staticmethod
+    def _halves(path, left_rgb, right_rgb, size=512):
+        array = np.zeros((size, size, 3), dtype=np.uint8)
+        array[:, : size // 2] = left_rgb
+        array[:, size // 2:] = right_rgb
+        Image.fromarray(array).save(path)
+        return path
+
+    def test_two_pictures_side_by_side_are_caught(self, tmp_path):
+        from storytime.book.illustrate import seam_in_frame
+
+        path = self._halves(tmp_path / "diptych.png", (30, 120, 60), (200, 170, 120))
+        assert seam_in_frame(path) is True
+
+    def test_an_off_centre_split_is_caught(self, tmp_path):
+        """One real diptych joined at 37% of the width, not the middle."""
+        from storytime.book.illustrate import seam_in_frame
+
+        size = 512
+        array = np.zeros((size, size, 3), dtype=np.uint8)
+        cut = int(size * 0.37)
+        array[:, :cut] = (30, 120, 60)
+        array[:, cut:] = (200, 170, 120)
+        path = tmp_path / "offcentre.png"
+        Image.fromarray(array).save(path)
+        assert seam_in_frame(path) is True
+
+    def test_an_ordinary_illustration_is_not_flagged(self, tmp_path):
+        """A gradient with plenty of internal edges, but no discontinuity."""
+        from storytime.book.illustrate import seam_in_frame
+
+        size = 512
+        ramp = np.linspace(0, 255, size, dtype=np.uint8)
+        array = np.repeat(ramp[None, :, None], size, axis=0).repeat(3, axis=2)
+        rng = np.random.default_rng(7)
+        array = np.clip(array.astype(int) + rng.integers(-30, 30, array.shape), 0, 255)
+        path = tmp_path / "scene.png"
+        Image.fromarray(array.astype(np.uint8)).save(path)
+        assert seam_in_frame(path) is False
+
+    def test_a_missing_or_unreadable_file_is_not_flagged(self, tmp_path):
+        from storytime.book.illustrate import seam_in_frame
+
+        assert seam_in_frame(tmp_path / "nope.png") is False
+        broken = tmp_path / "broken.png"
+        broken.write_bytes(b"not a picture")
+        assert seam_in_frame(broken) is False

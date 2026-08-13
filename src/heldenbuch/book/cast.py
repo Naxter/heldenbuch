@@ -32,10 +32,24 @@ PLACE_FRAME = (
     "numbers or labels anywhere in the image."
 )
 
+#: Things the story builds, finds or carries. Without one of these a prop is
+#: reinvented on every page it appears on: one book's whole plot is building a
+#: bridge, the bridge is in eight pictures, and it came out as a fallen mossy
+#: log on one page and a neatly built raft of round logs three pages later.
+PROP_FRAME = (
+    "An object reference for a children's picture book: the single object "
+    "described below on a plain off-white background, seen from one clear "
+    "three-quarter angle, whole and evenly lit, with nobody in the picture. "
+    "No text, letters, numbers or labels anywhere in the image."
+)
+
+_FRAMES = {"place": PLACE_FRAME, "prop": PROP_FRAME}
+_LABELS = {"place": "PLACE", "prop": "OBJECT"}
+
 
 def sheet_prompt(member: CastMember, style: Style) -> str:
-    frame = PLACE_FRAME if member.kind == "place" else CHARACTER_FRAME
-    label = "PLACE" if member.kind == "place" else "CHARACTER"
+    frame = _FRAMES.get(member.kind, CHARACTER_FRAME)
+    label = _LABELS.get(member.kind, "CHARACTER")
     return (
         f"{frame}\n\n"
         f"{label}: {member.name}\n{member.description}\n\n"

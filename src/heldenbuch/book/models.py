@@ -368,12 +368,40 @@ class Book:
         return self.content_rev > self.export_rev
 
     def cast_for(self, page: Page) -> list[CastMember]:
-        """The sheets that should be referenced when drawing this page."""
-        names = {n.lower() for n in page.cast}
-        return [
-            member for member in self.cast
-            if member.sheet and (member.kind == "place" or member.name.lower() in names)
-        ]
+        """The sheets that should be referenced when drawing this page.
+
+        A member is attached when the page lists them *or* when the brief names
+        them. Attaching everyone was how a page whose scene mentioned only the
+        boy and the dinosaur got the dog's sheet as well, drew him, and was
+        then failed by the checker for "a dog that is not mentioned in the
+        scene" -- the pipeline inventing a character and marking itself down
+        for it.
+
+        A prop is attached only when it is actually named, for the same reason.
+        The place stays on every page: it is the setting, not a participant.
+        """
+        brief = (page.illustration or "").lower()
+        drawable = [m for m in self.cast if m.sheet]
+
+        def in_brief(member: CastMember) -> bool:
+            return re.search(rf"\b{re.escape(member.name.lower())}\b", brief) is not None
+
+        # The brief is the contract: it is the only thing the illustrator is
+        # told to draw. Where it names anyone, that is the guest list. The
+        # author's own page.cast is a hint and can disagree with it -- on one
+        # page it listed the dog while the brief mentioned only the boy and
+        # the dinosaur, so the dog's sheet went along, the dog got drawn, and
+        # the checker failed the page for "a dog not mentioned in the scene".
+        named = [m for m in drawable if m.kind != "place" and in_brief(m)]
+        if not named:
+            # A brief that names nobody (or an older book without one) falls
+            # back to the list, so a reference is never silently dropped.
+            listed = {n.lower() for n in page.cast}
+            named = [m for m in drawable
+                     if m.kind == "character" and m.name.lower() in listed]
+
+        places = [m for m in drawable if m.kind == "place"]
+        return [m for m in drawable if m in named or m in places]
 
     @property
     def primary_language(self) -> str:

@@ -395,3 +395,80 @@ class TestAtomicSave:
         assert set(listed) == {good.id, broken.id}
         assert listed[broken.id].broken is True
         assert listed[good.id].broken is False
+
+
+class TestWhatEachPageIsShown:
+    """Only what the brief names, plus the props the story keeps returning to.
+
+    Two failures came out of the first print run. A page whose brief mentioned
+    only the boy and the dinosaur was still handed the dog's sheet, drew him,
+    and was failed by the checker for "a dog not mentioned in the scene". And
+    the bridge the whole plot is about had no reference at all, so it appeared
+    on eight pages and was invented afresh each time -- a fallen mossy log on
+    one page, a built raft of round logs three pages later.
+    """
+
+    @staticmethod
+    def _book():
+        from heldenbuch.book.models import Book, CastMember, Page
+
+        cast = [
+            CastMember(name="Pip", kind="character", sheet="cast/01.png"),
+            CastMember(name="Trixi", kind="character", sheet="cast/02.png"),
+            CastMember(name="Dino-Tal", kind="place", sheet="cast/03.png"),
+            CastMember(name="Stammbrücke", kind="prop", sheet="cast/04.png"),
+        ]
+        return Book, cast, Page
+
+    def test_a_character_the_brief_omits_is_not_attached(self):
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=["Pip", "Trixi"],
+                    illustration="Trixi rolls an egg back into the nest.")
+        got = [m.name for m in Book(cast=cast).cast_for(page)]
+        assert "Pip" not in got
+        assert "Trixi" in got
+
+    def test_a_prop_is_attached_when_the_brief_names_it(self):
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=["Pip"],
+                    illustration="Pip crosses the Stammbrücke at sunset.")
+        got = [m.name for m in Book(cast=cast).cast_for(page)]
+        assert "Stammbrücke" in got and "Pip" in got
+        assert "Trixi" not in got
+
+    def test_a_prop_the_page_does_not_use_stays_behind(self):
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=[], illustration="Trixi naps under a fern.")
+        got = [m.name for m in Book(cast=cast).cast_for(page)]
+        assert "Stammbrücke" not in got
+
+    def test_the_place_rides_along_regardless(self):
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=[], illustration="Trixi naps under a fern.")
+        assert "Dino-Tal" in [m.name for m in Book(cast=cast).cast_for(page)]
+
+    def test_a_brief_naming_nobody_falls_back_to_the_list(self):
+        """Older books, and pages written from behind a character's shoulder,
+        carry no names -- dropping every reference there would be worse."""
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=["Pip"],
+                    illustration="A view from behind the seats of the Dino-Mobile.")
+        assert "Pip" in [m.name for m in Book(cast=cast).cast_for(page)]
+
+    def test_a_member_without_a_sheet_is_never_attached(self):
+        from heldenbuch.book.models import Book, CastMember, Page
+
+        page = Page(index=1, illustration="Pip runs.")
+        book = Book(cast=[CastMember(name="Pip", kind="character", sheet=None)])
+        assert book.cast_for(page) == []
+
+    def test_the_prop_reference_is_briefed_as_one_object(self):
+        from heldenbuch.book.cast import sheet_prompt
+        from heldenbuch.book.models import CastMember, Style
+
+        member = CastMember(name="Stammbrücke", kind="prop",
+                            description="a mossy log lashed with vines")
+        prompt = sheet_prompt(member, Style(description="watercolour"))
+        assert "OBJECT: Stammbrücke" in prompt
+        assert "plain off-white background" in prompt
+        assert "with nobody in the picture" in prompt

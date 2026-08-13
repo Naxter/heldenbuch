@@ -112,12 +112,22 @@ meaning and the rhythm, and let the wording differ where the language wants it
 to. Names stay the same in every language.
 
 THE CAST
-List everyone besides the hero who appears on more than one page, and the one
-place the story keeps returning to. Each gets its own reference drawing, so
-describe them the way you would brief an illustrator: concrete, countable
+List everyone besides the hero who appears on more than one page, the one
+place the story keeps returning to, and every *object* the story builds,
+finds or carries that has to look the same each time it is drawn -- a raft, a
+den, a nest, a kite, a lost boot. Give each object kind "prop".
+
+Objects matter as much as characters here and are easy to forget. Each entry
+gets its own reference drawing, and anything without one is invented again on
+every page it appears in: in one book the whole plot was building a bridge,
+the bridge was in eight pictures, and it came out as a fallen mossy log on one
+page and a neatly built raft of round logs three pages later.
+
+Describe each the way you would brief an illustrator: concrete, countable
 details. Then, for every page, name which of them appear on it.
-Keep the cast small -- two or three at most. A book with eight characters in it
-is not a picture book for this age.
+Keep the cast small -- two or three characters at most, plus the place and at
+most two props. A book with eight characters in it is not a picture book for
+this age.
 
 ILLUSTRATIONS
 For each page write one "illustration" instruction in English describing what
@@ -129,6 +139,12 @@ borrowed umbrella -- say so explicitly in that page's instruction and in every
 following page while it lasts ("wearing only one yellow boot, the other foot
 in a muddy sock"). The illustrator's reference sheet always shows the
 character complete, so an unstated change will silently be drawn back to normal.
+Name, in the instruction itself, every cast member and every object that is in
+that picture. The instruction is the only thing the illustrator is given, and
+only what it names gets a reference image, so a character you list for the
+page but leave out of the instruction will be drawn from imagination -- or
+left out and invented back in. Equally, do not name anyone who is not in the
+picture.
 Never ask for text, letters, numbers or speech bubbles in the picture. Vary the
 framing across the book -- close on a face, a wide landscape, a view from
 behind, a small hero in a big space -- so the pages do not all look alike.
@@ -148,7 +164,8 @@ def _shape(languages: list[str], count: int) -> str:
   "cover_illustration": "what the cover picture shows",
   "cast": [
     {{ "name": "...", "kind": "character", "description": "concrete details an illustrator can draw" }},
-    {{ "name": "...", "kind": "place", "description": "..." }}
+    {{ "name": "...", "kind": "place", "description": "..." }},
+    {{ "name": "...", "kind": "prop", "description": "..." }}
   ],
   "pages": [
     {{
@@ -271,9 +288,17 @@ def _normalise(payload: dict[str, Any], languages: list[str], count: int) -> dic
         description = str(item.get("description", "")).strip()
         if not name or not description:
             continue
-        kind = "place" if str(item.get("kind", "")).lower().startswith("place") else "character"
+        raw_kind = str(item.get("kind", "")).lower()
+        if raw_kind.startswith("place"):
+            kind = "place"
+        elif raw_kind.startswith(("prop", "object", "thing", "item")):
+            kind = "prop"
+        else:
+            kind = "character"
         cast.append(CastMember(name=name, description=description, kind=kind))
-    cast = cast[:4]
+    # Room for two or three characters, the place, and the props the story
+    # builds -- which used to have no reference at all.
+    cast = cast[:6]
     known = {member.name.lower() for member in cast}
 
     pages: list[Page] = []

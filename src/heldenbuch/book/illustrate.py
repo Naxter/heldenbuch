@@ -181,8 +181,18 @@ def _reference_block(hero: Hero, members: list[CastMember]) -> tuple[str, list[s
         if member.kind == "place":
             lines.append(
                 f"Image {position} shows {member.name}, the place this story "
-                "keeps returning to. Keep its layout, colours and distinctive "
-                "features the same, but you may show it from a different angle."
+                "keeps returning to. Keep the kind of plants, the colours and "
+                "the quality of the light the same, and show whatever part of "
+                "it this scene needs -- do not reproduce the same view, and do "
+                "not copy its layout onto every page."
+            )
+        elif member.kind == "prop":
+            lines.append(
+                f"Image {position} is {member.name}, an object the story keeps "
+                "coming back to. Draw the same object: same construction, same "
+                "materials, same proportions, same wear. It may be seen from "
+                "any angle and from any distance, but it is one particular "
+                "thing, not a new one each time."
             )
         else:
             lines.append(

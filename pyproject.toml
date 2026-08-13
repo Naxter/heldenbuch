@@ -23,11 +23,15 @@ dependencies = [
 gemini = ["google-genai>=2.3.0"]
 # The BFL (FLUX) backend uses only the standard library, so it has no extras.
 
+# Colour management for print exports: embeds an sRGB OutputIntent into the
+# PDF. Without it exports still work, but stay untagged DeviceRGB.
+print = ["pikepdf>=8"]
+
 # Optional embedding metric. Pulls in torch (~2.5 GB) -- install only if you
 # want the objective similarity score alongside the VLM judge.
 embed = ["torch>=2.2", "transformers>=4.44"]
 
-all = ["google-genai>=2.3.0", "torch>=2.2", "transformers>=4.44"]
+all = ["google-genai>=2.3.0", "torch>=2.2", "transformers>=4.44", "pikepdf>=8"]
 dev = ["pytest>=8.0"]
 
 [tool.pytest.ini_options]

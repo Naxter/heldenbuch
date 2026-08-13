@@ -1067,6 +1067,13 @@ def export_pdf(
                   resolution=float(preset.dpi), quality=95, subsampling=0,
                   title=book.title.get(language) or book.display_title())
 
+    if embed_srgb(target, language=langs[0] if langs else ""):
+        log("  sRGB-Profil eingebettet")
+    elif preset.bleed_mm > 0:
+        # Only print presets care; a screen PDF without a profile is fine.
+        warnings.append('Kein Farbprofil im PDF — für farbverbindlichen Druck '
+                        '`pip install "heldenbuch[print]"` und neu exportieren.')
+
     return {
         "path": target,
         "pages": len(pages),
@@ -1077,6 +1084,38 @@ def export_pdf(
             LANGUAGES.get(code, {}).get("name", code) for code in langs),
         "warnings": warnings,
     }
+
+
+def embed_srgb(pdf_path: Path, language: str = "") -> bool:
+    """Stamp an sRGB OutputIntent and the document language onto a PDF.
+
+    Pillow writes untagged DeviceRGB, which a press is free to interpret --
+    the one colour-management gap in the export. Rewriting the PDF needs the
+    optional `pikepdf` dependency (`pip install "heldenbuch[print]"`); without
+    it the export stays exactly as it was and the caller may warn.
+    """
+    try:
+        import pikepdf
+    except ImportError:
+        return False
+    from PIL import ImageCms
+
+    icc = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+    with pikepdf.open(pdf_path, allow_overwriting_input=True) as pdf:
+        profile = pdf.make_stream(icc)
+        profile.N = 3
+        intent = pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name.OutputIntent,
+            S=pikepdf.Name.GTS_PDFA1,
+            OutputConditionIdentifier=pikepdf.String("sRGB IEC61966-2.1"),
+            Info=pikepdf.String("sRGB IEC61966-2.1"),
+            DestOutputProfile=profile,
+        ))
+        pdf.Root.OutputIntents = pikepdf.Array([intent])
+        if language:
+            pdf.Root.Lang = pikepdf.String(language)
+        pdf.save(pdf_path)
+    return True
 
 
 def export_cover_image(book, language: str, preset: PrintPreset, resolve, target: Path,

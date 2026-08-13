@@ -1,5 +1,7 @@
 # Heldenbuch
 
+![heldenbuch — personalised children's picture books](docs/heldenbuch-banner.png)
+
 Make personalised picture books for your own child — with their photo or
 without — and get a file a print shop will accept.
 
@@ -8,15 +10,20 @@ looks like a different child on page seven. Heldenbuch solves that by getting
 the character right **once**, then pointing every page at that one drawing.
 
 ```bash
+pip install -e .
 python -m heldenbuch serve
 ```
+
+That opens the app at `http://127.0.0.1:8765`. One OpenAI key in `.env` runs
+everything — see [Setup](#setup).
 
 ---
 
 ## How it works
 
 Four steps. Steps 1 and 2 you do once per child; after that a new book is a
-sentence away.
+sentence away. The full pipeline, including how consistency is actually
+achieved, is in **[docs/how-it-works.md](docs/how-it-works.md)**.
 
 **1. Der Held.** Upload two to four photos, or just describe the character.
 A vision model writes down what an illustrator needs — hair, eyes, skin tone,
@@ -24,10 +31,7 @@ build, an outfit — and an image model draws that as a **character sheet**: the
 same character from four angles on a plain background. You get three versions
 and pick one.
 
-The photos stay on your machine. They are sent once, for this step. No page
-illustration ever sees a photo; they see the drawing.
-
-**2. Der Look.** Pick a style from eight presets, or describe your own wish
+**2. Der Look.** Pick a style from the presets, or describe your own wish
 ("wie ein alter Scherenschnitt") and it gets translated into something an image
 model actually responds to. Either way it immediately renders *your character
 in that style*, so you judge the real combination. When you like it, the
@@ -44,9 +48,15 @@ Pick several languages and each is **written**, not translated — same story,
 same page breaks, same beat, but the rhythm works in each language. The
 pictures are shared, so a second language costs a few cents of text.
 
-**4. Das Buch.** It draws every page from the locked reference, then checks
-each one against it and flags any page where the character drifted. One click
-redraws just that page. Then it exports a PDF.
+**4. Das Buch.** It draws every page from the locked reference — each page is
+conditioned on a single cropped figure from the sheet, which is what keeps the
+character from drifting or duplicating — then checks every page against the
+reference and flags any that drifted. One click redraws just that page. Then
+it exports a PDF.
+
+Text is never drawn by the image model. Image models produce convincing-looking
+gibberish instead of letters, in every language. It is typeset afterwards with
+a real font (Georgia by default — it has Cyrillic, so Russian sets properly).
 
 ---
 
@@ -65,11 +75,8 @@ which is how books are actually bound.
 **Render quality** matters for print. *Entwurf* draws at 1024 px — fast and
 cheap, right for while the story is still moving. *Druckqualität* draws at
 2624 px, which is exactly 300 dpi across a 21,6 cm page with its bleed. The
-export warns you if the pictures are too small for the format you picked.
-
-Text is never drawn by the image model. Image models produce convincing-looking
-gibberish instead of letters, in every language. It is typeset afterwards with
-a real font (Georgia by default — it has Cyrillic, so Russian sets properly).
+export measures the real pixels of every page and refuses a print export whose
+effective resolution is too low, instead of letting the PDF claim 300 dpi.
 
 ---
 
@@ -82,23 +89,25 @@ pip install -e .
 ```
 
 Copy `.env.example` to `.env` and add an OpenAI key — that alone runs
-everything. Optional: `GEMINI_API_KEY` or `BFL_API_KEY` for other image models,
-`ANTHROPIC_API_KEY` for a different writer.
+everything: story, pictures, narration and the consistency check. Optional:
+`GEMINI_API_KEY` or `BFL_API_KEY` for other image models, `ANTHROPIC_API_KEY`
+for a second text provider so one company is not grading its own drawings.
 
 ```bash
 python -m heldenbuch doctor
 ```
 
-Core dependencies are numpy, Pillow and PyYAML. The web app and the OpenAI and
-FLUX backends use only the standard library. Gemini needs
-`pip install -e ".[gemini]"`.
+tells you which backends are ready and which keys are missing.
+
+Core dependencies are numpy, Pillow and PyYAML — three, on purpose. The web
+app and the OpenAI and FLUX backends use only the standard library. Gemini
+needs `pip install -e ".[gemini]"`.
 
 **Drawing locally, for free:** the `comfy` backend sends jobs to your own
-ComfyUI (FLUX.2 klein runs on a 12 GB card). No key, no cost — and the photos
-never leave the machine, not even for the character sheet. It appears as a
-Bilddienst automatically whenever ComfyUI is running. One-time setup: export
-your working workflow in API format and drop in placeholders — instructions at
-the top of `src/heldenbuch/backends/comfy.py`.
+ComfyUI (FLUX.2 klein runs on a 12 GB card). No key, no per-image cost. It
+appears as a Bilddienst automatically whenever ComfyUI is running. One-time
+setup: export your working workflow in API format and drop in placeholders —
+instructions at the top of `src/heldenbuch/backends/comfy.py`.
 
 Everything lives in plain folders under `library/`:
 
@@ -113,57 +122,58 @@ it contains photos of a real child.
 
 ---
 
+## What it costs, and where photos go
+
+Every button that spends money shows a euro estimate before you click it, and
+every provider response's usage is written to a per-book ledger you can open.
+The `stub` backend draws labelled placeholder images for free, so you can walk
+the whole app — story, pages, export — without a key or a cent.
+
+Photos are stored only on your machine, but creating a character sheet does
+send them out, and it is worth being precise about when:
+
+- once to the **text provider**, which writes the illustrator's description;
+- once **per character sheet drawn** to the **image provider** — three
+  variants by default, and again each time you ask for more.
+
+Depending on your configuration those are two different companies. After the
+sheet exists, no photo is sent again: every page illustration is conditioned
+on the drawing, never on a photo. If the `comfy` backend draws the sheets,
+that drawing happens entirely on your own machine; only the written
+description step still uses a text provider — or upload no photos and type
+the description yourself, and nothing personal leaves the house at all.
+
+---
+
 ## Das Labor
 
-The app has a second half at `/benchmark`: the harness this was built on. It
-answers "which image model keeps a character most consistent, and which way of
-conditioning it works best" by generating the same book through several
-backends and three strategies, then scoring every page.
-
-<details>
-<summary>Details</summary>
-
-**Backends** — `openai` (gpt-image-2), `gemini` (Nano Banana),
-`bfl` (FLUX.2), and `stub` (offline, no key, no cost).
-
-**Strategies** — the independent variable:
-
-| strategy | what the model gets |
-|---|---|
-| `text_only` | a written description, no reference image |
-| `sheet_ref` | the character sheet as an image, and no description |
-| `sheet_plus_prev` | the sheet **and** the previous page, chained |
-
-The reference arms deliberately leave the description out. Once you pass a
-reference image, repeating identity details in text makes the two compete and
-the model splits the difference. The app uses `sheet_plus_prev`.
-
-**Scoring** — free colour metrics (palette similarity over saturated pixels,
-smoothed circularly across hue so a one-bin shift is not read as a total
-mismatch), plus a vision model that scores identity, attributes and style 1–5
-and lists concrete discrepancies. Optional DINOv2 similarity with
-`pip install -e ".[embed]"`.
-
-Prefer a judge that is not also under test — the CLI warns when it is.
+The app has a second half at `/benchmark`: the harness this project was built
+on. It answers "which image model keeps a character most consistent, and which
+way of conditioning it works best" by generating the same book through several
+backends and strategies, then scoring every page.
 
 ```bash
-python -m heldenbuch run --backends stub --no-judge
-```
-
-```bash
+python -m heldenbuch run --backends stub --no-judge     # free smoke test
 python -m heldenbuch run --backends gemini bfl --judge openai
 ```
 
-Also: `generate`, `score`, `report`, `prompts`, and `--limit N` to keep costs
-down. Generation is resumable — existing images are reused, so an interrupted
-run picks up where it stopped, and deleting one page's file redraws only that
-page.
+Backends, strategies, scoring and the CLI are documented in
+**[docs/benchmark.md](docs/benchmark.md)**.
 
-`benchmark.yaml` is the whole experiment. Its scenes each stress a different
-failure mode: back view, night lighting, a second character, extreme wide shot,
-eyes closed.
+---
 
-</details>
+## Developing
+
+The code map, how to run the tests, and how to add an image backend, a style
+or a print format are in **[docs/development.md](docs/development.md)**.
+Ground rules for contributions are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+```bash
+pip install -e ".[dev]"
+python -m pytest
+```
+
+The tests call no APIs and need no keys.
 
 ---
 
@@ -175,3 +185,7 @@ labelling duty for AI-generated content applies from 2 August 2026. And
 uploading a photo of a child to a foreign API is a GDPR question the moment
 other people's children are involved. None of that affects a book you make for
 your own child; all of it affects anything you sell or publish.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -18,8 +18,9 @@ import threading
 import time
 import traceback
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 Worker = Callable[["Job", Callable[..., None]], None]
 

@@ -419,7 +419,7 @@ class Book:
         return data
 
     @staticmethod
-    def from_dict(raw: dict[str, Any]) -> "Book":
+    def from_dict(raw: dict[str, Any]) -> Book:
         """Rebuild from stored JSON, ignoring fields written by older versions."""
         known = {f.name for f in fields(Book)}
         page_fields = {f.name for f in fields(Page)}

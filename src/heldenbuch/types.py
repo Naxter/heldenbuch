@@ -8,7 +8,7 @@ it.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -96,7 +96,7 @@ class BenchmarkSpec:
     judge: JudgeSpec
 
     @staticmethod
-    def from_dict(raw: dict[str, Any]) -> "BenchmarkSpec":
+    def from_dict(raw: dict[str, Any]) -> BenchmarkSpec:
         missing = [k for k in ("run_name", "character", "style", "scenes") if k not in raw]
         if missing:
             raise ValueError(f"benchmark spec is missing required keys: {', '.join(missing)}")

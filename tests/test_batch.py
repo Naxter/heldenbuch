@@ -1,4 +1,4 @@
-"""The Gemini batch path -- everything that runs without Google.
+﻿"""The Gemini batch path -- everything that runs without Google.
 
 The transport (upload, submit, poll) needs a live batch job and is exercised
 the day one runs. What is pinned here: the request payload shape, the
@@ -95,7 +95,8 @@ def test_batch_orchestration_writes_images_at_half_price(library, monkeypatch):
         submitted["prompts"] = [r.prompt[:40] for r in requests]
         pixel = Image.new("RGB", (8, 8), "blue")
         import io
-        buffer = io.BytesIO(); pixel.save(buffer, "PNG")
+        buffer = io.BytesIO()
+        pixel.save(buffer, "PNG")
         return [{"data": buffer.getvalue(),
                  "usage": {"images": 1, "usd": 0.067, "model": "gemini-3-pro-image",
                            "backend": "gemini"}}
@@ -123,7 +124,8 @@ def test_batch_failures_land_on_the_page_not_in_the_void(library, monkeypatch):
 
     def fake_run_batch(model, requests, targets, **kwargs):
         import io
-        pixel = io.BytesIO(); Image.new("RGB", (8, 8)).save(pixel, "PNG")
+        pixel = io.BytesIO()
+        Image.new("RGB", (8, 8)).save(pixel, "PNG")
         results = [{"data": pixel.getvalue(), "usage": {"images": 1, "usd": 0.067}}
                    for _ in requests]
         results[-1] = {"error": "die Antwort enthielt kein Bild"}
@@ -151,7 +153,8 @@ def test_batch_redraw_keeps_the_old_version_undoable(library, monkeypatch):
 
     def fake_run_batch(model, requests, targets, **kwargs):
         import io
-        pixel = io.BytesIO(); Image.new("RGB", (8, 8), "red").save(pixel, "PNG")
+        pixel = io.BytesIO()
+        Image.new("RGB", (8, 8), "red").save(pixel, "PNG")
         return [{"data": pixel.getvalue(), "usage": {"images": 1, "usd": 0.067}}
                 for _ in requests]
 

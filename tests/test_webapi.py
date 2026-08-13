@@ -551,7 +551,10 @@ def test_the_gate_turns_on_facts_not_on_a_blended_score():
     scene entirely".
     """
     from heldenbuch.book.illustrate import (
-        FATAL_FACTS, IDENTITY_FLOOR, SCENE_FLOOR, verdict_from,
+        FATAL_FACTS,
+        IDENTITY_FLOOR,
+        SCENE_FLOOR,
+        verdict_from,
     )
 
     assert (IDENTITY_FLOOR, SCENE_FLOOR) == (4, 3)

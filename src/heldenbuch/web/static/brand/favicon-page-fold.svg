@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">heldenbuch favicon — page fold</title>
+  <desc id="desc">A compact lowercase h with a folded-page corner.</desc>
+  <rect width="64" height="64" rx="14" fill="#151a1e" />
+  <path d="M17 13H45L50 18V51H17Z" fill="none" stroke="#f7f3eb" stroke-width="3" stroke-linejoin="round" />
+  <path d="M44 14V20H50M25 21V45M29 28C31 25 34 24 36 24C40 24 42 27 42 31V45M29 27V45" fill="none" stroke="#f7f3eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

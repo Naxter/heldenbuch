@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">heldenbuch favicon — spine h</title>
+  <desc id="desc">A lowercase h with a narrow book-spine line.</desc>
+  <rect width="64" height="64" rx="14" fill="#151a1e" />
+  <path d="M19 13V51M24 17V47" fill="none" stroke="#f7f3eb" stroke-width="2" stroke-linecap="round" />
+  <path d="M28 24C31 21 34 20 37 20C42 20 45 24 45 29V51M28 22V51" fill="none" stroke="#f7f3eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

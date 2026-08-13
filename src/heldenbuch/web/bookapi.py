@@ -13,9 +13,8 @@ from ..backends import REQUIRED_KEY
 from ..book import illustrate, preflight
 from ..book.handoff import PROVIDERS as PRINT_SHOPS
 from ..book.illustrate import RENDER_PROFILES, check_status, flagged_pages, review_split
-from ..book.layout import FONT_FAMILIES
+from ..book.layout import FONT_FAMILIES, available_families
 from ..book.layout import PRESETS as PRINT_PRESETS
-from ..book.layout import available_families
 from ..book.library import Library
 from ..book.look import PRESETS as STYLE_PRESETS
 from ..book.models import AGE_BANDS, LANGUAGES, LAYOUTS, slugify
@@ -24,7 +23,6 @@ from ..book.scout import available_backends
 from ..llm import available_providers
 from ..pricing import FLAT_IMAGE_USD, RATES, USD_PER_EUR, image_estimate
 from ..pricing import summary as spend_summary
-
 
 #: What a backup archive calls itself. The app was renamed after the first
 #: backups were written, and those ZIPs are the only copy some books have, so
@@ -43,9 +41,8 @@ class BookApi:
     def status(self, _query, _body) -> dict[str, Any]:
         import os
 
-        from ..config import load_dotenv
-
         from ..backends import comfy_available
+        from ..config import load_dotenv
 
         load_dotenv()
         image_backends = [

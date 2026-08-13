@@ -17,9 +17,10 @@ import mimetypes
 import os
 import re
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 import yaml

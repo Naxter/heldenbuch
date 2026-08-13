@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from storytime.book.solo import figure_count, solo_reference
+from heldenbuch.book.solo import figure_count, solo_reference
 
 
 def _sheet(path, figures, size=(1200, 800), gap=60):

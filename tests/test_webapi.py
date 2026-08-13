@@ -13,12 +13,12 @@ import zipfile
 import pytest
 from PIL import Image
 
-from storytime.book.library import Library
-from storytime.book.models import Book, Hero, Page, Style
-from storytime.pricing import image_estimate
-from storytime.web.bookapi import BookApi
-from storytime.web.bookjobs import BookJobs
-from storytime.web.jobs import Job
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, Hero, Page, Style
+from heldenbuch.pricing import image_estimate
+from heldenbuch.web.bookapi import BookApi
+from heldenbuch.web.bookjobs import BookJobs
+from heldenbuch.web.jobs import Job
 
 
 class _NoJobs:
@@ -95,7 +95,7 @@ def test_status_offers_models_for_every_backend_kind(api):
 def test_page_prompt_lets_the_scene_override_the_reference():
     """The lost-boot bug: the reference always shows the character complete, so
     the prompt must say the scene wins for what is worn or carried."""
-    from storytime.book.illustrate import page_prompt
+    from heldenbuch.book.illustrate import page_prompt
 
     hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="watercolour")
@@ -108,7 +108,7 @@ def test_page_prompt_lets_the_scene_override_the_reference():
 
 
 def test_author_brief_demands_story_state_in_the_instructions():
-    from storytime.book.author import _story_instructions
+    from heldenbuch.book.author import _story_instructions
 
     text = _story_instructions(Hero(name="Claudio", description="d"), "4-5", ["de"], 12)
     assert "boot lost in the mud" in text
@@ -119,7 +119,7 @@ def test_author_brief_demands_story_state_in_the_instructions():
 
 
 def test_export_pdf_can_set_two_languages_on_one_page(library):
-    from storytime.book.layout import PRESETS, export_pdf
+    from heldenbuch.book.layout import PRESETS, export_pdf
 
     book = library.save_book(Book(
         title={"de": "Titel", "en": "Title"},
@@ -186,7 +186,7 @@ def test_export_files_get_human_labels(api, library):
 def test_render_preview_typesets_like_the_export(library):
     """The Setzprobe uses the real layout engine at a lighter dpi -- same
     millimetres, fewer pixels, cut guides on print presets."""
-    from storytime.book.layout import PRESETS, render_preview
+    from heldenbuch.book.layout import PRESETS, render_preview
 
     book = library.save_book(Book(
         title={"de": "Titel"}, languages=["de"],
@@ -224,7 +224,7 @@ def test_page_preview_endpoint_serves_a_url(api, library):
 
 def test_provider_refusals_get_actionable_advice():
     """The child-safety refusal must arrive as advice, not a JSON blob."""
-    from storytime.backends.base import explain_provider_error
+    from heldenbuch.backends.base import explain_provider_error
 
     refusal = '{"error": {"code": "moderation_blocked", "message": '
     refusal += '"Your request was rejected by our safety system."}}'
@@ -238,7 +238,7 @@ def test_provider_refusals_get_actionable_advice():
 
 
 def test_domain_errors_carry_no_traceback_into_the_log():
-    from storytime.web.jobs import Job, JobManager
+    from heldenbuch.web.jobs import Job, JobManager
 
     def refuse(job, log):
         raise ValueError("Die Sicherheitsprüfung hat abgelehnt.")
@@ -259,7 +259,7 @@ def test_domain_errors_carry_no_traceback_into_the_log():
 
 
 def test_job_progress_is_public():
-    from storytime.web.jobs import Job
+    from heldenbuch.web.jobs import Job
 
     job = Job(id="1", action="book_illustrate", params={})
     assert job.public()["progress"] is None
@@ -268,8 +268,8 @@ def test_job_progress_is_public():
 
 
 def test_illustrate_reports_progress_per_page(library, monkeypatch):
-    from storytime.book import illustrate
-    from storytime.book.models import CastMember  # noqa: F401
+    from heldenbuch.book import illustrate
+    from heldenbuch.book.models import CastMember  # noqa: F401
 
     hero = Hero(name="M", description="d")
     _png(library.hero_dir(hero.id) / "sheet.png")
@@ -389,7 +389,7 @@ def test_single_scene_rewrites_a_diptych_brief_into_one_view():
     side... on the other...". The illustrator obeyed literally and three pages
     printed with a join down the middle.
     """
-    from storytime.book.models import single_scene
+    from heldenbuch.book.models import single_scene
 
     brief = ("A split composition: on one side, a close low view of the crooked "
              "plank in the bubbling brook; on the other, the nest is visible "
@@ -411,7 +411,7 @@ def test_single_scene_rewrites_a_diptych_brief_into_one_view():
     "A diptych - in one half the cat sleeps, in the other half it wakes.",
 ])
 def test_single_scene_catches_the_other_ways_of_asking_for_two_pictures(brief):
-    from storytime.book.models import single_scene
+    from heldenbuch.book.models import single_scene
 
     out = single_scene(brief).lower()
     assert "diptych" not in out and "panel" not in out and "split" not in out
@@ -419,7 +419,7 @@ def test_single_scene_catches_the_other_ways_of_asking_for_two_pictures(brief):
 
 
 def test_single_scene_leaves_an_ordinary_brief_alone():
-    from storytime.book.models import single_scene
+    from heldenbuch.book.models import single_scene
 
     brief = "Claudio kneels by the brook at dusk, holding one boot. Quiet, tired mood."
     assert single_scene(brief) == brief
@@ -427,7 +427,7 @@ def test_single_scene_leaves_an_ordinary_brief_alone():
 
 
 def test_page_prompt_forbids_panels_and_duplicate_characters():
-    from storytime.book.illustrate import page_prompt
+    from heldenbuch.book.illustrate import page_prompt
 
     hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="watercolour")
@@ -444,7 +444,7 @@ def test_page_prompt_forbids_panels_and_duplicate_characters():
 def test_vignette_prompt_no_longer_asks_for_faded_edges():
     """The art arrived already inset, then the page layout inset it again and
     printed a full-page render at a fraction of the paper."""
-    from storytime.book.illustrate import page_prompt
+    from heldenbuch.book.illustrate import page_prompt
 
     hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
@@ -463,8 +463,8 @@ def test_cover_prompt_ties_every_cast_name_to_a_reference_image():
     """A cover reading "Claudio and Pip" was given only Claudio's sheet, so the
     rescue pup had nothing but a name behind it and was drawn as a second boy.
     """
-    from storytime.book.illustrate import cover_prompt
-    from storytime.book.models import CastMember
+    from heldenbuch.book.illustrate import cover_prompt
+    from heldenbuch.book.models import CastMember
 
     hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
@@ -481,7 +481,7 @@ def test_cover_prompt_ties_every_cast_name_to_a_reference_image():
 
 
 def test_cover_prompt_without_cast_still_works():
-    from storytime.book.illustrate import cover_prompt
+    from heldenbuch.book.illustrate import cover_prompt
 
     hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
@@ -497,8 +497,8 @@ def test_attach_drops_the_name_when_its_sheet_is_missing(tmp_path):
     not on disk has to vanish from the wording too -- otherwise every name
     after it points at the wrong picture.
     """
-    from storytime.book.illustrate import _attach
-    from storytime.book.models import CastMember
+    from heldenbuch.book.illustrate import _attach
+    from heldenbuch.book.models import CastMember
 
     sheet = _png(tmp_path / "hero.png")
     real = _png(tmp_path / "trixi.png")
@@ -511,8 +511,8 @@ def test_attach_drops_the_name_when_its_sheet_is_missing(tmp_path):
 
 
 def test_attach_respects_the_backend_reference_limit(tmp_path):
-    from storytime.book.illustrate import _attach
-    from storytime.book.models import CastMember
+    from heldenbuch.book.illustrate import _attach
+    from heldenbuch.book.models import CastMember
 
     sheet = _png(tmp_path / "hero.png")
     for name in ("a", "b", "c"):
@@ -531,7 +531,7 @@ def test_a_duplicated_character_fails_the_check_whatever_it_scored():
     """The checker wrote "Pip and Trixi are duplicated" into the notes and
     then scored the page a passing 3. It shipped. The note is now read directly.
     """
-    from storytime.book.illustrate import duplicate_note
+    from heldenbuch.book.illustrate import duplicate_note
 
     assert duplicate_note(["Pip and Trixi are duplicated"])
     assert duplicate_note(["an extra uniformed dog appears beside the trunk"])
@@ -550,7 +550,7 @@ def test_the_gate_turns_on_facts_not_on_a_blended_score():
     fail the page on their own; the score keeps a floor of 3 for "a different
     scene entirely".
     """
-    from storytime.book.illustrate import (
+    from heldenbuch.book.illustrate import (
         FATAL_FACTS, IDENTITY_FLOOR, SCENE_FLOOR, verdict_from,
     )
 
@@ -578,7 +578,7 @@ def test_a_stored_verdict_is_re_judged_under_todays_rules():
     """The frozen-boolean bug: every page of the first finished book carried
     ok: true while its notes described duplicated characters, and no later fix
     could reach it because the flag was read instead of the evidence."""
-    from storytime.book.illustrate import check_status
+    from heldenbuch.book.illustrate import check_status
 
     stale = Page(index=1, check={
         "ok": True, "status": "passed", "identity": 5, "style": 5, "scene": 3,
@@ -588,7 +588,7 @@ def test_a_stored_verdict_is_re_judged_under_todays_rules():
 
 
 def test_a_check_that_errored_is_never_read_as_a_pass():
-    from storytime.book.illustrate import check_status
+    from heldenbuch.book.illustrate import check_status
 
     assert check_status(Page(index=1, check={"error": "timeout"})) == "unknown"
     assert check_status(Page(index=1, check={})) == "unchecked"
@@ -601,6 +601,6 @@ def test_a_check_that_errored_is_never_read_as_a_pass():
 def test_single_scene_does_not_maul_ordinary_prose(brief):
     """"on the other side OF the brook" already describes one continuous view.
     Rewriting it would produce "and beyond it, of the brook"."""
-    from storytime.book.models import single_scene
+    from heldenbuch.book.models import single_scene
 
     assert single_scene(brief) == brief

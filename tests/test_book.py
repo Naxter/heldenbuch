@@ -12,12 +12,12 @@ import json
 import pytest
 from PIL import Image
 
-from storytime.book.author import _normalise
-from storytime.book.library import Library
-from storytime.book.models import Book, CastMember, Hero, Page, Style, slugify
-from storytime.pricing import add as add_spend
-from storytime.pricing import price, summary
-from storytime.types import OutputSpec
+from heldenbuch.book.author import _normalise
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, CastMember, Hero, Page, Style, slugify
+from heldenbuch.pricing import add as add_spend
+from heldenbuch.pricing import price, summary
+from heldenbuch.types import OutputSpec
 
 
 # --------------------------------------------------------------------------- model
@@ -242,7 +242,7 @@ def test_long_edge_overrides_the_size_label():
 
 
 def test_openai_size_is_divisible_by_16_and_within_the_ceiling():
-    from storytime.backends.openai import MAX_EDGE, _exact_size
+    from heldenbuch.backends.openai import MAX_EDGE, _exact_size
 
     for long_edge in (512, 1024, 2624, 3840, 6000):
         size = _exact_size(OutputSpec(aspect_ratio="4:3", long_edge_px=long_edge))
@@ -296,7 +296,7 @@ class TestLibraryPathSafety:
 
     @staticmethod
     def _library(tmp_path):
-        from storytime.book.library import Library
+        from heldenbuch.book.library import Library
 
         return Library(tmp_path / "library")
 
@@ -356,8 +356,8 @@ class TestAtomicSave:
     def test_a_book_survives_an_interrupted_write(self, tmp_path):
         """book.json is the only index a book has, and it is rewritten after
         every drawn page. A torn file used to make the book vanish silently."""
-        from storytime.book.library import Library
-        from storytime.book.models import Book, save_json
+        from heldenbuch.book.library import Library
+        from heldenbuch.book.models import Book, save_json
 
         library = Library(tmp_path / "library")
         book = library.save_book(Book(title={"de": "Erst"}))
@@ -373,7 +373,7 @@ class TestAtomicSave:
         # Fail at the moment of the swap: the new content is fully written to
         # the temp file, and the rename is what does not happen.
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr("storytime.book.models.os.replace", explode)
+            patch.setattr("heldenbuch.book.models.os.replace", explode)
             with pytest.raises(Boom):
                 save_json(path, {"id": book.id, "title": {"de": "Zweit"}})
 
@@ -383,8 +383,8 @@ class TestAtomicSave:
     def test_an_unreadable_book_is_listed_not_hidden(self, tmp_path):
         """It used to be skipped by an except clause, so the book disappeared
         from the shelf with no error anywhere."""
-        from storytime.book.library import Library
-        from storytime.book.models import Book
+        from heldenbuch.book.library import Library
+        from heldenbuch.book.models import Book
 
         library = Library(tmp_path / "library")
         good = library.save_book(Book(title={"de": "Heil"}))

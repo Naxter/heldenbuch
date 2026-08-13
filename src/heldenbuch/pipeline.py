@@ -58,7 +58,7 @@ def latest_run(runs_dir: Path) -> RunLayout:
     candidates = [p for p in runs_dir.glob("*") if (p / "pages.json").is_file()]
     if not candidates:
         raise FileNotFoundError(
-            f"no finished run found under {runs_dir}. Run `storytime run` first."
+            f"no finished run found under {runs_dir}. Run `heldenbuch run` first."
         )
     return RunLayout(max(candidates, key=lambda p: p.stat().st_mtime))
 

@@ -151,7 +151,7 @@ def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | Non
     )
 
     lines += ["", "## Am Probeexemplar prüfen", ""] + checks
-    lines += ["", f"_Erzeugt von StoryTime. Seitenformat {preset.name}._"]
+    lines += ["", f"_Erzeugt von Heldenbuch. Seitenformat {preset.name}._"]
     return "\n".join(lines)
 
 

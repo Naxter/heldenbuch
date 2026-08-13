@@ -1,4 +1,4 @@
-# StoryTime consistency benchmark spec.
+# Heldenbuch consistency benchmark spec.
 #
 # The whole experiment is described by this one file. The character is designed
 # to be *checkable*: every signature attribute is countable or has an exact
@@ -112,7 +112,7 @@ scenes:
     action: |
       Rusty hugs the grey field mouse goodbye at sunset, eyes closed, smiling.
 
-# Which backends x strategies to run. `storytime run` uses these unless you
+# Which backends x strategies to run. `heldenbuch run` uses these unless you
 # override them on the command line.
 experiment:
   backends:

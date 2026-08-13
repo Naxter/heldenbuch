@@ -74,7 +74,7 @@ def _exact_size(output) -> str:
 
 def _encode_multipart(fields: dict[str, str], files: list[tuple[str, Path]]) -> tuple[bytes, str]:
     """Build a multipart/form-data body. Returns (body, content_type)."""
-    boundary = f"----storytime{uuid.uuid4().hex}"
+    boundary = f"----heldenbuch{uuid.uuid4().hex}"
     parts: list[bytes] = []
 
     for name, value in fields.items():

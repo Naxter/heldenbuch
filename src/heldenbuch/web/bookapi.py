@@ -26,6 +26,13 @@ from ..pricing import FLAT_IMAGE_USD, RATES, USD_PER_EUR, image_estimate
 from ..pricing import summary as spend_summary
 
 
+#: What a backup archive calls itself. The app was renamed after the first
+#: backups were written, and those ZIPs are the only copy some books have, so
+#: the old marker stays readable forever.
+BACKUP_KIND = "heldenbuch-book-backup"
+BACKUP_KINDS = frozenset({BACKUP_KIND, "storytime-book-backup"})
+
+
 class BookApi:
     def __init__(self, library: Library, jobs) -> None:
         self.library = library
@@ -553,7 +560,7 @@ class BookApi:
         target = folder / f"{slugify(book.display_title())}_{book.id}.zip"
 
         manifest: dict[str, Any] = {
-            "kind": "storytime-book-backup",
+            "kind": BACKUP_KIND,
             "version": __version__,
             "book_id": book.id,
             "title": book.display_title(),
@@ -623,7 +630,7 @@ class BookApi:
                     "Diese ZIP hat kein Manifest — sie stammt nicht aus der "
                     "Buch-Sicherung (oder ist von vor deren Einführung).")
             manifest = json_mod.loads(archive.read("manifest.json"))
-            if manifest.get("kind") != "storytime-book-backup":
+            if manifest.get("kind") not in BACKUP_KINDS:
                 raise ValueError("Das Manifest gehört nicht zu einer Buch-Sicherung.")
             if "book.json" not in manifest.get("files", {}):
                 raise ValueError("Der Sicherung fehlt die book.json.")

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>StoryTime — Bilderbücher selber machen</title>
+<title>Heldenbuch — Bilderbücher selber machen</title>
 <style>
 :root{
   color-scheme:light dark;
@@ -229,7 +229,7 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
 <header>
   <div class="head">
     <div class="brand" onclick="go('home')">
-      <b>StoryTime</b><span>Bilderbücher selber machen</span>
+      <b>Heldenbuch</b><span>Bilderbücher selber machen</span>
     </div>
     <div class="right">
       <a href="#" onclick="go('home');return false">Meine Bücher</a>
@@ -314,10 +314,10 @@ async function api(path, options = {}) {
 
 const store = {
   get(key, fallback = null) {
-    try { return JSON.parse(localStorage.getItem("storytime." + key)) ?? fallback; }
+    try { return JSON.parse(localStorage.getItem("heldenbuch." + key)) ?? fallback; }
     catch { return fallback; }
   },
-  set(key, value) { localStorage.setItem("storytime." + key, JSON.stringify(value)); },
+  set(key, value) { localStorage.setItem("heldenbuch." + key, JSON.stringify(value)); },
 };
 
 const S = {

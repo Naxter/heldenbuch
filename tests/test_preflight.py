@@ -10,14 +10,14 @@ from __future__ import annotations
 import pytest
 from PIL import Image
 
-from storytime.book import illustrate
-from storytime.book.illustrate import check_page, check_status, flagged_pages, review_split
-from storytime.book.layout import PRESETS
-from storytime.book.library import Library
-from storytime.book.models import Book, Hero, Page
-from storytime.book.preflight import validate_export_readiness
-from storytime.web.bookjobs import BookJobs
-from storytime.web.jobs import Job
+from heldenbuch.book import illustrate
+from heldenbuch.book.illustrate import check_page, check_status, flagged_pages, review_split
+from heldenbuch.book.layout import PRESETS
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, Hero, Page
+from heldenbuch.book.preflight import validate_export_readiness
+from heldenbuch.web.bookjobs import BookJobs
+from heldenbuch.web.jobs import Job
 
 
 @pytest.fixture()
@@ -224,7 +224,7 @@ def test_a_beanstandetes_titelbild_blocks_the_export(library):
     It was drawn, paid for, and never checked -- which is how a book called
     "Claudio und Pip" shipped with the dog drawn as a second human boy.
     """
-    from storytime.book.illustrate import cover_flagged
+    from heldenbuch.book.illustrate import cover_flagged
 
     book, resolve = _book(library, check=PASSED)
     book.cover_check = {
@@ -248,7 +248,7 @@ def test_a_beanstandetes_titelbild_blocks_the_export(library):
 def test_a_book_with_no_cover_verdict_is_not_nagged(library):
     """Older books carry no evidence either way. Inventing a complaint about
     every one of them just teaches people to ignore the flag."""
-    from storytime.book.illustrate import cover_flagged
+    from heldenbuch.book.illustrate import cover_flagged
 
     book, resolve = _book(library, check=PASSED)
     book.cover_check = {}

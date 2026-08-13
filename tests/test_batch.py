@@ -11,11 +11,11 @@ from __future__ import annotations
 import pytest
 from PIL import Image
 
-from storytime.backends.gemini import build_inline_requests
-from storytime.book import illustrate
-from storytime.book.library import Library
-from storytime.book.models import Book, Hero, Page, Style
-from storytime.types import GenRequest, OutputSpec
+from heldenbuch.backends.gemini import build_inline_requests
+from heldenbuch.book import illustrate
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, Hero, Page, Style
+from heldenbuch.types import GenRequest, OutputSpec
 
 
 @pytest.fixture()
@@ -101,7 +101,7 @@ def test_batch_orchestration_writes_images_at_half_price(library, monkeypatch):
                            "backend": "gemini"}}
                 for _ in requests]
 
-    monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+    monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
     illustrate.illustrate_book_batch(
         book, hero, style, library.resolve(hero.sheet),
         pages_dir=library.book_dir(book.id) / "pages",
@@ -129,7 +129,7 @@ def test_batch_failures_land_on_the_page_not_in_the_void(library, monkeypatch):
         results[-1] = {"error": "die Antwort enthielt kein Bild"}
         return results
 
-    monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+    monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
     illustrate.illustrate_book_batch(
         book, hero, style, library.resolve(hero.sheet),
         pages_dir=library.book_dir(book.id) / "pages",
@@ -155,7 +155,7 @@ def test_batch_redraw_keeps_the_old_version_undoable(library, monkeypatch):
         return [{"data": pixel.getvalue(), "usage": {"images": 1, "usd": 0.067}}
                 for _ in requests]
 
-    monkeypatch.setattr("storytime.backends.gemini.run_batch", fake_run_batch)
+    monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
     illustrate.illustrate_book_batch(
         book, hero, style, library.resolve(hero.sheet),
         pages_dir=pages_dir, redraw=True, check=False, log=lambda *a: None,

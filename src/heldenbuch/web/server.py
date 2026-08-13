@@ -296,7 +296,7 @@ Handler = Callable[..., Any]
 
 class RequestHandler(BaseHTTPRequestHandler):
     api: Api  # injected by serve()
-    server_version = f"StoryTime/{__version__}"
+    server_version = f"Heldenbuch/{__version__}"
     protocol_version = "HTTP/1.1"
 
     # Routes with a single capture group are passed that group as the first arg.
@@ -505,7 +505,7 @@ def serve(
     httpd = ThreadingHTTPServer((host, port), handler)
     url = f"http://{host}:{httpd.server_address[1]}"
 
-    print(f"StoryTime on {url}")
+    print(f"Heldenbuch on {url}")
     print(f"  Bücher:    {library_dir}")
     print(f"  Benchmark: {url}/benchmark")
     print("Press Ctrl+C to stop.")

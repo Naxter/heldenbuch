@@ -1,14 +1,14 @@
-# StoryTime
+# Heldenbuch
 
 Make personalised picture books for your own child — with their photo or
 without — and get a file a print shop will accept.
 
 The hard part of an AI picture book is not writing it. It is that the child
-looks like a different child on page seven. StoryTime solves that by getting
+looks like a different child on page seven. Heldenbuch solves that by getting
 the character right **once**, then pointing every page at that one drawing.
 
 ```bash
-python -m storytime serve
+python -m heldenbuch serve
 ```
 
 ---
@@ -86,7 +86,7 @@ everything. Optional: `GEMINI_API_KEY` or `BFL_API_KEY` for other image models,
 `ANTHROPIC_API_KEY` for a different writer.
 
 ```bash
-python -m storytime doctor
+python -m heldenbuch doctor
 ```
 
 Core dependencies are numpy, Pillow and PyYAML. The web app and the OpenAI and
@@ -98,7 +98,7 @@ ComfyUI (FLUX.2 klein runs on a 12 GB card). No key, no cost — and the photos
 never leave the machine, not even for the character sheet. It appears as a
 Bilddienst automatically whenever ComfyUI is running. One-time setup: export
 your working workflow in API format and drop in placeholders — instructions at
-the top of `src/storytime/backends/comfy.py`.
+the top of `src/heldenbuch/backends/comfy.py`.
 
 Everything lives in plain folders under `library/`:
 
@@ -147,11 +147,11 @@ and lists concrete discrepancies. Optional DINOv2 similarity with
 Prefer a judge that is not also under test — the CLI warns when it is.
 
 ```bash
-python -m storytime run --backends stub --no-judge
+python -m heldenbuch run --backends stub --no-judge
 ```
 
 ```bash
-python -m storytime run --backends gemini bfl --judge openai
+python -m heldenbuch run --backends gemini bfl --judge openai
 ```
 
 Also: `generate`, `score`, `report`, `prompts`, and `--limit N` to keep costs

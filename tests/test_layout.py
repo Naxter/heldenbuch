@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from storytime.book.layout import (
+from heldenbuch.book.layout import (
     MM_PER_INCH,
     PRESETS,
     PrintPreset,
@@ -74,7 +74,7 @@ def test_effective_dpi_reports_low_resolution(tmp_path):
 
 
 def test_wrap_breaks_on_words_not_mid_word():
-    from storytime.book.layout import load_font
+    from heldenbuch.book.layout import load_font
 
     font = load_font("georgia", "regular", 40)
     lines = wrap("Claudio stapft durch den Garten, plitsch platsch plitsch.", font, 300)
@@ -98,7 +98,7 @@ def test_fit_text_never_returns_zero_lines():
 
 
 def test_cyrillic_sets_without_falling_back_to_boxes():
-    from storytime.book.layout import load_font
+    from heldenbuch.book.layout import load_font
 
     font = load_font("georgia", "regular", 40)
     # A font without Cyrillic coverage reports the same width for every
@@ -251,7 +251,7 @@ class TestBodyTypeFloor:
     @pytest.mark.parametrize("age,floor_pt", [("2-3", 20), ("4-5", 16), ("6-7", 13), ("8+", 12)])
     @pytest.mark.parametrize("preset_key", ["print_square", "print_kinderbuch"])
     def test_body_type_never_falls_below_the_floor(self, preset_key, age, floor_pt):
-        from storytime.book.layout import fit_body, min_body_px
+        from heldenbuch.book.layout import fit_body, min_body_px
 
         preset = PRESETS[preset_key]
         page_w, page_h = preset.page_px()
@@ -309,14 +309,14 @@ class TestSeamDetection:
         return path
 
     def test_two_pictures_side_by_side_are_caught(self, tmp_path):
-        from storytime.book.illustrate import seam_in_frame
+        from heldenbuch.book.illustrate import seam_in_frame
 
         path = self._halves(tmp_path / "diptych.png", (30, 120, 60), (200, 170, 120))
         assert seam_in_frame(path) is True
 
     def test_an_off_centre_split_is_caught(self, tmp_path):
         """One real diptych joined at 37% of the width, not the middle."""
-        from storytime.book.illustrate import seam_in_frame
+        from heldenbuch.book.illustrate import seam_in_frame
 
         size = 512
         array = np.zeros((size, size, 3), dtype=np.uint8)
@@ -329,7 +329,7 @@ class TestSeamDetection:
 
     def test_an_ordinary_illustration_is_not_flagged(self, tmp_path):
         """A gradient with plenty of internal edges, but no discontinuity."""
-        from storytime.book.illustrate import seam_in_frame
+        from heldenbuch.book.illustrate import seam_in_frame
 
         size = 512
         ramp = np.linspace(0, 255, size, dtype=np.uint8)
@@ -341,7 +341,7 @@ class TestSeamDetection:
         assert seam_in_frame(path) is False
 
     def test_a_missing_or_unreadable_file_is_not_flagged(self, tmp_path):
-        from storytime.book.illustrate import seam_in_frame
+        from heldenbuch.book.illustrate import seam_in_frame
 
         assert seam_in_frame(tmp_path / "nope.png") is False
         broken = tmp_path / "broken.png"

@@ -10,7 +10,7 @@ faithful character in a dark forest scores lower than a page with a wrong
 character on a plain background. It is a useful second opinion, not a verdict.
 Treat it as a style/continuity signal and let the VLM judge rule on identity.
 
-Needs `pip install 'storytime[embed]'` (torch + transformers, ~2.5 GB).
+Needs `pip install 'heldenbuch[embed]'` (torch + transformers, ~2.5 GB).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _load_model():
     except ImportError as exc:
         raise EmbedUnavailable(
             "the embedding metric needs torch and transformers: "
-            "pip install 'storytime[embed]'"
+            "pip install 'heldenbuch[embed]'"
         ) from exc
     processor = AutoImageProcessor.from_pretrained(MODEL_ID)
     model = AutoModel.from_pretrained(MODEL_ID).eval()

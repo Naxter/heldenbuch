@@ -12,9 +12,9 @@ import json
 
 import pytest
 
-from storytime.backends import BACKEND_NAMES, REQUIRED_KEY, get_backend
-from storytime.backends.base import BackendError
-from storytime.backends.comfy import (
+from heldenbuch.backends import BACKEND_NAMES, REQUIRED_KEY, get_backend
+from heldenbuch.backends.base import BackendError
+from heldenbuch.backends.comfy import (
     ComfyBackend,
     fill_workflow,
     image_slots,

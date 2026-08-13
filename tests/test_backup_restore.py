@@ -12,9 +12,9 @@ import zipfile
 import pytest
 from PIL import Image
 
-from storytime.book.library import Library
-from storytime.book.models import Book, CastMember, Page
-from storytime.web.bookapi import BookApi
+from heldenbuch.book.library import Library
+from heldenbuch.book.models import Book, CastMember, Page
+from heldenbuch.web.bookapi import BookApi
 
 
 class _NoJobs:
@@ -54,7 +54,7 @@ def test_backup_carries_a_manifest_with_hashes(api, library):
 
     with zipfile.ZipFile(library.resolve(info["file"])) as archive:
         manifest = json.loads(archive.read("manifest.json"))
-    assert manifest["kind"] == "storytime-book-backup"
+    assert manifest["kind"] == "heldenbuch-book-backup"
     assert manifest["book_id"] == book.id
     assert "book.json" in manifest["files"]
     assert "pages/page_01.png" in manifest["files"]
@@ -151,3 +151,34 @@ def test_removing_a_cast_member_clears_the_page_lists(api, library):
     refreshed = library.get_book(book.id)
     assert refreshed.cast == []
     assert refreshed.pages[0].cast == []
+
+
+def test_a_backup_written_under_the_old_name_still_restores(library):
+    """The app was renamed after the first backups were written, and for some
+    books a ZIP in library/backups is the only copy that exists."""
+    import json
+    import zipfile
+
+    from heldenbuch.web.bookapi import BACKUP_KINDS
+
+    assert "storytime-book-backup" in BACKUP_KINDS
+
+    api = BookApi(library, _NoJobs())
+    book = library.save_book(Book(title={"de": "Alt"}, pages=[]))
+    api.book_backup(book.id, {}, None)
+    archive = next((library.root / "backups").glob("*.zip"))
+
+    # Rewrite the manifest with the pre-rename marker, as an old ZIP has.
+    with zipfile.ZipFile(archive) as source:
+        items = {n: source.read(n) for n in source.namelist()}
+    manifest = json.loads(items["manifest.json"])
+    manifest["kind"] = "storytime-book-backup"
+    items["manifest.json"] = json.dumps(manifest).encode("utf-8")
+    legacy = library.root / "backups" / "legacy.zip"
+    with zipfile.ZipFile(legacy, "w") as out:
+        for name, blob in items.items():
+            out.writestr(name, blob)
+
+    library.delete_book(book.id)
+    result = api.book_restore({}, {"file": "backups/legacy.zip"})
+    assert result.get("book_id")

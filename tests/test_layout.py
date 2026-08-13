@@ -347,3 +347,155 @@ class TestSeamDetection:
         broken = tmp_path / "broken.png"
         broken.write_bytes(b"not a picture")
         assert seam_in_frame(broken) is False
+
+
+class TestBookWideTypography:
+    """A book has one type size and one place for its words.
+
+    Fitting each page on its own made the size swing two and a half times
+    across sixteen pages and moved the text to a different corner on every
+    turn, so the reading eye had to hunt for it.
+    """
+
+    @staticmethod
+    def _art(tmp_path, name, rgb=(200, 180, 150)):
+        path = tmp_path / name
+        Image.new("RGB", (1024, 1024), rgb).save(path)
+        return path
+
+    def test_one_size_serves_the_wordiest_page(self):
+        from heldenbuch.book.layout import book_body_size, min_body_px
+
+        preset = PRESETS["print_square"]
+        short, long = "Drei Worte hier.", " ".join(["Silbenwort"] * 90)
+        size = book_body_size([short, long], preset, "georgia", "4-5")
+
+        # Small enough for the long page, never below the age floor.
+        assert size >= min_body_px(preset, "4-5")
+        alone = book_body_size([short], preset, "georgia", "4-5")
+        assert size < alone, "the wordiest page must pull the size down"
+
+    def test_empty_pages_do_not_drag_the_size(self):
+        from heldenbuch.book.layout import book_body_size
+
+        preset = PRESETS["print_square"]
+        with_blanks = book_body_size(["Kurz.", "", "   "], preset, "georgia", "4-5")
+        without = book_body_size(["Kurz."], preset, "georgia", "4-5")
+        assert with_blanks == without
+
+    def test_the_zone_is_decided_once_for_the_book(self, tmp_path):
+        from heldenbuch.book.layout import book_text_zone
+
+        preset = PRESETS["print_square"]
+        images = [self._art(tmp_path, f"p{i}.png") for i in range(4)]
+        zone = book_text_zone(images, preset)
+        assert zone in {"bottom", "top", "bottom-left",
+                        "bottom-right", "top-left", "top-right"}
+        # Same inputs, same answer -- it must not wander.
+        assert book_text_zone(images, preset) == zone
+
+    def test_no_usable_pictures_falls_back_to_the_bottom(self, tmp_path):
+        from heldenbuch.book.layout import book_text_zone
+
+        assert book_text_zone([], PRESETS["print_square"]) == "bottom"
+        assert book_text_zone([None, tmp_path / "gone.png"],
+                              PRESETS["print_square"]) == "bottom"
+
+    def test_a_pinned_zone_is_honoured(self, tmp_path):
+        from heldenbuch.book.layout import find_text_spot
+
+        preset = PRESETS["print_square"]
+        canvas = Image.open(self._art(tmp_path, "busy.png")).resize(preset.page_px())
+        for want in ("top", "bottom-right", "top-left"):
+            assert find_text_spot(canvas, preset.safety_px, prefer=want).zone == want
+
+
+class TestContrastIsMeasuredForReal:
+    """The panel used to be dropped on a 96 px thumbnail's mean brightness.
+
+    A pale patch with fine dark texture -- grass, pebbles, dappled light, which
+    is most of what these illustrations contain -- averages bright and reads
+    terribly. One real page measured 3.95:1 where 4.5:1 is the floor.
+    """
+
+    def test_flat_pale_ground_is_readable(self):
+        from heldenbuch.book.layout import INK, readable_on
+
+        canvas = Image.new("RGB", (400, 400), (245, 243, 235))
+        assert readable_on(canvas, (10, 10, 390, 390), INK) is True
+
+    def test_pale_ground_with_dark_speckle_is_not(self):
+        from heldenbuch.book.layout import INK, readable_on
+
+        rng = np.random.default_rng(11)
+        array = np.full((400, 400, 3), 235, dtype=np.uint8)
+        speckle = rng.random((400, 400)) < 0.25
+        array[speckle] = (35, 60, 30)          # grass showing through
+        canvas = Image.fromarray(array)
+        assert readable_on(canvas, (10, 10, 390, 390), INK) is False
+
+
+class TestIncomingArtIsCleaned:
+    def test_a_baked_in_matte_is_measured(self, tmp_path):
+        """One real page arrived with 149 rows of flat cream across its bottom
+        sixth, which then printed as a white sliver at the trim edge -- the
+        exact failure bleed exists to prevent."""
+        from heldenbuch.book.layout import flat_border
+
+        array = np.zeros((600, 600, 3), dtype=np.uint8)
+        rng = np.random.default_rng(5)
+        array[:500] = rng.integers(0, 255, (500, 600, 3), dtype=np.uint8)
+        array[500:] = (245, 230, 201)
+        path = tmp_path / "matte.png"
+        Image.fromarray(array).save(path)
+
+        left, top, right, bottom = flat_border(path)
+        assert bottom >= 95 and (left, top, right) == (0, 0, 0)
+
+    def test_an_ordinary_picture_is_left_alone(self, tmp_path):
+        from heldenbuch.book.layout import flat_border
+
+        rng = np.random.default_rng(6)
+        path = tmp_path / "busy.png"
+        Image.fromarray(rng.integers(0, 255, (600, 600, 3), dtype=np.uint8)).save(path)
+        assert flat_border(path) == (0, 0, 0, 0)
+
+    def test_a_wholly_flat_image_is_not_all_border(self, tmp_path):
+        from heldenbuch.book.layout import flat_border
+
+        path = tmp_path / "flat.png"
+        Image.new("RGB", (300, 300), (250, 248, 243)).save(path)
+        assert flat_border(path) == (0, 0, 0, 0)
+
+    def test_an_unreadable_file_is_not_cropped(self, tmp_path):
+        from heldenbuch.book.layout import flat_border
+
+        broken = tmp_path / "broken.png"
+        broken.write_bytes(b"nope")
+        assert flat_border(broken) == (0, 0, 0, 0)
+
+
+class TestMultilingualPagesAreSeparated:
+    """Three languages used to print as consecutive lines in identical type
+    with no gap -- readable only by recognising the script, which fails
+    entirely between German and English."""
+
+    def test_languages_get_a_blank_line_between_them(self):
+        from heldenbuch.book.layout import join_languages
+
+        mapping = {"de": "Simon geht.", "en": "Simon walks."}
+        assert join_languages(mapping, ["de"]) == "Simon geht."
+        assert join_languages(mapping, ["de", "en"]) == "Simon geht.\n\nSimon walks."
+
+    def test_the_separator_survives_wrapping(self):
+        from heldenbuch.book.layout import join_languages, load_font, wrap
+
+        font = load_font("georgia", "regular", 40)
+        joined = join_languages({"de": "Simon geht.", "en": "Simon walks."}, ["de", "en"])
+        assert wrap(joined, font, 900) == ["Simon geht.", "", "Simon walks."]
+
+    def test_stray_blank_lines_are_still_trimmed(self):
+        from heldenbuch.book.layout import load_font, wrap
+
+        font = load_font("georgia", "regular", 40)
+        assert wrap("\n\nEins\n\n", font, 900) == ["Eins"]

@@ -170,7 +170,16 @@ def wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
                 lines.append(current)
                 current = word
         lines.append(current)
-    return [line for line in lines if line != "" or len(lines) == 1]
+    if len(lines) == 1:
+        return lines
+    # Blank lines between paragraphs are kept -- on a multilingual page they
+    # are the only thing separating one language from the next -- but leading
+    # and trailing ones are just stray whitespace.
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return lines or [""]
 
 
 #: Smallest body type we are willing to print, in points, by age band. A book
@@ -270,6 +279,9 @@ class TextSpot:
     panel: bool
     ink: tuple[int, int, int]
     shadow: tuple[int, int, int] | None
+    #: which of the six candidate zones this is, so a whole book can be held
+    #: to one of them instead of moving the words on every turn
+    zone: str = "bottom"
     align: str = "left"
 
 
@@ -289,10 +301,33 @@ def _region_stats(grey: np.ndarray, box: tuple[float, float, float, float]) -> t
     return detail, float(patch.mean())
 
 
+def readable_on(canvas: Image.Image, box: tuple[int, int, int, int],
+                ink: tuple[int, int, int]) -> bool:
+    """Would text in `ink` actually be readable over this patch of picture?
+
+    Measured at full resolution and at the fifth percentile, not on a 96 px
+    thumbnail and not on the mean. A thumbnail averages away exactly the
+    texture that breaks legibility -- dappled grass reads as a calm pale patch
+    at 96 px -- and a mean hides the darkest pixels a letter has to sit on.
+    """
+    left, top, right, bottom = box
+    if right - left < 4 or bottom - top < 4:
+        return False
+    patch = np.asarray(
+        ImageOps.grayscale(canvas.crop((left, top, right, bottom))), dtype=np.float32
+    ) / 255.0
+    # WCAG relative luminance, close enough on greyscale for a go/no-go.
+    ink_lum = (0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2]) / 255.0
+    worst = float(np.percentile(patch, 5 if ink_lum < 0.5 else 95))
+    lighter, darker = max(worst, ink_lum), min(worst, ink_lum)
+    return (lighter + 0.05) / (darker + 0.05) >= 4.5
+
+
 def find_text_spot(
     canvas: Image.Image,
     safety: int,
     want_fraction: float = 0.30,
+    prefer: str | None = None,
 ) -> TextSpot:
     """Find the calmest place on the picture for the text.
 
@@ -300,6 +335,10 @@ def find_text_spot(
     scored on how much detail they contain. The quietest wins. If it is also
     plain and bright (or plain and dark) the panel is dropped and the words go
     straight onto the illustration.
+
+    `prefer` pins the choice to one zone so the words do not move to a
+    different corner on every turn. A reader's eye should land on the text
+    without hunting for it, and the search used to be run per page.
     """
     width, height = canvas.size
     small = np.asarray(
@@ -318,38 +357,92 @@ def find_text_spot(
         "top-right": (0.42, 0.0, 1.0, want_fraction),
     }
 
-    scored = []
-    for name, box in candidates.items():
+    if prefer in candidates:
+        name, box = prefer, candidates[prefer]
         detail, brightness = _region_stats(small, box)
-        # Prefer the bottom slightly: it is where a reader expects the words.
-        bias = 0.0 if name.startswith("bottom") else 0.004
-        scored.append((detail + bias, detail, brightness, name, box))
-    scored.sort()
-
-    _, detail, brightness, name, box = scored[0]
+    else:
+        scored = []
+        for candidate, region in candidates.items():
+            detail, brightness = _region_stats(small, region)
+            # Prefer the bottom slightly: it is where a reader expects words.
+            bias = 0.0 if candidate.startswith("bottom") else 0.004
+            scored.append((detail + bias, detail, brightness, candidate, region))
+        scored.sort()
+        _, detail, brightness, name, box = scored[0]
 
     left = max(safety, int(box[0] * width) + (safety if box[0] > 0 else 0))
     right = min(width - safety, int(box[2] * width) - (safety if box[2] < 1 else 0))
     top = max(safety, int(box[1] * height) + (safety if box[1] > 0 else 0))
     bottom = min(height - safety, int(box[3] * height) - (safety if box[3] < 1 else 0))
+    where = (left, top, right, bottom)
 
-    # Quiet enough to skip the box? Thresholds picked so a flat sky or a plain
-    # wall qualifies but grass or foliage does not.
+    # Quiet enough to skip the panel? The detail figure decides whether it is
+    # worth asking, and then the contrast is measured for real: a light patch
+    # with fine dark texture -- grass, pebbles, dappled light, which is most of
+    # what these illustrations contain -- averages bright and reads terribly.
     plain = detail < 0.020
-    if plain and brightness > 0.70:
-        return TextSpot((left, top, right, bottom), False, INK, (255, 255, 255))
-    if plain and brightness < 0.32:
-        return TextSpot((left, top, right, bottom), False, LIGHT_INK, (0, 0, 0))
-    return TextSpot((left, top, right, bottom), True, INK, None)
+    if plain and brightness > 0.70 and readable_on(canvas, where, INK):
+        return TextSpot(where, False, INK, (255, 255, 255), name)
+    if plain and brightness < 0.32 and readable_on(canvas, where, LIGHT_INK):
+        return TextSpot(where, False, LIGHT_INK, (0, 0, 0), name)
+    return TextSpot(where, True, INK, None, name)
 
 
 # --------------------------------------------------------------------------- page art
 
 
+def flat_border(source: Path, tol: float = 2.0, min_share: float = 0.02
+                ) -> tuple[int, int, int, int]:
+    """How much dead flat colour sits around the edges of this picture.
+
+    Returns (left, top, right, bottom) in pixels. Image models sometimes paint
+    their own matte -- one real page arrived with 149 rows of flat cream across
+    the bottom sixth, which then printed as a white sliver at the trim edge,
+    the exact failure bleed exists to prevent. Trimming it costs nothing and
+    the picture is scaled to fill the page afterwards anyway.
+    """
+    try:
+        with Image.open(source) as image:
+            array = np.asarray(image.convert("RGB"), dtype=np.float64)
+    except Exception:
+        return (0, 0, 0, 0)
+    height, width = array.shape[:2]
+
+    def run(lines) -> int:
+        count = 0
+        for line in lines:
+            if float(line.std(axis=0).mean()) > tol:
+                break
+            count += 1
+        return count
+
+    top = run(array[i] for i in range(height))
+    bottom = run(array[height - 1 - i] for i in range(height))
+    left = run(array[:, i] for i in range(width))
+    right = run(array[:, width - 1 - i] for i in range(width))
+
+    # A picture that is flat all the way through is not a border, and a couple
+    # of stray rows are not worth cropping.
+    if top + bottom >= height or left + right >= width:
+        return (0, 0, 0, 0)
+    return (
+        left if left > width * min_share else 0,
+        top if top > height * min_share else 0,
+        right if right > width * min_share else 0,
+        bottom if bottom > height * min_share else 0,
+    )
+
+
 def cover_image(source: Path, size: tuple[int, int]) -> Image.Image:
     """Scale an illustration to fill a box, cropping the overflow centrally."""
+    inset = flat_border(source)
     with Image.open(source) as image:
         image = ImageOps.exif_transpose(image.convert("RGB"))
+        if any(inset):
+            # Drop a matte the image model painted for itself before scaling,
+            # or it survives to the page and prints at the trim edge.
+            image = image.crop((inset[0], inset[1],
+                                image.width - inset[2], image.height - inset[3]))
         scale = max(size[0] / image.width, size[1] / image.height)
         resized = image.resize(
             (max(1, math.ceil(image.width * scale)), max(1, math.ceil(image.height * scale))),
@@ -387,6 +480,56 @@ def _panel(canvas: Image.Image, box: tuple[int, int, int, int], radius: int,
     return Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB")
 
 
+def book_body_size(texts: list[str], preset: PrintPreset, family: str,
+                   age: str = "") -> int:
+    """One body-type size for the whole book, set by its wordiest page.
+
+    Fitting each page on its own made the size swing two and a half times
+    across sixteen pages -- 27 pt on a short page, 11 pt on the goodnight one
+    -- so the reader's eye has to re-accommodate on every turn. Books do not
+    do that: one size, chosen so the longest page still fits.
+    """
+    page_w, page_h = preset.page_px()
+    safety = preset.safety_px
+    box = (int((page_w - 2 * safety) * 0.58) - safety, int(page_h * 0.30) - safety)
+    ceiling = int(page_h * 0.045)
+    smallest = ceiling
+    for text in texts:
+        if not (text or "").strip():
+            continue
+        font, _lines, _step = fit_text(text, family, "regular", box,
+                                       max_size=ceiling,
+                                       min_size=min_body_px(preset, age))
+        smallest = min(smallest, font.size)
+    return max(min_body_px(preset, age), smallest)
+
+
+def book_text_zone(images: list[Path | None], preset: PrintPreset) -> str:
+    """The one zone the words sit in, across every page of this book.
+
+    Each page votes with the quietest zone in its own illustration and the
+    majority wins, so the text lands in the same place on every turn while
+    still following what the pictures actually look like. Ties go to the
+    bottom, where a reader expects the words.
+    """
+    votes: dict[str, int] = {}
+    page_size = preset.page_px()
+    for image in images:
+        if image is None or not image.is_file():
+            continue
+        try:
+            canvas = cover_image(image, page_size)
+        except Exception:
+            continue
+        spot = find_text_spot(canvas, preset.safety_px)
+        votes[spot.zone] = votes.get(spot.zone, 0) + 1
+    if not votes:
+        return "bottom"
+    best = max(votes.values())
+    winners = [zone for zone, count in votes.items() if count == best]
+    return "bottom" if "bottom" in winners else sorted(winners)[0]
+
+
 def render_story_page(
     illustration: Path | None,
     text: str,
@@ -394,12 +537,19 @@ def render_story_page(
     family: str = "georgia",
     layout: str = "full",
     age: str = "",
+    body_px: int | None = None,
+    zone: str | None = None,
 ) -> Image.Image:
-    """One page of the book, composed according to its layout."""
+    """One page of the book, composed according to its layout.
+
+    `body_px` and `zone` come from the book rather than the page, so the type
+    size and the position of the words stay put from one spread to the next.
+    """
     page_w, page_h = preset.page_px()
     safety = preset.safety_px
     has_art = bool(illustration and illustration.is_file())
     floor = min_body_px(preset, age)
+    ceiling = body_px or int(page_h * 0.045)
 
     # The A4 home preset always sets picture beside text; it is a different
     # shape of page and the band layout wastes it.
@@ -428,7 +578,7 @@ def render_story_page(
         if text.strip():
             box = (page_w - 3 * safety, page_h - art_h - 2 * safety)
             font, lines, step = fit_text(text, family, "regular", box,
-                                         max_size=int(page_h * 0.05))
+                                         max_size=ceiling, min_size=floor)
             start_y = art_h + max(safety, (page_h - art_h - len(lines) * step) // 2)
             draw_lines(canvas, lines, font, step, (int(safety * 1.5), start_y), box[0])
         return canvas
@@ -447,7 +597,7 @@ def render_story_page(
         if text.strip():
             font, lines, step, fits = fit_body(
                 text, family, (page_w - 3 * safety, band_h),
-                max_size=int(page_h * 0.045), min_size=floor,
+                max_size=ceiling, min_size=floor,
             )
 
         if fits:
@@ -478,7 +628,7 @@ def render_story_page(
         return canvas
 
     spot = (
-        find_text_spot(canvas, safety)
+        find_text_spot(canvas, safety, prefer=zone)
         if has_art
         else TextSpot((safety, int(page_h * 0.66), page_w - safety, page_h - safety),
                       False, INK, None)
@@ -489,7 +639,7 @@ def render_story_page(
 
     font, lines, step, fits = fit_body(
         text, family, (inner_w - 2 * pad, (bottom - top) - pad),
-        max_size=int(page_h * 0.045), min_size=floor,
+        max_size=ceiling, min_size=floor,
     )
     if not fits:
         # The quiet area found in the picture is too small for this much text
@@ -502,7 +652,7 @@ def render_story_page(
         spot = TextSpot((left, top, right, bottom), True, INK, None)
         font, lines, step, _ = fit_body(
             text, family, (inner_w - 2 * pad, (bottom - top) - pad),
-            max_size=int(page_h * 0.045), min_size=floor,
+            max_size=ceiling, min_size=floor,
         )
     block_h = len(lines) * step
 
@@ -711,12 +861,19 @@ def join_languages(mapping: dict, langs: list[str], separator: str = "\n") -> st
 
     Duplicates are dropped ("Fin" is the closing word in Spanish *and*
     French), so a bilingual page never says the same thing twice.
+
+    When there is more than one language the blocks are separated by a blank
+    line. They used to run together as consecutive lines in identical type,
+    with nothing to show where German ended and Russian began -- readable only
+    by recognising the script, which fails entirely between German and English.
     """
     parts = [str((mapping or {}).get(code, "")).strip() for code in langs]
     seen: list[str] = []
     for part in parts:
         if part and part not in seen:
             seen.append(part)
+    if len(seen) > 1 and separator == "\n":
+        return "\n\n".join(seen)
     return separator.join(seen)
 
 
@@ -843,11 +1000,21 @@ def export_pdf(
     if dedication:
         pages.append(render_plain_page(dedication, preset, family))
 
-    for page in sorted(book.pages, key=lambda p: p.index):
+    ordered = sorted(book.pages, key=lambda p: p.index)
+    # One type size and one text position for the whole book, decided before
+    # the first page is composed. Fitted per page, both used to change on
+    # every turn.
+    body_px = book_body_size([joined(p.text) for p in ordered], preset, family, book.age)
+    zone = book_text_zone(
+        [art(p.image) for p in ordered if p.layout not in ("wordless", "vignette")],
+        preset,
+    )
+    for page in ordered:
         log(f"  Seite {page.index}")
         pages.append(
             render_story_page(art(page.image), joined(page.text), preset,
-                              family, layout=page.layout, age=book.age)
+                              family, layout=page.layout, age=book.age,
+                              body_px=body_px, zone=zone)
         )
 
     photo = (book.photo_page or {}).get("image")

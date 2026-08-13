@@ -7,19 +7,26 @@
 <style>
 :root{
   color-scheme:light dark;
-  --bg:#fbf7f0; --panel:#fffdf9; --sunk:#f3ede2; --fg:#241f19; --muted:#7d7466;
-  --line:#e6ddcd; --accent:#c25e2a; --accent-soft:#f6e3d6; --accent-fg:#fff;
-  --good:#2c7a52; --bad:#b03a2e; --warn:#9a6b12;
+  --bg:#fbf7f0; --panel:#fffdf9; --sunk:#f3ede2; --fg:#241f19; --muted:#6b6353;
+  --line:#e6ddcd; --accent:#a94e21; --accent-soft:#f6e3d6; --accent-fg:#fff;
+  --good:#26694a; --bad:#9c3125; --warn:#7d5509;
+  /* Measured: the old --accent gave 4.26:1 under white button text and
+     --muted 4.31:1 on the page, both under the 4.5:1 floor, and --line
+     1.33:1 was the only boundary an input had. The dark palette already
+     passed, so this is a token darkening rather than a redesign. */
+  --control-line:#8f8879;
   --shadow:0 1px 2px rgba(60,45,25,.06),0 8px 24px rgba(60,45,25,.06);
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#16130e; --panel:#201c15; --sunk:#191610; --fg:#efe8dc; --muted:#a2988a;
-    --line:#342e23; --accent:#e08c4a; --accent-soft:#33261a; --accent-fg:#1b1610;
+    --line:#342e23; --accent:#e08c4a; --control-line:#6b6355; --accent-soft:#33261a; --accent-fg:#1b1610;
     --good:#63d094; --bad:#ef8b7f; --warn:#e3ba63;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
   }
 }
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 *{box-sizing:border-box;}
 body{margin:0;background:var(--bg);color:var(--fg);
   font:16px/1.6 "Segoe UI",-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
@@ -121,6 +128,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .flag.calm{background:var(--sunk);color:var(--muted);}
 .notes{margin:.4rem 0 0;padding-left:1rem;font-size:.78rem;color:var(--warn);}
 
+#drawer:not(.open){visibility:hidden;}
 #drawer{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);
   border-top:1px solid var(--line);box-shadow:0 -8px 32px rgba(60,45,25,.10);
   transform:translateY(100%);transition:transform .22s ease;}
@@ -244,9 +252,15 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
   <div class="dhead">
     <div class="spinner hide" id="dspin"></div>
     <div class="dot hide" id="ddot"></div>
-    <div class="title" id="dtitle" role="status" aria-live="polite">Bereit</div>
-    <div id="dprog" class="hide"><div style="width:0%"></div></div>
+    <div class="title" id="dtitle">Bereit</div>
+    <div id="dprog" class="hide" role="progressbar" aria-valuemin="0"
+         aria-valuemax="100" aria-valuenow="0"><div style="width:0%"></div></div>
     <span id="dcount"></span>
+    <!-- Written only on real transitions. The old region carried the
+         elapsed seconds and was rewritten by a 900 ms poll, so a screen
+         reader announced it about once a second for the whole render and
+         nothing else could be heard. -->
+    <p id="dsay" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <div class="right">
       <button class="btn ghost tiny" onclick="jobCenter()"
         title="Alle laufenden und letzten Aufträge">Aufträge</button>
@@ -513,6 +527,7 @@ async function runJob(action, params, title, onDone) {
   if (trigger) trigger.disabled = true;
   $("dlog").textContent = "";
   $("dtitle").textContent = title;
+  $("dtitle").dataset.job = title;
   $("dspin").classList.remove("hide");
   $("ddot").classList.add("hide");
   $("dcancel").classList.remove("hide");
@@ -579,9 +594,17 @@ async function pollJob() {
     bar.classList.remove("hide");
     if (job.progress && job.progress.total) {
       bar.classList.remove("indeterminate");
-      bar.firstElementChild.style.width =
-        `${Math.round(100 * job.progress.done / job.progress.total)}%`;
+      const percent = Math.round(100 * job.progress.done / job.progress.total);
+      bar.firstElementChild.style.width = `${percent}%`;
+      bar.setAttribute("aria-valuenow", String(percent));
+      bar.setAttribute("aria-valuetext",
+        `${job.progress.done} von ${job.progress.total} fertig`);
       $("dcount").textContent = `${job.progress.done} / ${job.progress.total}`;
+      // Spoken once per finished page, not once per poll.
+      if (job.progress.done !== S.saidDone) {
+        S.saidDone = job.progress.done;
+        say(`${job.progress.done} von ${job.progress.total} fertig`);
+      }
     } else {
       bar.classList.add("indeterminate");
       $("dcount").textContent = "";
@@ -639,6 +662,7 @@ function appendLog(text) {
   if (atBottom) log.scrollTop = log.scrollHeight;
 }
 
+function say(message){ const el=$("dsay"); if(el) el.textContent=message; }
 function endJob(job) {
   clearInterval(S.poll); S.poll = null; S.job = null;
   // A cancelled queued job can finish before an older running one: keep
@@ -658,9 +682,12 @@ function endJob(job) {
   const ok = job && job.status === "done";
   dot.style.background = ok ? "var(--good)"
     : (job && job.status === "cancelled" ? "var(--warn)" : "var(--bad)");
-  $("dtitle").textContent = ok ? "Fertig"
+  const verdict = ok ? "Fertig"
     : (job ? ({ cancelled: "Abgebrochen", failed: "Fehlgeschlagen" }[job.status] || job.status)
            : "Fehler");
+  $("dtitle").textContent = verdict;
+  say(`${$("dtitle").dataset.job || "Auftrag"}: ${verdict}`);
+  S.saidDone = -1;
   $("dprog").classList.add("hide");
   $("dcount").textContent = "";
   if (ok) $("drawer").classList.remove("tall");

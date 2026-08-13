@@ -1,0 +1,27 @@
+# Generated benchmark output (images, scores, reports). Published results are
+# committed deliberately, so they are the exception.
+runs/*
+!runs/published/
+
+# Heroes, styles and books -- includes uploaded photos of real children.
+# Never commit this.
+library/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Editors
+.idea/
+.vscode/
+*.swp

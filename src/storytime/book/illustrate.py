@@ -664,7 +664,16 @@ def illustrate_book(
     pages_dir.mkdir(parents=True, exist_ok=True)
     wanted = set(only) if only else None
     lock = threading.Lock()
-    run_spend = {"usd": 0.0, "capped": False}
+    # `in_flight` reserves the estimated price of each image while it draws, so
+    # the cap counts work already started and not only work already billed.
+    _profile = RENDER_PROFILES.get(book.render_quality, RENDER_PROFILES["draft"])
+    run_spend = {
+        "usd": 0.0,
+        "capped": False,
+        "in_flight": 0.0,
+        "per_image": image_estimate(_profile["quality"], _profile["long_edge_px"],
+                                    model or get_backend(backend_name).default_model),
+    }
 
     def spend(usage: dict, what: str) -> None:
         if not usage:
@@ -675,14 +684,34 @@ def illustrate_book(
             run_spend["usd"] += float(book.spend.get("usd", 0.0)) - before
 
     def over_budget() -> bool:
-        if budget_usd is None or run_spend["usd"] < budget_usd:
+        """May another image be started?
+
+        Counts what is *in flight* as well as what has been billed. Testing
+        only the settled total let every worker already drawing carry on past
+        the ceiling, so at the default of four the cap overshot by up to four
+        images -- and at print prices that is real money on the one feature
+        whose entire job is not spending it.
+        """
+        if budget_usd is None:
             return False
         with lock:
+            committed = run_spend["usd"] + run_spend["in_flight"]
+            if committed + run_spend["per_image"] <= budget_usd:
+                run_spend["in_flight"] += run_spend["per_image"]
+                return False
             if not run_spend["capped"]:
                 run_spend["capped"] = True
-                log(f"Kostendeckel erreicht (~{run_spend['usd']:.2f} $) — "
-                    "weitere Seiten werden übersprungen.")
+                log(f"Kostendeckel erreicht (~{committed:.2f} $ von "
+                    f"{budget_usd:.2f} $) — weitere Seiten werden übersprungen.")
         return True
+
+    def settle() -> None:
+        """Release the reservation once the real cost is on the books."""
+        if budget_usd is None:
+            return
+        with lock:
+            run_spend["in_flight"] = max(
+                0.0, run_spend["in_flight"] - run_spend["per_image"])
 
     if wanted is None and (redraw or not book.cover):
         if not stop():
@@ -736,6 +765,13 @@ def illustrate_book(
         nonlocal done
         if stop() or over_budget():
             return
+        try:
+            _draw_one(page)
+        finally:
+            settle()
+
+    def _draw_one(page: Page) -> None:
+        nonlocal done
         target = pages_dir / f"page_{page.index:02d}.png"
         members = book.cast_for(page)
         page.error = None

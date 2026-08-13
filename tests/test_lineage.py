@@ -399,3 +399,48 @@ class TestBatchHandleSurvives:
         assert calls["submitted"] == 0, "nothing new may be ordered while one is open"
         # Collected, so it must not be resumed a second time.
         assert library.get_book(book.id).pending_batch == {}
+
+
+@pytest.mark.parametrize("workers", [1, 4])
+def test_the_budget_cap_holds_under_concurrency(library, monkeypatch, workers):
+    """The cap was tested only at workers=1, and passed there while the
+    production default of four overspent it by up to four images.
+
+    It was consulted at the top of each page task and compared against money
+    already *billed*, so every worker already drawing carried on past the
+    ceiling. It now counts work in flight as well.
+    """
+    import threading
+
+    from storytime.book import illustrate
+
+    hero, style, book = _hero_style_book(library)
+    book.pages = [Page(index=i, text={"de": str(i)}, illustration="x")
+                  for i in range(1, 21)]
+    library.save_book(book)
+    sheet = library.resolve(style.sheets[hero.id])
+
+    drawn: list[int] = []
+    barrier = threading.Lock()
+
+    class _FakeResult:
+        usage = {"model": "gpt-image-2", "usd": 1.0, "images": 1}
+
+    def fake_draw(book_, hero_, style_, page, *args, **kwargs):
+        with barrier:
+            drawn.append(page.index)
+        return _FakeResult()
+
+    monkeypatch.setattr(illustrate, "draw_page", fake_draw)
+    monkeypatch.setattr(illustrate, "image_estimate", lambda *a, **k: 1.0)
+    illustrate.illustrate_book(
+        book, hero, style, sheet,
+        pages_dir=library.book_dir(book.id) / "pages",
+        backend_name="stub", check=False, workers=workers, budget_usd=5.0,
+        log=lambda *a: None,
+    )
+
+    # $1 an image against a $5 ceiling. Five is the honest answer at any
+    # worker count; anything more is money the cap was meant to stop.
+    assert len(drawn) <= 5, f"overspent by {len(drawn) - 5} image(s)"
+    assert book.spend["usd"] <= 5.0

@@ -6,10 +6,11 @@ pushed through the shared job manager instead.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ..backends import REQUIRED_KEY
-from ..book import preflight
+from ..book import illustrate, preflight
 from ..book.handoff import PROVIDERS as PRINT_SHOPS
 from ..book.illustrate import RENDER_PROFILES, check_status, flagged_pages, review_split
 from ..book.layout import FONT_FAMILIES
@@ -219,8 +220,26 @@ class BookApi:
             )
         return {"books": rows}
 
+    def _book_file(self, book):
+        """Resolve a book-relative path, refusing anything that escapes it."""
+        root = self.library.book_dir(book.id).resolve()
+
+        def resolve(relative: str) -> Path:
+            target = (root / relative).resolve()
+            if not target.is_relative_to(root):
+                raise ValueError(f"path escapes the book: {relative}")
+            return target
+
+        return resolve
+
     def book(self, book_id: str, _query, _body) -> dict[str, Any]:
         book = self.library.get_book(book_id)
+        # Pages drawn before the seam measurement existed carry no answer, so a
+        # split page reads as fine. Measuring costs nothing and the result is
+        # stored, so this runs once per book and never again. Page paths are
+        # relative to the book folder, not to the library root.
+        if illustrate.backfill_seams(book, self._book_file(book)):
+            self.library.save_book(book)
         prefix = f"/library/books/{book.id}"
 
         hero = style = None

@@ -427,6 +427,33 @@ def check_status(page: Page) -> str:
     return verdict_from(page.check or {})
 
 
+def backfill_seams(book: Book, resolve) -> int:
+    """Measure the seam on pages checked before the measurement existed.
+
+    The detector runs when a page is drawn, so books already on disk carry no
+    answer either way and their split pages read as fine. Measuring is free and
+    the result is stored, so this costs one pass the first time a book is
+    opened and nothing afterwards. Returns how many pages it changed.
+    """
+    changed = 0
+    for page in book.pages:
+        if not page.check or "panelled" in page.check or not page.image:
+            continue
+        try:
+            target = resolve(page.image)
+        except (ValueError, FileNotFoundError):
+            continue
+        if not target.is_file():
+            continue
+        page.check["panelled"] = seam_in_frame(target)
+        if page.check["panelled"]:
+            page.check.setdefault("notes", [])
+            page.check["notes"] = (["the picture is split by a seam"]
+                                   + page.check["notes"])[:6]
+        changed += 1
+    return changed
+
+
 def _check_rank(check: dict[str, Any]) -> tuple:
     """Sort key for two verdicts on the same page: bigger is better."""
     status = verdict_from(check)

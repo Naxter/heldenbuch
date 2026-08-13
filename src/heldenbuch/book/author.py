@@ -27,7 +27,14 @@ from typing import Any
 
 from ..llm import complete_json
 from .models import (
-    AGE_BANDS, LANGUAGES, LAYOUTS, Book, CastMember, Hero, Page, single_scene,
+    AGE_BANDS,
+    LANGUAGES,
+    LAYOUTS,
+    Book,
+    CastMember,
+    Hero,
+    Page,
+    single_scene,
 )
 
 SYSTEM = """You are an experienced picture book author. You write stories that

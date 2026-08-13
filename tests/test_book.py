@@ -19,7 +19,6 @@ from heldenbuch.pricing import add as add_spend
 from heldenbuch.pricing import price, summary
 from heldenbuch.types import OutputSpec
 
-
 # --------------------------------------------------------------------------- model
 
 

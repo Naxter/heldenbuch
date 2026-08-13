@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">heldenbuch favicon — heroic h</title>
+  <desc id="desc">A lowercase h held inside a restrained shield silhouette.</desc>
+  <rect width="64" height="64" rx="14" fill="#315b43" />
+  <path d="M15 14H49V31C49 42 43 49 32 54C21 49 15 42 15 31Z" fill="none" stroke="#f7f3eb" stroke-width="3" stroke-linejoin="round" />
+  <path d="M24 22V43M28 29C30 26 33 25 35 25C39 25 41 28 41 32V43M28 28V43" fill="none" stroke="#f7f3eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -10,10 +10,12 @@ from typing import Any
 
 from PIL import Image, ImageOps
 
-from ..book import author, cast as cast_mod, handoff, hero as hero_mod
-from ..book import illustrate, layout as layout_mod, look, narrate, preflight, scout
+from ..book import author, handoff, illustrate, look, narrate, preflight, scout
+from ..book import cast as cast_mod
+from ..book import hero as hero_mod
+from ..book import layout as layout_mod
 from ..book.library import Library
-from ..book.models import AGE_BANDS, Book, CastMember, Hero, Style, slugify
+from ..book.models import AGE_BANDS, Book, Hero, Style, slugify
 from ..llm import available_providers
 from ..pricing import add as add_spend
 from ..pricing import summary as spend_summary

@@ -12,8 +12,9 @@ from __future__ import annotations
 import html
 import statistics
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -241,7 +242,7 @@ def _page_cards(layout: RunLayout, records: list[PageRecord], backend: str, stra
         lines = [f"<div class='row'><span>page {html.escape(record.scene_id)}</span>"
                  f"<b>{judge.get('mean', '')}</b></div>"]
         if "error" in judge:
-            lines.append(f"<div class='row'><span>judge failed</span></div>")
+            lines.append("<div class='row'><span>judge failed</span></div>")
         elif judge:
             lines.append(
                 f"<div class='row'><span>identity / attributes / style</span>"

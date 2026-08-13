@@ -667,7 +667,7 @@ class BookApi:
 
     # -------------------------------------------------------------------- file
 
-    def file(self, relative: str):
+    def file_path(self, relative: str):
         import mimetypes
         from urllib.parse import unquote
 
@@ -678,4 +678,4 @@ class BookApi:
         if not target.is_file():
             raise FileNotFoundError(relative)
         mime = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-        return target.read_bytes(), mime
+        return target, mime

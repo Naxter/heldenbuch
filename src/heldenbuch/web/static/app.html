@@ -4,24 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Heldenbuch — Bilderbücher selber machen</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon-open-book.svg">
+<meta name="theme-color" content="#f8f0dc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16130e" media="(prefers-color-scheme: dark)">
 <style>
 :root{
   color-scheme:light dark;
-  --bg:#fbf7f0; --panel:#fffdf9; --sunk:#f3ede2; --fg:#241f19; --muted:#6b6353;
-  --line:#e6ddcd; --accent:#a94e21; --accent-soft:#f6e3d6; --accent-fg:#fff;
+  /* The palette is the banner's: parchment ground, navy ink, gold accents.
+     Backgrounds stay beige -- navy appears only as ink, never as a surface.
+     Every text/background pair is measured at or above the WCAG 4.5:1
+     floor, UI boundaries above 3:1; gold never carries text on light
+     panels (3.9:1) -- --warn is the text-safe gold. Re-measure before
+     changing any of these. */
+  --bg:#f8f0dc; --panel:#fffbef; --sunk:#f0e5c8; --fg:#15263c; --muted:#5b6169;
+  --line:#e3d6b6; --accent:#1e4269; --accent-soft:#f3e0b4; --accent-fg:#fff;
   --good:#26694a; --bad:#9c3125; --warn:#7d5509;
-  /* Measured: the old --accent gave 4.26:1 under white button text and
-     --muted 4.31:1 on the page, both under the 4.5:1 floor, and --line
-     1.33:1 was the only boundary an input had. The dark palette already
-     passed, so this is a token darkening rather than a redesign. */
-  --control-line:#8f8879;
+  --control-line:#79765f;
+  --brand-ink:#011e3f;
   --shadow:0 1px 2px rgba(60,45,25,.06),0 8px 24px rgba(60,45,25,.06);
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#16130e; --panel:#201c15; --sunk:#191610; --fg:#efe8dc; --muted:#a2988a;
-    --line:#342e23; --accent:#e08c4a; --control-line:#6b6355; --accent-soft:#33261a; --accent-fg:#1b1610;
+    --line:#342e23; --accent:#cc8e1e; --control-line:#6b6355; --accent-soft:#33261a; --accent-fg:#1b1610;
     --good:#63d094; --bad:#ef8b7f; --warn:#e3ba63;
+    --brand-ink:#efe8dc;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
   }
 }
@@ -32,14 +39,16 @@ body{margin:0;background:var(--bg);color:var(--fg);
   font:16px/1.6 "Segoe UI",-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
 a{color:var(--accent);}
 h1,h2,h3{line-height:1.25;margin:0;}
+/* Headings set in the wordmark's serif; UI text stays sans. */
+h1,h2{font-family:Georgia,"Times New Roman",serif;letter-spacing:-.01em;}
 button{font:inherit;}
 
 header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
   backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
 .head{max-width:1180px;margin:0 auto;padding:.85rem 1.25rem;display:flex;align-items:center;gap:1rem;}
-.brand{display:flex;align-items:baseline;gap:.55rem;cursor:pointer;}
-.brand b{font-size:1.15rem;letter-spacing:-.02em;}
-.brand span{font-size:.8rem;color:var(--muted);}
+.brand{display:flex;align-items:center;gap:.65rem;cursor:pointer;}
+.brand .brandmark{height:2.1rem;width:auto;display:block;}
+.brand span{font-size:.8rem;color:var(--muted);align-self:end;padding-bottom:.15rem;}
 .head .right{margin-left:auto;display:flex;align-items:center;gap:.9rem;font-size:.82rem;}
 .head .right a{color:var(--muted);text-decoration:none;}
 .head .right a:hover{color:var(--fg);}
@@ -84,6 +93,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
   border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);
   font-weight:600;font-size:.93rem;cursor:pointer;transition:.12s;}
 .btn:hover{filter:brightness(1.06);}
+.btn:active:not(:disabled){transform:translateY(1px);}
 .btn:disabled{opacity:.45;cursor:not-allowed;filter:none;}
 .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line);font-weight:500;}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent);}
@@ -119,6 +129,16 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 
 .page{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;}
 .page img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--sunk);cursor:zoom-in;}
+
+/* While an image is on its way, its tile shimmers instead of sitting grey;
+   once loaded (the delegated listener adds .ok) it fades in and the
+   animation stops, so a finished grid costs no compositing. */
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes imgin{from{opacity:0}to{opacity:1}}
+.tome-cover img:not(.ok),.page img:not(.ok){
+  background:linear-gradient(100deg,var(--sunk) 40%,var(--panel) 50%,var(--sunk) 60%);
+  background-size:200% 100%;animation:shimmer 1.4s linear infinite;}
+.tome-cover img.ok,.page img.ok,.pick img.ok,.thumbs img.ok{animation:imgin .3s ease;}
 .page .body{padding:.7rem .8rem;}
 .page .num{font-size:.75rem;color:var(--muted);font-weight:700;letter-spacing:.04em;}
 .page .acts{display:flex;gap:.35rem;margin-top:.45rem;flex-wrap:wrap;}
@@ -237,7 +257,16 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
 <header>
   <div class="head">
     <div class="brand" onclick="go('home')">
-      <b>Heldenbuch</b><span>Bilderbücher selber machen</span>
+      <!-- Inline so the inks can follow the theme; the gold stays gold. -->
+      <svg class="brandmark" viewBox="60 55 700 200" role="img" aria-label="Heldenbuch">
+        <text x="410" y="164" text-anchor="middle"
+          style="fill:var(--brand-ink);font-family:Georgia,'Times New Roman',serif;font-size:130px;letter-spacing:-6px">heldenbuch</text>
+        <path fill="none" stroke="#cc8e1e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"
+          d="M78 190C174 175 278 174 358 188C386 193 402 202 410 218C418 202 434 193 462 188C542 174 646 175 742 190"/>
+        <path fill="none" stroke="var(--brand-ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"
+          d="M78 210C180 200 282 201 360 211C386 214 403 224 410 240C417 224 434 214 460 211C538 201 640 200 742 210"/>
+      </svg>
+      <span>Bilderbücher selber machen</span>
     </div>
     <div class="right">
       <a href="#" onclick="go('home');return false">Meine Bücher</a>
@@ -315,7 +344,16 @@ const $ = (id) => document.getElementById(id);
 // string early.
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Grid tiles ask the server for its cached thumbnail; only the reader and
+// the zoom view fetch originals, which are print files of several megabytes.
+const tn = (u) => (u ? u + (u.includes("?") ? "&" : "?") + "thumb=1" : u);
 const view = () => $("view");
+
+// Marks images as loaded so the CSS can stop their placeholder shimmer.
+// Capture phase, because load events on images do not bubble.
+document.addEventListener("load", (event) => {
+  if (event.target.tagName === "IMG") event.target.classList.add("ok");
+}, true);
 
 // A failed save used to throw before closeModal()/toast(), so the dialog
 // just sat there unchanged -- indistinguishable from a click that never
@@ -771,7 +809,29 @@ const STEPS = [
   { key: "story", label: "Geschichte" }, { key: "book", label: "Buch" },
 ];
 
-function go(screen) { S.screen = screen; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function pageTitle(screen) {
+  const b = typeof currentBook !== "undefined" ? currentBook : null;
+  if (screen === "book" && b) {
+    const language = b.primary_language || (b.languages || [])[0];
+    const name = (b.title || {})[language] || b.display_title;
+    if (name) return `${name} — Heldenbuch`;
+  }
+  const names = { hero: "Held", look: "Stil", story: "Geschichte", book: "Buch" };
+  return names[screen] ? `${names[screen]} — Heldenbuch`
+                       : "Heldenbuch — Bilderbücher selber machen";
+}
+
+function go(screen) {
+  S.screen = screen;
+  render();
+  document.title = pageTitle(screen);
+  // Only real screen changes animate; the per-second job re-renders go
+  // through render() directly and must not flicker.
+  view().animate?.(
+    [{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+    { duration: 200, easing: "ease-out" });
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 function stepsBar(current) {
   const reached = { hero: true, look: !!S.heroId,
@@ -867,7 +927,7 @@ function bookTile(b) {
   return `<div class="tome" role="button" tabindex="0"
       aria-label="„${esc(b.title)}“ öffnen" onclick="openBook('${b.id}')">
     <div class="tome-cover">
-      ${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="Titelbild von ${esc(b.title)}">`
+      ${b.cover_url ? `<img src="${esc(tn(b.cover_url))}" loading="lazy" decoding="async" alt="Titelbild von ${esc(b.title)}">`
                     : `<div class="tome-blank">${esc(b.title)}</div>`}
       ${b.drawn ? `<button class="tome-read" title="Sofort vorlesen"
         aria-label="„${esc(b.title)}“ vorlesen"
@@ -944,7 +1004,7 @@ async function renderHero() {
               onclick="event.stopPropagation();deleteHero('${h.id}')">×</button>
             ${h.sheet_url ? `<button class="xzoom" title="Groß ansehen"
               onclick="event.stopPropagation();zoom('${esc(h.sheet_url)}')">🔍</button>` : ""}
-            ${h.sheet_url ? `<img src="${esc(h.sheet_url)}" alt="Charakterblatt von ${esc(h.name || "der Figur")}">` : ""}
+            ${h.sheet_url ? `<img src="${esc(tn(h.sheet_url))}" loading="lazy" decoding="async" alt="Charakterblatt von ${esc(h.name || "der Figur")}">` : ""}
             <div class="cap"><b>${esc(h.name || "Ohne Namen")}</b>
               <small>${h.source === "photo" ? "nach Foto" : "beschrieben"}</small></div>
           </div>`).join("") + `</div>` : ""}
@@ -1002,7 +1062,7 @@ function heroVariants(hero) {
         aria-label="Diese Variante wählen" onclick="pickSheet('${v.path}')">
         <button class="xzoom" title="Groß ansehen"
           onclick="event.stopPropagation();zoom('${esc(v.url)}')">🔍</button>
-        <img src="${esc(v.url)}" alt="Charakterblatt-Variante">
+        <img src="${esc(tn(v.url))}" loading="lazy" decoding="async" alt="Charakterblatt-Variante">
         <div class="cap"><small>${v.path === hero.sheet ? "ausgewählt" : "auswählen"}</small></div>
       </div>`).join("") + `</div>
     <details style="margin-top:1rem"><summary class="small muted">So habe ich ihn beschrieben</summary>
@@ -1174,7 +1234,7 @@ async function renderLook() {
             onclick="event.stopPropagation();deleteStyle('${s.id}')">×</button>
           ${thumb ? `<button class="xzoom" title="Groß ansehen"
             onclick="event.stopPropagation();zoom('${esc(thumb)}')">🔍</button>` : ""}
-          ${thumb ? `<img src="${esc(thumb)}" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
+          ${thumb ? `<img src="${esc(tn(thumb))}" loading="lazy" decoding="async" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
           <div class="cap"><b>${esc(s.name)}</b>
             <small>${isReady
               ? (s.id === S.styleId ? "ausgewählt" : "auswählen")
@@ -1240,7 +1300,7 @@ async function styleDetail(id) {
   openModal(`<h3>${esc(s.name)}</h3>
     <p class="small muted" style="margin-bottom:1rem">${esc(s.description)}</p>
     ${blocks.length ? `<div class="grid g3" style="margin-bottom:1rem">` + blocks.map(([u, label]) => `
-      <div><img src="${esc(u)}" alt="" onclick="zoom('${esc(u)}')">
+      <div><img src="${esc(tn(u))}" loading="lazy" decoding="async" alt="" onclick="zoom('${esc(u)}')">
         <span class="vlabel">${esc(label)}</span></div>`).join("") + `</div>` : ""}
     <div class="row" style="justify-content:flex-end">
       <button class="btn ghost" style="color:var(--bad)"
@@ -1384,7 +1444,7 @@ function storyEditor(book) {
       <div id="edit-page-${p.index}"
         style="display:flex;gap:.9rem;padding:.7rem 0;border-bottom:1px solid var(--line)">
         ${p.image_url
-          ? `<img src="${esc(p.image_url)}" alt="Bild Seite ${p.index}" onclick="zoom('${esc(p.image_url)}')"
+          ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="Bild Seite ${p.index}" onclick="zoom('${esc(p.image_url)}')"
               style="width:76px;height:76px;object-fit:cover;border-radius:8px;cursor:zoom-in;flex:none">`
           : `<div class="num" style="min-width:1.8rem;padding-top:.5rem">${p.index}</div>`}
         <div style="flex:1">
@@ -1460,6 +1520,8 @@ let currentBook = null;
 async function renderBook() {
   const book = await api(`/api/book/books/${S.bookId}`);
   currentBook = book;
+  // go() set the title before this fetch resolved; now the name is known.
+  document.title = pageTitle("book");
   const language = book.primary_language || book.languages[0];
   const drawn = book.pages.filter((p) => p.image).length;
   const spend = book.spend || {};
@@ -1506,7 +1568,7 @@ async function renderBook() {
         <summary class="small muted">Nebenfiguren und Orte (${book.cast.length}) — bearbeiten möglich</summary>
         <div class="grid g4" style="margin-top:.7rem">` + book.cast.map((c, i) => `
           <div class="pick" style="cursor:default">
-            ${c.sheet_url ? `<img src="${esc(c.sheet_url)}" alt="Referenzblatt ${esc(c.name)}"
+            ${c.sheet_url ? `<img src="${esc(tn(c.sheet_url))}" loading="lazy" decoding="async" alt="Referenzblatt ${esc(c.name)}"
                 onclick="zoom('${esc(c.sheet_url)}')" style="cursor:zoom-in">`
                           : `<div style="aspect-ratio:3/2;background:var(--sunk)"></div>`}
             <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? "Ort" : "Figur"}
@@ -1525,7 +1587,7 @@ async function renderBook() {
       <h2>Seiten</h2>
       <div class="grid g3" style="margin-top:1rem">
         ${book.cover_url ? `<div class="page">
-          <img src="${esc(book.cover_url)}" onclick="zoom('${esc(book.cover_url)}')" alt="Titelbild">
+          <img src="${esc(tn(book.cover_url))}" loading="lazy" decoding="async" onclick="zoom('${esc(book.cover_url)}')" alt="Titelbild">
           <div class="body"><div class="num">TITELBILD</div>
             <div class="acts">
               <button class="btn ghost tiny" onclick="redrawCover()"
@@ -1603,7 +1665,7 @@ function proofDialog() {
     ].filter(Boolean);
     return `<div style="border:1px solid ${marks.length ? "var(--warn)" : "var(--line)"};
         border-radius:8px;overflow:hidden">
-      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="Seite ${p.index}"
+      ${p.image_url ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="Seite ${p.index}"
         style="aspect-ratio:1;object-fit:cover">`
         : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
             class="small muted">fehlt</div>`}
@@ -1917,7 +1979,7 @@ function pageCard(page, language) {
   const notes = (check.notes || []).slice(0, 2).map((n) => `<li>${esc(n)}</li>`).join("");
   return `<div class="page" id="page-${page.index}">
     ${page.image_url
-      ? `<img src="${esc(page.image_url)}" onclick="zoom('${esc(page.image_url)}')"
+      ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" onclick="zoom('${esc(page.image_url)}')"
            alt="Illustration Seite ${page.index}">`
       : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
            class="small muted">noch nicht gezeichnet</div>`}
@@ -1953,7 +2015,7 @@ function editPage(index) {
     `<option value="${l.key}" ${l.key === page.layout ? "selected" : ""}>${esc(l.key)} — ${esc(l.hint)}</option>`).join("");
   openModal(`<h3>Seite ${index} bearbeiten</h3>
     <div class="row" style="align-items:flex-start;gap:1rem">
-      ${page.image_url ? `<img src="${esc(page.image_url)}" alt="Seite ${index}"
+      ${page.image_url ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="Seite ${index}"
         onclick="zoom('${esc(page.image_url)}')" title="Groß ansehen"
         style="width:120px;border-radius:9px;cursor:zoom-in;flex:none">` : ""}
       <div style="flex:1;min-width:260px">
@@ -1990,10 +2052,10 @@ function showVersions(index) {
   const older = (page.history_urls || []).slice().reverse();  // newest first
   openModal(`<h3>Seite ${index} — Versionen</h3>
     <div class="grid g3" style="margin-bottom:1rem">
-      <div><img src="${esc(page.image_url)}" alt="" onclick="zoom('${esc(page.image_url)}')">
+      <div><img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="" onclick="zoom('${esc(page.image_url)}')">
         <span class="vlabel"><b>aktuell</b></span></div>
       ${older.map((url, i) => `
-        <div><img src="${esc(url)}" alt="" onclick="zoom('${esc(url)}')">
+        <div><img src="${esc(tn(url))}" loading="lazy" decoding="async" alt="" onclick="zoom('${esc(url)}')">
           <span class="vlabel">${i === 0 ? "davor" : `${i + 1} Fassungen davor`}</span></div>`).join("")}
     </div>
     <p class="small muted">„Zurück“ stellt jeweils die letzte vorherige Fassung wieder
@@ -2078,7 +2140,7 @@ function photoPanel(book, language) {
         <p class="small muted" style="margin:.5rem 0 0">Das Foto bleibt auf diesem Rechner
           im Buchordner (und damit in Backups), wird an keinen Dienst geschickt und
           verschwindet mit „Fotoseite entfernen“ wieder.</p>
-        ${photo.image_url ? `<img src="${esc(photo.image_url)}" alt="Foto der letzten Seite"
+        ${photo.image_url ? `<img src="${esc(tn(photo.image_url))}" loading="lazy" decoding="async" alt="Foto der letzten Seite"
           onclick="zoom('${esc(photo.image_url)}')" title="Groß ansehen"
           style="margin-top:.8rem;max-width:180px;border-radius:9px;border:1px solid var(--line);cursor:zoom-in">` : ""}
       </div>
@@ -2566,9 +2628,17 @@ observer.observe($("view"), { childList: true, subtree: false });
     return;
   }
   if (S.status.active_job) {
+    // A reload used to lose the running job's screen and its completion
+    // callback, so the finished work never appeared without a second
+    // manual reload. Re-attach fully: poll from line zero and re-render
+    // whatever screen is current once the job reports back.
     S.job = S.status.active_job;
-    S.poll = setInterval(pollJob, 900);
+    S.seen = 0;
+    S.onDone = () => render();
+    $("dspin").classList.remove("hide");
     drawer(true, true);
+    S.poll = setInterval(pollJob, 900);
+    pollJob();
   }
   render();
 })();

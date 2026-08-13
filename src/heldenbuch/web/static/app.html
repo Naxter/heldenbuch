@@ -23,15 +23,28 @@
   --brand-ink:#011e3f;
   --shadow:0 1px 2px rgba(60,45,25,.06),0 8px 24px rgba(60,45,25,.06);
 }
+/* The dark tokens exist twice: once for the system preference (skipped when
+   the user forced light in the settings) and once for a forced dark choice.
+   Keep both blocks identical. */
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:#16130e; --panel:#201c15; --sunk:#191610; --fg:#efe8dc; --muted:#a2988a;
     --line:#342e23; --accent:#cc8e1e; --control-line:#6b6355; --accent-soft:#33261a; --accent-fg:#1b1610;
     --good:#63d094; --bad:#ef8b7f; --warn:#e3ba63;
     --brand-ink:#efe8dc;
     --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+    color-scheme:dark;
   }
 }
+:root[data-theme="dark"]{
+  --bg:#16130e; --panel:#201c15; --sunk:#191610; --fg:#efe8dc; --muted:#a2988a;
+  --line:#342e23; --accent:#cc8e1e; --control-line:#6b6355; --accent-soft:#33261a; --accent-fg:#1b1610;
+  --good:#63d094; --bad:#ef8b7f; --warn:#e3ba63;
+  --brand-ink:#efe8dc;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{color-scheme:light;}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
   overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
 *{box-sizing:border-box;}
@@ -52,6 +65,21 @@ header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 8
 .head .right{margin-left:auto;display:flex;align-items:center;gap:.9rem;font-size:.82rem;}
 .head .right a{color:var(--muted);text-decoration:none;}
 .head .right a:hover{color:var(--fg);}
+.iconbtn{background:none;border:none;padding:.3rem;color:var(--muted);cursor:pointer;
+  display:grid;place-items:center;border-radius:8px;}
+.iconbtn:hover{color:var(--fg);background:var(--sunk);}
+
+/* The dashboard strip on the home screen. */
+.dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem;
+  margin-bottom:1.6rem;}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:.85rem 1rem;box-shadow:var(--shadow);}
+.stat b{display:block;font-size:1.5rem;font-family:Georgia,"Times New Roman",serif;}
+.stat span{font-size:.78rem;color:var(--muted);}
+.stat .pills{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem;}
+.stat .pill{font-size:.72rem;padding:.1rem .5rem;border-radius:99px;
+  border:1px solid var(--line);color:var(--muted);}
+.stat .pill.ok{color:var(--good);border-color:currentColor;}
 main{max-width:1180px;margin:0 auto;padding:1.75rem 1.25rem 8rem;}
 
 .steps{display:flex;gap:.4rem;margin-bottom:1.75rem;flex-wrap:wrap;}
@@ -266,11 +294,18 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
         <path fill="none" stroke="var(--brand-ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"
           d="M78 210C180 200 282 201 360 211C386 214 403 224 410 240C417 224 434 214 460 211C538 201 640 200 742 210"/>
       </svg>
-      <span>Bilderbücher selber machen</span>
+      <span id="tagline">Bilderbücher selber machen</span>
     </div>
     <div class="right">
-      <a href="#" onclick="go('home');return false">Meine Bücher</a>
-      <a href="/benchmark" title="Technischer Vergleich der Bildmodelle">Labor</a>
+      <a href="#" id="nav-books" onclick="go('home');return false">Meine Bücher</a>
+      <a href="/benchmark" id="nav-lab" title="Technischer Vergleich der Bildmodelle">Labor</a>
+      <button class="iconbtn" id="settings-btn" onclick="openSettings()" aria-label="Einstellungen">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </div>
 </header>
@@ -380,6 +415,82 @@ const store = {
   },
   set(key, value) { localStorage.setItem("heldenbuch." + key, JSON.stringify(value)); },
 };
+
+/* ------------------------------------------------------------ language */
+
+// The app's own chrome in two languages. Book content is multilingual on
+// its own; this covers the frame around it. Screens whose strings are not
+// extracted yet fall back to German rather than showing a raw key.
+const LOCALES = {
+  de: {
+    tagline: "Bilderbücher selber machen",
+    nav_books: "Meine Bücher", nav_lab: "Labor",
+    step_hero: "Held", step_look: "Stil", step_story: "Geschichte", step_book: "Buch",
+    my_books: "Meine Bücher", new_book: "Neues Buch",
+    quick_start: "Schnell anfangen:", from_backup: "Aus Sicherung wiederherstellen",
+    no_books_yet: "Noch kein fertiges Buch.",
+    settings: "Einstellungen", language: "Sprache", theme: "Erscheinungsbild",
+    theme_system: "System", theme_light: "Hell", theme_dark: "Dunkel",
+    close: "Schließen",
+    books_on_shelf: "Bücher im Regal", pages_drawn: "Seiten gezeichnet",
+    services: "Bilddienste",
+  },
+  en: {
+    tagline: "Make your own picture books",
+    nav_books: "My books", nav_lab: "Lab",
+    step_hero: "Hero", step_look: "Style", step_story: "Story", step_book: "Book",
+    my_books: "My books", new_book: "New book",
+    quick_start: "Quick start:", from_backup: "Restore from backup",
+    no_books_yet: "No finished book yet.",
+    settings: "Settings", language: "Language", theme: "Appearance",
+    theme_system: "System", theme_light: "Light", theme_dark: "Dark",
+    close: "Close",
+    books_on_shelf: "Books on the shelf", pages_drawn: "Pages drawn",
+    services: "Image services",
+  },
+};
+let uiLang = store.get("uiLang") || "de";
+const t = (key) => LOCALES[uiLang]?.[key] ?? LOCALES.de[key] ?? key;
+
+function applyChrome() {
+  document.documentElement.lang = uiLang;
+  $("tagline").textContent = t("tagline");
+  $("nav-books").textContent = t("nav_books");
+  $("nav-lab").textContent = t("nav_lab");
+  $("settings-btn").setAttribute("aria-label", t("settings"));
+  document.title = pageTitle(S.screen);
+}
+
+function applyTheme(mode) {
+  if (mode === "light" || mode === "dark") document.documentElement.dataset.theme = mode;
+  else delete document.documentElement.dataset.theme;
+  store.set("theme", mode);
+}
+applyTheme(store.get("theme") || "system");
+
+function openSettings() {
+  const theme = store.get("theme") || "system";
+  openModal(`<h3>${t("settings")}</h3>
+    <label class="f"><span>${t("language")}</span>
+      <select id="set-lang">
+        <option value="de" ${uiLang === "de" ? "selected" : ""}>Deutsch</option>
+        <option value="en" ${uiLang === "en" ? "selected" : ""}>English</option>
+      </select></label>
+    <label class="f"><span>${t("theme")}</span>
+      <select id="set-theme">
+        <option value="system" ${theme === "system" ? "selected" : ""}>${t("theme_system")}</option>
+        <option value="light" ${theme === "light" ? "selected" : ""}>${t("theme_light")}</option>
+        <option value="dark" ${theme === "dark" ? "selected" : ""}>${t("theme_dark")}</option>
+      </select></label>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">${t("close")}</button>
+    </div>`);
+  $("set-lang").onchange = (e) => {
+    uiLang = e.target.value; store.set("uiLang", uiLang);
+    applyChrome(); render(); openSettings();
+  };
+  $("set-theme").onchange = (e) => applyTheme(e.target.value);
+}
 
 const S = {
   status: null, screen: "home",
@@ -816,9 +927,9 @@ function pageTitle(screen) {
     const name = (b.title || {})[language] || b.display_title;
     if (name) return `${name} — Heldenbuch`;
   }
-  const names = { hero: "Held", look: "Stil", story: "Geschichte", book: "Buch" };
-  return names[screen] ? `${names[screen]} — Heldenbuch`
-                       : "Heldenbuch — Bilderbücher selber machen";
+  const known = { hero: 1, look: 1, story: 1, book: 1 };
+  return known[screen] ? `${t("step_" + screen)} — Heldenbuch`
+                       : `Heldenbuch — ${t("tagline")}`;
 }
 
 function go(screen) {
@@ -839,7 +950,7 @@ function stepsBar(current) {
   return `<div class="steps">` + STEPS.map((step, i) => `
     <button class="step ${step.key === current ? "on" : ""} ${reached[step.key] && step.key !== current ? "done" : ""}"
       ${reached[step.key] ? "" : "disabled"} onclick="go('${step.key}')">
-      <span class="n">${i + 1}</span>${step.label}
+      <span class="n">${i + 1}</span>${t("step_" + step.key)}
     </button>`).join("") + `</div>`;
 }
 
@@ -904,18 +1015,28 @@ async function renderHome() {
     <button class="btn ghost tiny" onclick="newBookWith('${h.id}')">Neues Buch mit ${esc(h.name || "…")}</button>
   `).join("");
 
+  const drawn = books.reduce((n, b) => n + (b.drawn || 0), 0);
+  const services = S.status.image_backends || [];
   view().innerHTML = warn + `
-    <div class="spread" style="margin-bottom:1.6rem;align-items:center">
-      <h1 style="font-size:1.6rem">Meine Bücher</h1>
-      <button class="btn" onclick="startNew()">Neues Buch</button>
+    <div class="spread" style="margin-bottom:1.2rem;align-items:center">
+      <h1 style="font-size:1.6rem">${t("my_books")}</h1>
+      <button class="btn" onclick="startNew()">${t("new_book")}</button>
+    </div>
+    <div class="dash">
+      <div class="stat"><b>${books.length}</b><span>${t("books_on_shelf")}</span></div>
+      <div class="stat"><b>${drawn}</b><span>${t("pages_drawn")}</span></div>
+      <div class="stat"><span>${t("services")}</span>
+        <div class="pills">${services.map((b) =>
+          `<span class="pill ${b.ready ? "ok" : ""}">${esc(b.name)}</span>`).join("")}</div>
+      </div>
     </div>
     ${books.length ? `<div class="shelf">` + books.map(bookTile).join("") + `</div>`
-                   : `<p class="lede">Noch kein fertiges Buch.</p>`}
+                   : `<p class="lede">${t("no_books_yet")}</p>`}
     <div class="row" style="margin-top:2.4rem;padding-top:1rem;border-top:1px solid var(--line)">
-      <span class="small muted">Schnell anfangen:</span>
+      <span class="small muted">${t("quick_start")}</span>
       ${shortcuts}
       <button class="btn ghost tiny" onclick="restoreDialog()"
-        title="Eine Buch-Sicherung (ZIP) aus library/backups zurückholen">Aus Sicherung wiederherstellen</button>
+        title="Eine Buch-Sicherung (ZIP) aus library/backups zurückholen">${t("from_backup")}</button>
     </div>`;
 }
 
@@ -2622,6 +2743,7 @@ const observer = new MutationObserver(() => wirePhotoPage());
 observer.observe($("view"), { childList: true, subtree: false });
 
 (async function boot() {
+  applyChrome();
   try { S.status = await api("/api/book/status"); }
   catch (exc) {
     view().innerHTML = `<div class="banner bad">Server nicht erreichbar: ${esc(exc.message)}</div>`;

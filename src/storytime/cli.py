@@ -213,6 +213,19 @@ def cmd_run(args) -> int:
 # --------------------------------------------------------------------------- parser
 
 
+def _default_port() -> int:
+    """Port 8765, unless the environment names one.
+
+    Anything that starts the app for you -- a container, a supervisor, an
+    editor's run configuration -- hands the port over in `PORT`. Reading it
+    means those do not each need their own command line.
+    """
+    raw = (os.environ.get("PORT") or "").strip()
+    if raw.isdigit() and 0 <= int(raw) <= 65535:
+        return int(raw)
+    return 8765
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="storytime",
@@ -253,7 +266,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("serve", help="open the app in a browser")
     p.add_argument("--library", default=str(DEFAULT_LIBRARY),
                    help="where heroes, styles and books are stored")
-    p.add_argument("--port", type=int, default=8765, help="port (default 8765; 0 picks a free one)")
+    p.add_argument("--port", type=int, default=_default_port(),
+                   help="port (default 8765, or $PORT if set; 0 picks a free one)")
     p.add_argument("--host", default="127.0.0.1",
                    help="bind address; the panel has no authentication, so keep it on localhost")
     p.add_argument("--no-browser", action="store_true", help="do not open a browser window")

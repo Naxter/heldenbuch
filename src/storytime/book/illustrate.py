@@ -25,6 +25,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
+
 from ..backends import get_backend
 from ..llm import complete_json
 from ..metrics.cheap import score_page
@@ -362,6 +364,23 @@ def check_status(page: Page) -> str:
     return "unknown"
 
 
+def _usable_image(path: Path) -> bool:
+    """Is this a page we can keep, or wreckage from an interrupted render?
+
+    Resuming skips any page whose file exists, so a half-written PNG used to be
+    adopted as finished work and could never be redrawn from inside the app --
+    the export then blocked on a corrupt image with no way forward.
+    """
+    if not path.is_file() or path.stat().st_size == 0:
+        return False
+    try:
+        with Image.open(path) as image:
+            image.verify()
+    except Exception:
+        return False
+    return True
+
+
 def pick_check_provider(image_backend: str, available: list[str]) -> str:
     """Prefer a checker that did not draw the picture it is grading.
 
@@ -525,7 +544,7 @@ def illustrate_book(
     todo = [
         page for page in sorted(book.pages, key=lambda p: p.index)
         if (wanted is None or page.index in wanted)
-        and (redraw or not (pages_dir / f"page_{page.index:02d}.png").is_file())
+        and (redraw or not _usable_image(pages_dir / f"page_{page.index:02d}.png"))
     ]
     # Anything already on disk and not being redrawn is simply adopted.
     for page in book.pages:

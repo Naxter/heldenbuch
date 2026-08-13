@@ -932,7 +932,11 @@ def illustrate_book_batch(
             todo.append((by_name.get(name), pages_dir / name))
         log(f"Ein Batch von einem früheren Lauf ist noch offen ({len(todo)} "
             "Bild(er)) — er wird zuerst eingesammelt.")
-        requests = [None] * len(todo)  # not resubmitted, only collected
+        # Nothing is resubmitted, but the collector still reads the output
+        # spec off each request to price it, so these stand in for the
+        # originals rather than being None.
+        requests = [GenRequest(prompt="", reference_images=[], output=output)
+                    for _ in todo]
 
     if not resume_job and wanted is None and (redraw or not book.cover):
         references, named = _attach(sheet, list(book.cast), resolve, 5, solo=True)

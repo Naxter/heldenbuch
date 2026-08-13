@@ -384,7 +384,12 @@ class TestBatchHandleSurvives:
         def fake_run_batch(_model, requests, _targets, on_submitted=None,
                            resume_job=None, **_kw):
             calls["resume_job"] = resume_job
-            calls["submitted"] = len([r for r in requests if r is not None])
+            calls["created"] = on_submitted is not None and resume_job is None
+            # The placeholders must still carry an output spec: the collector
+            # reads it to price each image, and None there crashed the resume.
+            calls["priced"] = all(getattr(r, "output", None) is not None
+                                  for r in requests)
+            calls["prompts"] = [getattr(r, "prompt", None) for r in requests]
             return [{"data": b"", "error": "leer"}]
 
         monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
@@ -396,7 +401,9 @@ class TestBatchHandleSurvives:
         )
 
         assert calls["resume_job"] == "batches/abc123"
-        assert calls["submitted"] == 0, "nothing new may be ordered while one is open"
+        assert calls["created"] is False, "a resume must never create a batch"
+        assert calls["priced"] is True
+        assert calls["prompts"] == [""], "nothing new may be ordered while one is open"
         # Collected, so it must not be resumed a second time.
         assert library.get_book(book.id).pending_batch == {}
 

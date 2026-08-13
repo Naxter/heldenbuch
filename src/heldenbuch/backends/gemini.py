@@ -12,6 +12,7 @@ import base64
 import mimetypes
 import time
 from pathlib import Path
+from typing import Any
 
 from ..config import require_key
 from ..types import GenRequest
@@ -132,6 +133,46 @@ def build_inline_requests(requests: list[GenRequest], uri_for) -> list[dict]:
     return inline
 
 
+#: Why a candidate came back without a picture, in words a person can act on.
+_FINISH_REASONS = {
+    "SAFETY": "der Sicherheitsfilter hat das Bild blockiert",
+    "PROHIBITED_CONTENT": "der Inhaltsfilter hat das Bild blockiert",
+    "IMAGE_SAFETY": "der Bildfilter hat das Ergebnis blockiert",
+    "RECITATION": "die Antwort wurde als Zitat eingestuft und verworfen",
+    "MAX_TOKENS": "die Antwort wurde abgeschnitten",
+    "BLOCKLIST": "ein gesperrter Begriff kam im Prompt vor",
+}
+
+
+def _image_from(response: Any) -> tuple[bytes | None, str]:
+    """Pull the image bytes out of one response, or say why there are none.
+
+    Every step is defensive on purpose. A blocked or empty candidate can carry
+    `content = None`, or a `content` whose `parts` is `None` -- and iterating
+    that raised TypeError, which the old guard did not catch, so one filtered
+    image out of seventeen took down the collection of a batch Google had
+    already finished and billed.
+    """
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        blocked = getattr(getattr(response, "prompt_feedback", None), "block_reason", None)
+        if blocked:
+            return None, f"der Prompt wurde blockiert ({blocked})"
+        return None, "die Antwort enthielt keine Kandidaten"
+
+    candidate = candidates[0]
+    parts = getattr(getattr(candidate, "content", None), "parts", None) or []
+    for part in parts:
+        blob = getattr(part, "inline_data", None)
+        raw = getattr(blob, "data", None) if blob is not None else None
+        if raw:
+            return (raw if isinstance(raw, bytes) else base64.b64decode(raw)), ""
+
+    reason = getattr(candidate, "finish_reason", None)
+    name = getattr(reason, "name", None) or (str(reason) if reason else "")
+    return None, _FINISH_REASONS.get(name.upper(), f"kein Bild in der Antwort ({name or 'ohne Grund'})")
+
+
 def run_batch(
     model: str | None,
     requests: list[GenRequest],
@@ -230,19 +271,9 @@ def run_batch(
             reason = str(getattr(entry, "error", "") or "keine Antwort")[:200]
             results.append({"error": reason})
             continue
-        data = None
-        try:
-            for part in response.candidates[0].content.parts:
-                blob = getattr(part, "inline_data", None)
-                if blob is not None and getattr(blob, "data", None):
-                    raw = blob.data
-                    data = raw if isinstance(raw, bytes) else base64.b64decode(raw)
-                    break
-        except (AttributeError, IndexError):
-            pass
+        data, why = _image_from(response)
         if data is None:
-            results.append({"error": "die Antwort enthielt kein Bild "
-                                     "(vermutlich Sicherheitsfilter)"})
+            results.append({"error": why})
             continue
         usd = (print_usd if req.output.image_size == "4K" else draft_usd) / 2
         results.append({"data": data, "usage": {

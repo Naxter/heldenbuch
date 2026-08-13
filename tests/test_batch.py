@@ -162,3 +162,77 @@ def test_batch_redraw_keeps_the_old_version_undoable(library, monkeypatch):
     )
     assert book.pages[0].history == ["pages/page_01_v1.png"]
     assert (pages_dir / "page_01_v1.png").is_file()
+
+
+class TestOneBadImageCannotSinkTheBatch:
+    """A filtered candidate took down the collection of a finished batch.
+
+    Google had run and billed seventeen print-quality images; one came back
+    with `content.parts = None`, iterating it raised TypeError, the old guard
+    caught only AttributeError and IndexError, and the whole job failed after
+    the money was spent.
+    """
+
+    @staticmethod
+    def _response(parts=None, content=True, candidates=True, finish=None):
+        class Blob:
+            def __init__(self, data):
+                self.data = data
+
+        class Part:
+            def __init__(self, data):
+                self.inline_data = Blob(data)
+
+        class Content:
+            def __init__(self, parts):
+                self.parts = parts
+
+        class Candidate:
+            def __init__(self, content, finish):
+                self.content = content
+                self.finish_reason = finish
+
+        class Response:
+            def __init__(self, candidates):
+                self.candidates = candidates
+
+        made = None
+        if content:
+            made = Content([Part(p) for p in parts] if parts is not None else None)
+        return Response([Candidate(made, finish)] if candidates else [])
+
+    def test_the_exact_shape_that_crashed(self):
+        """content is present, parts is None."""
+        from heldenbuch.backends.gemini import _image_from
+
+        data, why = _image_from(self._response(parts=None))
+        assert data is None
+        assert why, "a reason must be reported, not an exception"
+
+    def test_a_good_response_still_yields_bytes(self):
+        from heldenbuch.backends.gemini import _image_from
+
+        data, why = _image_from(self._response(parts=[b"PNGDATA"]))
+        assert data == b"PNGDATA"
+        assert why == ""
+
+    def test_a_blocked_candidate_says_why(self):
+        from heldenbuch.backends.gemini import _image_from
+
+        class Reason:
+            name = "IMAGE_SAFETY"
+
+        _data, why = _image_from(self._response(parts=[], finish=Reason()))
+        assert "Bildfilter" in why
+
+    @pytest.mark.parametrize("kwargs", [
+        {"parts": None},
+        {"parts": []},
+        {"content": False},
+        {"candidates": False},
+    ])
+    def test_no_shape_raises(self, kwargs):
+        from heldenbuch.backends.gemini import _image_from
+
+        data, why = _image_from(self._response(**kwargs))
+        assert data is None and isinstance(why, str) and why

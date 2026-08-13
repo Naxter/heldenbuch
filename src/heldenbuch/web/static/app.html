@@ -125,7 +125,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
   border-top:1px solid var(--line);box-shadow:0 -8px 32px rgba(60,45,25,.10);
   transform:translateY(100%);transition:transform .22s ease;}
 #drawer.open{transform:none;}
-.dhead{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.25rem;max-width:1180px;margin:0 auto;}
+.dhead{display:flex;flex-wrap:wrap;align-items:center;gap:.8rem;padding:.7rem 1.25rem;max-width:1180px;margin:0 auto;}
 .dhead .title{font-weight:600;font-size:.93rem;}
 .dhead .right{margin-left:auto;display:flex;gap:.5rem;align-items:center;}
 #dlog{max-width:1180px;margin:0 auto;padding:0 1.25rem 1rem;height:0;overflow:auto;
@@ -302,6 +302,15 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const view = () => $("view");
+
+// A failed save used to throw before closeModal()/toast(), so the dialog
+// just sat there unchanged -- indistinguishable from a click that never
+// registered, and the edits vanished on Abbrechen.
+window.addEventListener("unhandledrejection", (event) => {
+  const message = event.reason?.message || String(event.reason || "");
+  if (message) toast(`Das hat nicht geklappt: ${message}`);
+  console.error(event.reason);
+});
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -493,7 +502,15 @@ $("dcancel").onclick = async () => {
   if (S.job) await api(`/api/jobs/${S.job}/cancel`, { method: "POST" });
 };
 
+// Every paid action goes through here, and none of them used to disable
+// their button. A second click while the POST was in flight drew -- and
+// paid for -- the same images twice.
+let jobStarting = false;
 async function runJob(action, params, title, onDone) {
+  if (jobStarting) return;
+  jobStarting = true;
+  const trigger = window.event?.currentTarget;
+  if (trigger) trigger.disabled = true;
   $("dlog").textContent = "";
   $("dtitle").textContent = title;
   $("dspin").classList.remove("hide");
@@ -522,6 +539,9 @@ async function runJob(action, params, title, onDone) {
     $("dlog").textContent = exc.message;
     $("dspin").classList.add("hide");
     $("dclose").classList.remove("hide");
+  } finally {
+    jobStarting = false;
+    if (trigger) trigger.disabled = false;
   }
 }
 
@@ -529,8 +549,22 @@ async function pollJob() {
   pollWatch();
   if (!S.job) return;
   let job;
-  try { job = await api(`/api/jobs/${S.job}?since=${S.seen}`); }
-  catch (exc) { appendLog(`Verbindung verloren: ${exc.message}`); return endJob(null); }
+  try {
+    job = await api(`/api/jobs/${S.job}?since=${S.seen}`);
+    S.pollFails = 0;
+  } catch (exc) {
+    // The job keeps running and keeps spending; only this browser lost
+    // sight of it. One dropped keep-alive used to detach the UI for good
+    // and label a healthy render "Fehler".
+    S.pollFails = (S.pollFails || 0) + 1;
+    if (S.pollFails < 10) {
+      $("dtitle").textContent = "Verbindung unterbrochen — versuche erneut …";
+      return;
+    }
+    appendLog(`Verbindung verloren: ${exc.message}`);
+    appendLog("Der Auftrag läuft weiter. Seite neu laden, um wieder mitzulesen.");
+    return endJob(null);
+  }
 
   if (job.lines.length) { S.seen = job.total_lines; appendLog(job.lines.join("\n")); }
   const name = JOB_NAMES[job.action] || job.action;
@@ -1434,7 +1468,7 @@ async function renderBook() {
         ${missing.images
           ? `<button class="btn" onclick="illustrateAll()">
               ${drawn ? "Fehlende Bilder zeichnen" : "Bilder zeichnen"}
-              (${missing.images}) · ${eur(missing.usd)}</button>`
+              (${missing.images}) · ab ${eur(missing.usd)}</button>`
           : `<button class="btn" onclick="redrawAll()">Alle Seiten neu zeichnen
               · ${eur(redrawAllUsd)}</button>`}
       </div></div>

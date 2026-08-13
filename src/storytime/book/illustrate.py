@@ -35,6 +35,7 @@ from ..pricing import add as add_spend
 from ..pricing import image_estimate
 from ..types import GenRequest, OutputSpec
 from .models import Book, CastMember, Hero, Page, Style, single_scene
+from .solo import solo_reference
 
 # Below this the page is redrawn. 4 of 5 means "clearly the same character,
 # maybe a small detail off"; 3 means the face has shifted.
@@ -569,7 +570,8 @@ def draw_page(
     resolve=None,
 ):
     backend = get_backend(backend_name, model)
-    references, named = _attach(sheet, list(members), resolve, backend.max_references)
+    references, named = _attach(sheet, list(members), resolve,
+                                backend.max_references, solo=True)
     return backend.generate(
         GenRequest(
             prompt=page_prompt(book, hero, style, page, named, insist=insist),
@@ -582,6 +584,7 @@ def draw_page(
 
 def _attach(
     sheet: Path, members: list[CastMember], resolve, limit: int,
+    solo: bool = False,
 ) -> tuple[list[Path], list[CastMember]]:
     """Reference images to send, and the cast they correspond to, in lockstep.
 
@@ -590,8 +593,16 @@ def _attach(
     or one pushed past the backend's reference limit, has to disappear from the
     prompt as well -- otherwise the numbering slides by one and every name
     after it points at the wrong picture.
+
+    `solo` swaps each multi-figure sheet for a single cropped figure. Drawing a
+    page wants that: a reference showing the character twice is read as an
+    instruction to draw it twice. Judging one does not -- more views make a
+    better yardstick -- so the checker keeps the whole sheet.
     """
-    paths = [sheet]
+    def pick(path: Path) -> Path:
+        return solo_reference(path) if solo else path
+
+    paths = [pick(sheet)]
     named: list[CastMember] = []
     for member in members:
         if len(paths) >= limit:
@@ -603,7 +614,10 @@ def _attach(
         except (ValueError, FileNotFoundError):
             continue
         if path.is_file():
-            paths.append(path)
+            # A place is one wide establishing view; cropping it would throw
+            # away the setting. `solo_reference` leaves single figures alone,
+            # so this is belt and braces rather than a special case.
+            paths.append(path if member.kind == "place" else pick(path))
             named.append(member)
     return paths, named
 
@@ -621,7 +635,8 @@ def draw_cover(
     resolve=None,
 ):
     backend = get_backend(backend_name, model)
-    references, named = _attach(sheet, list(members), resolve, backend.max_references)
+    references, named = _attach(sheet, list(members), resolve,
+                                backend.max_references, solo=True)
     return backend.generate(
         GenRequest(
             prompt=cover_prompt(book, hero, style, named),
@@ -920,7 +935,7 @@ def illustrate_book_batch(
         requests = [None] * len(todo)  # not resubmitted, only collected
 
     if not resume_job and wanted is None and (redraw or not book.cover):
-        references, named = _attach(sheet, list(book.cast), resolve, 5)
+        references, named = _attach(sheet, list(book.cast), resolve, 5, solo=True)
         requests.append(GenRequest(prompt=cover_prompt(book, hero, style, named),
                                    reference_images=references, output=output))
         todo.append((None, pages_dir / "cover.png"))
@@ -932,7 +947,7 @@ def illustrate_book_batch(
         if not redraw and target.is_file():
             page.image = f"pages/{target.name}"
             continue
-        references, named = _attach(sheet, book.cast_for(page), resolve, 5)
+        references, named = _attach(sheet, book.cast_for(page), resolve, 5, solo=True)
         requests.append(GenRequest(
             prompt=page_prompt(book, hero, style, page, named),
             reference_images=references, output=output,

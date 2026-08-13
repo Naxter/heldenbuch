@@ -123,7 +123,7 @@ def generate_sheet(
     request = GenRequest(
         prompt=sheet_prompt(hero, style_description, from_photos=bool(photos)),
         reference_images=list(photos)[: backend.max_references],
-        output=output or OutputSpec(aspect_ratio="3:2", image_size="1K", quality="high"),
+        output=output or OutputSpec(aspect_ratio="3:2", image_size="2K", quality="high"),
         kind="sheet",
     )
     backend.generate(request, target)
@@ -192,7 +192,7 @@ def generate_styled_sheet(
     request = GenRequest(
         prompt=styled_sheet_prompt(hero, style),
         reference_images=[base_sheet],
-        output=output or OutputSpec(aspect_ratio="3:2", image_size="1K", quality="high"),
+        output=output or OutputSpec(aspect_ratio="3:2", image_size="2K", quality="high"),
         kind="sheet",
     )
     backend.generate(request, target)

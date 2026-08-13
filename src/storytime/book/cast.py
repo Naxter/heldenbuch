@@ -59,7 +59,7 @@ def generate_sheet(
         GenRequest(
             prompt=sheet_prompt(member, style),
             reference_images=references,
-            output=output or OutputSpec(aspect_ratio="3:2", image_size="1K", quality="medium"),
+            output=output or OutputSpec(aspect_ratio="3:2", image_size="2K", quality="medium"),
             kind="sheet",
         ),
         target,

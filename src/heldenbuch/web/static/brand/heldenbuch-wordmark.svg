@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 300" role="img" aria-labelledby="title desc">
+  <title id="title">heldenbuch wordmark</title>
+  <desc id="desc">The lowercase word heldenbuch in clean deep navy serif lettering with a gold and navy open-book underline.</desc>
+  <style>
+    .wordmark {
+      fill: #102f4d;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 130px;
+      font-weight: 400;
+      letter-spacing: -6px;
+    }
+
+    .gold-page,
+    .ink-page {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .gold-page {
+      stroke: #c48624;
+      stroke-width: 8;
+    }
+
+    .ink-page {
+      stroke: #102f4d;
+      stroke-width: 7;
+    }
+  </style>
+
+  <text class="wordmark" x="410" y="164" text-anchor="middle">heldenbuch</text>
+  <path class="gold-page" d="M78 190C174 175 278 174 358 188C386 193 402 202 410 218C418 202 434 193 462 188C542 174 646 175 742 190" />
+  <path class="ink-page" d="M78 210C180 200 282 201 360 211C386 214 403 224 410 240C417 224 434 214 460 211C538 201 640 200 742 210" />
+</svg>

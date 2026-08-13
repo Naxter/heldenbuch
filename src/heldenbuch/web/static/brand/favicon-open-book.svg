@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">heldenbuch favicon — open book</title>
+  <desc id="desc">A lowercase h resting on a subtle open-book baseline.</desc>
+  <rect width="64" height="64" rx="14" fill="#f8f0dc" />
+  <path d="M12 48H27C31 48 33 49 32 52C31 49 33 48 37 48H52" fill="none" stroke="#cc8e1e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M20 17V46M24 25C26 22 29 21 32 21C37 21 40 25 40 31V46M24 23V46" fill="none" stroke="#011e3f" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

@@ -4,17 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Heldenbuch control panel</title>
+<link rel="icon" type="image/svg+xml" href="/brand/favicon-open-book.svg">
+<meta name="theme-color" content="#f8f0dc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15140f" media="(prefers-color-scheme: dark)">
 <style>
 :root {
   color-scheme: light dark;
-  --bg:#faf9f6; --panel:#ffffff; --fg:#1d1b18; --muted:#6b675f; --line:#e2ded4;
-  --accent:#b4571f; --accent-fg:#ffffff; --good:#1f7a45; --bad:#a8322a; --warn:#8a6410;
-  --code:#f2efe7;
+  /* Same banner palette as the app: beige ground, navy ink, gold accents.
+     Navy is ink only, never a background. Pairs measured against WCAG
+     4.5:1 -- see app.html. */
+  --bg:#f8f0dc; --panel:#fffbef; --fg:#15263c; --muted:#5b6169; --line:#e3d6b6;
+  --accent:#1e4269; --accent-fg:#ffffff; --good:#1f7a45; --bad:#a8322a; --warn:#8a6410;
+  --code:#f2ecd9;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg:#15140f; --panel:#1e1c16; --fg:#ece8dd; --muted:#9d968a; --line:#332f26;
-    --accent:#e08c4a; --accent-fg:#1b1710; --good:#5fd394; --bad:#f08b80; --warn:#e0b95f;
+    --accent:#cc8e1e; --accent-fg:#1b1710; --good:#5fd394; --bad:#f08b80; --warn:#e0b95f;
     --code:#12110c;
   }
 }

@@ -12,7 +12,6 @@ polling a local socket costs nothing.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import mimetypes
 import os
@@ -32,6 +31,7 @@ from ..config import load_dotenv, load_spec
 from ..pipeline import RunLayout, load_pages
 from ..prompts import scene_prompt, sheet_prompt
 from ..types import STRATEGIES, BenchmarkSpec
+from . import thumbs
 from .benchjobs import BenchmarkJobs
 from .bookapi import BookApi
 from .bookjobs import BookJobs
@@ -281,13 +281,13 @@ class Api:
             raise ApiError(f"no run named {name!r}", status=404)
         return root
 
-    def file(self, relative: str) -> tuple[bytes, str]:
-        """Serve an image or the report out of the runs directory."""
+    def file_path(self, relative: str) -> tuple[Path, str]:
+        """Locate an image or the report inside the runs directory."""
         target = (self.runs_dir / unquote(relative)).resolve()
         if not target.is_relative_to(self.runs_dir.resolve()) or not target.is_file():
             raise ApiError("not found", status=404)
         mime = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-        return target.read_bytes(), mime
+        return target, mime
 
 
 # --------------------------------------------------------------------------- routing
@@ -341,34 +341,46 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     # -- plumbing ----------------------------------------------------------
 
-    def _send(self, status: int, body: bytes, mime: str, cache: bool = False) -> None:
+    def _send(self, status: int, body: bytes, mime: str) -> None:
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(body)))
-        if cache:
-            # `cache=True` used only to *omit* no-store, which gave the browser
-            # nothing to cache on -- so a page grid re-downloaded every
-            # full-resolution PNG on every render, tens of megabytes at a time,
-            # and repainted grey at exactly the moment a long render finished.
-            # An ETag makes the repeat request a 304 with no body.
-            self.send_header("Cache-Control", "private, max-age=60")
-            self.send_header("ETag", f'"{hashlib.sha1(body).hexdigest()[:16]}"')
-        else:
-            self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(body)
 
-    def _send_cacheable(self, body: bytes, mime: str) -> None:
-        """Serve a file, answering 304 when the browser already has it."""
-        tag = f'"{hashlib.sha1(body).hexdigest()[:16]}"'
+    def _send_file(self, target: Path, mime: str) -> None:
+        """Serve a disk file, answering 304 when the browser already has it.
+
+        The ETag comes from mtime and size, not a hash of the contents:
+        pages are multi-megabyte, every write in this project replaces the
+        file (fresh mtime), and hashing per request meant a full read even
+        for a 304. Caching at all matters -- without it a page grid
+        re-downloaded tens of megabytes on every render and repainted grey
+        at exactly the moment a long render finished.
+        """
+        try:
+            st = target.stat()
+        except OSError:
+            self._send_json({"error": "not found"}, status=404)
+            return
+        tag = f'"{st.st_mtime_ns:x}-{st.st_size:x}"'
         if self.headers.get("If-None-Match") == tag:
             self.send_response(304)
             self.send_header("ETag", tag)
             self.send_header("Cache-Control", "private, max-age=60")
             self.end_headers()
             return
-        self._send(200, body, mime, cache=True)
+        body = target.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("ETag", tag)
+        self.send_header("Cache-Control", "private, max-age=60")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
 
     def _send_json(self, payload: Any, status: int = 200) -> None:
         self._send(status, json.dumps(payload).encode("utf-8"), "application/json")
@@ -472,7 +484,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
 
             if method == "GET":
-                self._serve_asset(path)
+                self._serve_asset(path, query)
                 return
             # Nothing matched. The body still has to come off the socket --
             # this connection is keep-alive, so bytes left unread would be
@@ -494,14 +506,18 @@ class RequestHandler(BaseHTTPRequestHandler):
     #: URL path -> static file. Everything else is looked up by name.
     PAGES = {"/": "app.html", "": "app.html", "/benchmark": "index.html"}
 
-    def _serve_asset(self, path: str) -> None:
+    def _serve_asset(self, path: str, query: dict[str, list[str]]) -> None:
         if path.startswith("/files/"):  # benchmark runs
-            body, mime = self.api.file(path[len("/files/"):])
-            self._send_cacheable(body, mime)
+            target, mime = self.api.file_path(path[len("/files/"):])
+            self._send_file(target, mime)
             return
         if path.startswith("/library/"):  # heroes, styles, books
-            body, mime = self.api.book.file(path[len("/library/"):])
-            self._send_cacheable(body, mime)
+            target, mime = self.api.book.file_path(path[len("/library/"):])
+            if query.get("thumb") and thumbs.thumbable(target):
+                small = thumbs.thumbnail(target, self.api.library.root)
+                if small is not target:
+                    target, mime = small, "image/jpeg"
+            self._send_file(target, mime)
             return
 
         name = self.PAGES.get(path) or path.lstrip("/")

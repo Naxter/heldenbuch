@@ -173,6 +173,46 @@ def wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
     return [line for line in lines if line != "" or len(lines) == 1]
 
 
+#: Smallest body type we are willing to print, in points, by age band. A book
+#: is held by an adult reading aloud and followed by a child looking on, so
+#: there is a floor below which the page stops working for either. `fit_text`
+#: on its own will shrink as far as it is told to, and its old default of 10 px
+#: is 2.4 pt at 300 dpi -- text that technically fits and cannot be read.
+MIN_BODY_PT = {"2-3": 20.0, "4-5": 16.0, "6-7": 13.0, "8+": 12.0}
+DEFAULT_MIN_BODY_PT = 14.0
+
+#: A vignette must keep at least this much of the page height for the picture.
+#: Past that it is no longer a small picture on paper, it is a text page with a
+#: stamp on it -- and beyond that again the art was dropped entirely.
+MIN_VIGNETTE_ART = 0.40
+
+
+def min_body_px(preset: PrintPreset, age: str = "") -> int:
+    """The body-type floor for this page size and reader, in pixels."""
+    points = MIN_BODY_PT.get(age, DEFAULT_MIN_BODY_PT)
+    return max(8, int(round(points / 72.0 * preset.dpi)))
+
+
+def fit_body(
+    text: str,
+    family: str,
+    box: tuple[int, int],
+    max_size: int,
+    min_size: int,
+    line_spacing: float = 1.35,
+) -> tuple[ImageFont.FreeTypeFont, list[str], int, bool]:
+    """Fit body text, and say whether it actually fitted at the floor.
+
+    `fit_text` always returns something; when the text is too long it returns
+    it at `min_size` and lets it overflow. Callers that have somewhere else to
+    put the words need to know that happened, so this reports it.
+    """
+    font, lines, step = fit_text(text, family, "regular", box,
+                                 max_size=max_size, min_size=min_size,
+                                 line_spacing=line_spacing)
+    return font, lines, step, len(lines) * step <= box[1]
+
+
 def fit_text(
     text: str,
     family: str,
@@ -353,11 +393,13 @@ def render_story_page(
     preset: PrintPreset,
     family: str = "georgia",
     layout: str = "full",
+    age: str = "",
 ) -> Image.Image:
     """One page of the book, composed according to its layout."""
     page_w, page_h = preset.page_px()
     safety = preset.safety_px
     has_art = bool(illustration and illustration.is_file())
+    floor = min_body_px(preset, age)
 
     # The A4 home preset always sets picture beside text; it is a different
     # shape of page and the band layout wastes it.
@@ -392,40 +434,40 @@ def render_story_page(
         return canvas
 
     if layout == "vignette":
-        canvas = Image.new("RGB", (page_w, page_h), PAPER)
-        # Measure the words first, then give the picture whatever is left.
-        # Sizing the picture first is what let long text climb over it.
-        #
-        # The margins here are the *only* thing making the picture smaller than
-        # the page. The illustrator used to be asked for soft edges fading out
-        # as well, so the art arrived already inset and this inset it a second
-        # time -- a full-page render printing at barely a sixth of the paper.
+        # The words are measured first and the picture gets what is left, so
+        # the two cannot collide. But the picture also has a floor: the text
+        # block may never grow past what MIN_VIGNETTE_ART leaves it. If the
+        # words genuinely do not fit in that band at readable size then this is
+        # not a quiet beat, and the page is composed as a full one instead --
+        # which has the whole page for text rather than a quarter of it.
+        band_h = int(page_h * (1.0 - MIN_VIGNETTE_ART)) - 3 * safety
         lines: list[str] = []
         step = 0
+        fits = True
         if text.strip():
-            font, lines, step = fit_text(
-                text, family, "regular", (page_w - 3 * safety, int(page_h * 0.26)),
-                max_size=int(page_h * 0.045),
-                # Never shrink below about 6 mm on a printed page; a vignette
-                # with a lot of text should eat into the picture, not become
-                # unreadable to the parent holding the book.
-                min_size=int(page_h * 0.028),
+            font, lines, step, fits = fit_body(
+                text, family, (page_w - 3 * safety, band_h),
+                max_size=int(page_h * 0.045), min_size=floor,
             )
-        block_h = len(lines) * step
-        # Top margin, one gap under the picture, bottom margin.
-        art_h = page_h - block_h - 3 * safety
 
-        if has_art and art_h > safety:
-            art = fit_inside(illustration, (page_w - 2 * safety, art_h))
-            # Centred in the space above the words rather than pinned to the
-            # top, so a wide picture does not leave a hole under itself.
-            top = safety + (art_h - art.height) // 2
-            canvas.paste(art, ((page_w - art.width) // 2, top))
-        if lines:
-            draw_lines(canvas, lines, font, step,
-                       (int(safety * 1.5), page_h - safety - block_h),
-                       page_w - 3 * safety, align="center")
-        return canvas
+        if fits:
+            canvas = Image.new("RGB", (page_w, page_h), PAPER)
+            block_h = len(lines) * step
+            # Top margin, one gap under the picture, bottom margin.
+            art_h = page_h - block_h - 3 * safety
+
+            if has_art:
+                art = fit_inside(illustration, (page_w - 2 * safety, art_h))
+                # Centred in the space above the words rather than pinned to
+                # the top, so a wide picture does not leave a hole under it.
+                top = safety + (art_h - art.height) // 2
+                canvas.paste(art, ((page_w - art.width) // 2, top))
+            if lines:
+                draw_lines(canvas, lines, font, step,
+                           (int(safety * 1.5), page_h - safety - block_h),
+                           page_w - 3 * safety, align="center")
+            return canvas
+        layout = "full"  # too many words for a vignette; fall through
 
     canvas = (
         cover_image(illustration, (page_w, page_h))
@@ -445,11 +487,23 @@ def render_story_page(
     inner_w = right - left
     pad = int(safety * 0.5)
 
-    font, lines, step = fit_text(
-        text, family, "regular",
-        (inner_w - 2 * pad, (bottom - top) - pad),
-        max_size=int(page_h * 0.045),
+    font, lines, step, fits = fit_body(
+        text, family, (inner_w - 2 * pad, (bottom - top) - pad),
+        max_size=int(page_h * 0.045), min_size=floor,
     )
+    if not fits:
+        # The quiet area found in the picture is too small for this much text
+        # at a readable size. Take a taller band across the page instead and
+        # set it on a panel -- growing the box is always better than shrinking
+        # the type, which is what produced 6 pt pages for the oldest band.
+        left, right = safety, page_w - safety
+        top, bottom = int(page_h * 0.42), page_h - safety
+        inner_w = right - left
+        spot = TextSpot((left, top, right, bottom), True, INK, None)
+        font, lines, step, _ = fit_body(
+            text, family, (inner_w - 2 * pad, (bottom - top) - pad),
+            max_size=int(page_h * 0.045), min_size=floor,
+        )
     block_h = len(lines) * step
 
     if spot.panel:
@@ -712,7 +766,7 @@ def render_preview(
             raise ValueError(f"Seite {index} gibt es nicht.")
         image = render_story_page(
             art(page.image), join_languages(page.text, langs), small,
-            family, layout=page.layout)
+            family, layout=page.layout, age=book.age)
 
     if guides and small.bleed_px > 0:
         overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
@@ -792,7 +846,7 @@ def export_pdf(
         log(f"  Seite {page.index}")
         pages.append(
             render_story_page(art(page.image), joined(page.text), preset,
-                              family, layout=page.layout)
+                              family, layout=page.layout, age=book.age)
         )
 
     photo = (book.photo_page or {}).get("image")

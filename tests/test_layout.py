@@ -225,3 +225,69 @@ def test_custom_preset_geometry_is_self_consistent():
     width, height = preset.page_px()
     assert (width, height) == (round(110 / MM_PER_INCH * 100), round(210 / MM_PER_INCH * 100))
     assert preset.bleed_px == round(5 / MM_PER_INCH * 100)
+
+
+class TestBodyTypeFloor:
+    """Text used to shrink without limit so it always 'fitted'.
+
+    `fit_text`'s default floor is 10 px, which is 2.4 pt at 300 dpi. Only the
+    vignette path ever overrode it, so an 8+ page set at 6 pt on the small
+    children's format -- inside the product's own word-count spec.
+    """
+
+    @staticmethod
+    def _art(tmp_path):
+        path = tmp_path / "art.png"
+        Image.new("RGB", (1024, 1024), (200, 180, 150)).save(path)
+        return path
+
+    @staticmethod
+    def _art_fraction(page, page_h):
+        pixels = np.asarray(page.convert("RGB")).astype(int)
+        mask = (np.abs(pixels - np.array([200, 180, 150])).sum(axis=-1) < 30)
+        rows = np.where(mask.any(axis=1))[0]
+        return 0.0 if not rows.size else (rows.max() - rows.min() + 1) / page_h
+
+    @pytest.mark.parametrize("age,floor_pt", [("2-3", 20), ("4-5", 16), ("6-7", 13), ("8+", 12)])
+    @pytest.mark.parametrize("preset_key", ["print_square", "print_kinderbuch"])
+    def test_body_type_never_falls_below_the_floor(self, preset_key, age, floor_pt):
+        from storytime.book.layout import fit_body, min_body_px
+
+        preset = PRESETS[preset_key]
+        page_w, page_h = preset.page_px()
+        floor = min_body_px(preset, age)
+        assert round(floor / preset.dpi * 72) == floor_pt
+
+        # Far more words than the age band allows, to force the floor.
+        text = " ".join(["Silbenwort"] * 400)
+        font, _lines, _step, fits = fit_body(
+            text, "georgia", (page_w // 2, page_h // 4),
+            max_size=int(page_h * 0.045), min_size=floor,
+        )
+        assert font.size >= floor
+        assert fits is False  # and it says so, instead of overflowing silently
+
+    @pytest.mark.parametrize("words", [16, 40, 80, 128, 176, 260, 400])
+    def test_a_vignette_never_loses_its_picture(self, tmp_path, words):
+        """The regression: a body-type floor with no matching cap on the text
+        block let the words grow until the illustration was skipped entirely,
+        with no exception and no preflight warning.
+        """
+        preset = PRESETS["print_square"]
+        _page_w, page_h = preset.page_px()
+        text = " ".join(["Silbenwort"] * words)
+        page = render_story_page(self._art(tmp_path), text, preset,
+                                 layout="vignette", age="8+")
+        assert self._art_fraction(page, page_h) > 0.30
+
+    def test_a_vignette_too_full_of_words_becomes_a_full_page(self, tmp_path):
+        """Rather than shrinking the art away. A page with 300 words is not a
+        quiet beat, and the full layout has the whole page for text."""
+        preset = PRESETS["print_square"]
+        _page_w, page_h = preset.page_px()
+        short = render_story_page(self._art(tmp_path), "Drei kurze Worte.",
+                                  preset, layout="vignette", age="4-5")
+        long = render_story_page(self._art(tmp_path), " ".join(["Silbenwort"] * 300),
+                                 preset, layout="vignette", age="4-5")
+        assert 0.30 < self._art_fraction(short, page_h) < 0.95   # inset picture
+        assert self._art_fraction(long, page_h) > 0.95           # full bleed

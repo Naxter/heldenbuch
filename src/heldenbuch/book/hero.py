@@ -13,9 +13,10 @@ the character in words, because a reference image holds an identity far better
 than any amount of text.
 
 On privacy: uploaded photos are stored in the library folder on this machine
-and are sent to a provider only for the two calls on this page -- writing the
-description and drawing the sheet. No page illustration ever sees a photo; they
-see the drawn character sheet.
+and leave it only for this step -- once to the text provider that writes the
+description, and once per sheet drawn to the image provider (several variants
+means several sends). No page illustration ever sees a photo; they see the
+drawn character sheet.
 """
 
 from __future__ import annotations

@@ -505,8 +505,9 @@ class BookJobs:
         def report(done: int, total: int) -> None:
             job.progress = (done, total)
             # Saving per page lets finished pictures appear in the browser
-            # while the rest are still being drawn.
-            self.library.save_book(book)
+            # while the rest are still being drawn. The render's copy is
+            # minutes old by now: adopt any text edited in the meantime.
+            self.library.save_book(book, adopt="editorial")
 
         only = [int(i) for i in params.get("only") or []] or None
 
@@ -530,11 +531,11 @@ class BookJobs:
                     resolve=self._book_resolver(book),
                     on_progress=report,
                     # So the batch handle reaches disk before the wait starts.
-                    save=self.library.save_book,
+                    save=lambda b: self.library.save_book(b, adopt="editorial"),
                     log=log, should_stop=lambda: job.cancelled,
                 )
             finally:
-                self.library.save_book(book)
+                self.library.save_book(book, adopt="editorial")
             job.result["book_id"] = book.id
             flagged_now = illustrate.flagged_pages(book)
             log("")
@@ -566,7 +567,7 @@ class BookJobs:
         finally:
             # A crash halfway through must not lose the pages -- and the
             # money -- that were already spent.
-            self.library.save_book(book)
+            self.library.save_book(book, adopt="editorial")
         job.result["book_id"] = book.id
 
         flagged = illustrate.flagged_pages(book)
@@ -603,7 +604,11 @@ class BookJobs:
             backend_name=self._backend(job, style), model=job.params.get("model"),
             style_reference=style_reference,
         )
-        member.sheet = f"cast/{target.name}"
+        # The draw took long enough for someone to edit text meanwhile:
+        # apply the result to a fresh copy instead of saving the stale one.
+        book = self.library.get_book(book.id)
+        if position < len(book.cast):
+            book.cast[position].sheet = f"cast/{target.name}"
         add_spend(book.spend, result.usage, "cast")
         self.library.save_book(book)
         job.result["book_id"] = book.id
@@ -708,7 +713,9 @@ class BookJobs:
                 log=log, should_stop=lambda: job.cancelled,
             )
         finally:
-            self.library.save_book(book)  # keep what was already narrated and paid
+            # Keep what was already narrated and paid; adopt any text edited
+            # while the narration ran.
+            self.library.save_book(book, adopt="editorial")
         job.result["book_id"] = book.id
         self._report_spend(book, log)
 

@@ -461,7 +461,9 @@ class BookApi:
 
         if changed:
             book.touch()
-        self.library.save_book(book)
+        # The editor owns the words; whatever a render finished meanwhile is
+        # adopted from disk rather than clobbered.
+        self.library.save_book(book, adopt="rendered")
         return {"ok": True, "book_id": book.id}
 
     def book_delete(self, book_id: str, _query, _body) -> dict[str, Any]:

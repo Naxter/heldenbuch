@@ -94,7 +94,7 @@ def _encode_multipart(fields: dict[str, str], files: list[tuple[str, Path]]) -> 
     return b"".join(parts), f"multipart/form-data; boundary={boundary}"
 
 
-def _request(url: str, body: bytes, content_type: str, key: str, timeout: int = 300) -> dict:
+def _request(url: str, body: bytes, content_type: str, key: str, timeout: int = 900) -> dict:
     request = urllib.request.Request(
         url,
         data=body,
@@ -104,8 +104,24 @@ def _request(url: str, body: bytes, content_type: str, key: str, timeout: int = 
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
+    except TimeoutError as exc:
+        # Never retried. The request very likely completed on their side and
+        # was billed; drawing it again would pay for the same image twice, and
+        # there is no idempotency key to make the retry free.
+        raise BackendError(
+            f"OpenAI hat nach {timeout} s nicht geantwortet. Das Bild wurde "
+            "vermutlich trotzdem berechnet — vor einem neuen Versuch die "
+            "Nutzung im OpenAI-Konto prüfen."
+        ) from exc
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")[:500]
+        # An exhausted quota also arrives as 429, and routing every 429 to the
+        # transient branch made the advice below unreachable for the most
+        # likely first-run failure there is.
+        if exc.code == 429 and explain_provider_error(detail):
+            raise BackendError(
+                f"{explain_provider_error(detail)}\n\nOpenAI (429): {detail[:300]}"
+            ) from exc
         if exc.code == 429 or exc.code >= 500:
             raise RuntimeError(f"OpenAI transient error ({exc.code}): {detail}") from exc
         # Surface the human-readable message, not the JSON envelope -- and

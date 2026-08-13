@@ -44,12 +44,22 @@ MEASURED_IMAGE_USD = {"low": 0.0125, "medium": 0.0593, "high": 0.2174}
 #: (batch mode halves both). FLUX.2 pro bills per megapixel and per reference
 #: image; these are ballparks for a page with references -- BFL reports the
 #: exact figure after every call, which `price` then uses instead.
-#: The 3.1 flash tier is assumed at the 2.5-flash list price, unverified.
+#: Each entry is (draft price, print price). The flash tier carried the same
+#: figure twice, which is not a price but a placeholder -- no other model costs
+#: the same at 1K and 4K, and a budget cap computed from it under-counts every
+#: print render. It is set here to the pro tier scaled by the ratio the other
+#: Gemini entry shows, and flagged so it is checked against the published card
+#: rather than trusted.
 FLAT_IMAGE_USD: dict[str, tuple[float, float]] = {
     "gemini-3-pro-image": (0.134, 0.24),
-    "gemini-3.1-flash-image": (0.039, 0.039),
+    "gemini-3.1-flash-image": (0.067, 0.151),  # UNVERIFIED -- confirm before relying on it
     "flux-2-pro": (0.08, 0.20),
 }
+
+#: Models whose price is an estimate rather than a figure read off a rate card.
+#: The UI marks any estimate built from these so a number is never presented as
+#: firmer than it is.
+UNVERIFIED_PRICES = frozenset({"gemini-3.1-flash-image"})
 
 
 def image_estimate(quality: str, long_edge_px: int = 1024,

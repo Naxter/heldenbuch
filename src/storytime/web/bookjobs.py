@@ -522,6 +522,11 @@ class BookJobs:
                     check_provider=checker,
                     only=only,
                     redraw=bool(params.get("redraw")),
+                    # The UI offers the cap and the batch checkbox side by
+                    # side and sends both; only the interactive path was
+                    # reading it, so the cap did nothing in batch mode.
+                    budget_usd=(float(params["budget_usd"])
+                                if params.get("budget_usd") else None),
                     resolve=self._book_resolver(book),
                     on_progress=report,
                     log=log, should_stop=lambda: job.cancelled,

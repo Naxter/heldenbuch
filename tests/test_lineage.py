@@ -290,3 +290,48 @@ def test_image_writes_are_atomic(tmp_path, monkeypatch):
 
     assert target.read_bytes() == before
     assert not list(tmp_path.glob("*.tmp"))
+
+
+class TestTextCallsAreMetered:
+    """Story, revision, translation and every per-page check cost real money
+    and recorded none of it -- roughly a tenth of a finished book, missing
+    from the one number the app shows."""
+
+    @staticmethod
+    def _usage_shapes():
+        from storytime.llm import _usage
+
+        class GeminiMeta:
+            prompt_token_count = 2200
+            candidates_token_count = 300
+
+        return [
+            _usage("gpt-5.6-terra", {"usage": {"prompt_tokens": 2200,
+                                               "completion_tokens": 300}}),
+            _usage("gpt-5.6-terra", {"usage": {"input_tokens": 2200,
+                                               "output_tokens": 300}}),
+            _usage("gpt-5.6-terra", GeminiMeta()),
+        ]
+
+    def test_every_provider_reports_the_same_two_numbers(self):
+        for usage in self._usage_shapes():
+            assert usage == {"model": "gpt-5.6-terra",
+                             "input_tokens": 2200, "output_tokens": 300}
+
+    def test_a_call_with_no_usage_block_records_nothing(self):
+        from storytime.llm import _usage
+
+        assert _usage("m", {}) == {}
+        assert _usage("m", None) == {}
+
+    def test_the_check_lands_in_the_ledger(self):
+        from storytime.pricing import add, price
+
+        usage = self._usage_shapes()[0]
+        assert price(usage) > 0
+
+        spend: dict = {}
+        for _ in range(17):
+            add(spend, usage, "check")
+        assert spend["by"]["check"]["calls"] == 17
+        assert spend["usd"] == pytest.approx(17 * price(usage), rel=1e-6)

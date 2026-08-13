@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import abc
 import os
+import random
+import re
 import time
 from pathlib import Path
 
@@ -55,6 +57,28 @@ def explain_provider_error(detail: str) -> str | None:
     return None
 
 
+#: Providers say how long to wait either in a Retry-After header or in the
+#: error text. Honouring it beats guessing, and is the difference between one
+#: successful retry and three failures in six seconds.
+_RETRY_AFTER = re.compile(r"retry[- ]after[\"':\s]+(\d+(?:\.\d+)?)", re.IGNORECASE)
+
+
+def _retry_after(exc: Exception) -> float | None:
+    header = getattr(getattr(exc, "headers", None), "get", lambda _k: None)("Retry-After")
+    if header:
+        try:
+            return min(120.0, float(header))
+        except (TypeError, ValueError):
+            pass
+    match = _RETRY_AFTER.search(str(exc))
+    if match:
+        try:
+            return min(120.0, float(match.group(1)))
+        except ValueError:
+            pass
+    return None
+
+
 class Backend(abc.ABC):
     #: short id used on the command line and in output paths
     name: str = "base"
@@ -92,10 +116,15 @@ class Backend(abc.ABC):
                 data, cost_note = self._generate(req)
             except BackendError:
                 raise
-            except Exception as exc:  # network hiccups, 5xx, timeouts
+            except Exception as exc:  # network hiccups, 5xx, rate limits
                 last_error = exc
                 if attempt < retries:
-                    time.sleep(2 ** attempt * 2)
+                    # 2 s then 4 s is shorter than the minute most image APIs
+                    # reset a rate limit over, and with several pages drawing
+                    # at once every worker used to come back at the same
+                    # instant. Wait long enough to matter, and stagger it.
+                    delay = _retry_after(exc) or (5.0 * (3 ** attempt))
+                    time.sleep(delay * random.uniform(0.7, 1.3))
                     continue
                 break
             else:

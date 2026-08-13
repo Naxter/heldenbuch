@@ -1429,7 +1429,7 @@ async function renderBook() {
         <button class="btn ghost" onclick="go('story')">Text ändern</button>
         ${pickerHtml()}${qualityPicker}
         ${missing.images
-          ? `<button class="btn" onclick="illustrate(false)">
+          ? `<button class="btn" onclick="illustrateAll()">
               ${drawn ? "Fehlende Bilder zeichnen" : "Bilder zeichnen"}
               (${missing.images}) · ${eur(missing.usd)}</button>`
           : `<button class="btn" onclick="redrawAll()">Alle Seiten neu zeichnen
@@ -1514,7 +1514,7 @@ function storyboardCard(book, language, missing) {
       ${rows}</table></div>
     <div class="row" style="margin-top:1rem">
       <button class="btn ghost" onclick="go('story')">Noch etwas ändern</button>
-      <button class="btn" onclick="illustrate(false)">Passt — zeichnen (${missing.images} · ${eur(missing.usd)})</button>
+      <button class="btn" onclick="illustrateAll()">Passt — zeichnen (${missing.images} · ${eur(missing.usd)})</button>
     </div></div>`;
 }
 
@@ -1944,6 +1944,17 @@ function illustrate(redraw, only) {
   runJob("book_illustrate",
     { book_id: S.bookId, redraw: !!redraw, only: only || [], ...drawParams() },
     only ? `Seite ${only.join(", ")} wird gezeichnet` : "Bilder werden gezeichnet", renderBook);
+}
+// The first full render is the longest and, at print quality, by far the most
+// expensive thing this app does -- and it was the one paid action with no
+// confirmation, no cost ceiling and no batch option, while the cheaper repeat
+// actions had all three.
+function illustrateAll() {
+  const missing = currentBook?.missing || {};
+  bigRunModal("Alle fehlenden Bilder zeichnen?",
+    `${missing.images || 0} Bild(er) werden gezeichnet.`,
+    "Zeichnen", { book_id: S.bookId, redraw: false, only: [] },
+    "Bilder werden gezeichnet");
 }
 function undoPage(index) {
   runJob("book_undo", { book_id: S.bookId, index }, `Seite ${index} zurück`, renderBook);

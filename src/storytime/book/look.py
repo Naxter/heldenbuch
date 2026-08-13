@@ -190,9 +190,20 @@ DESCRIBE_IMAGE_SYSTEM = (
     "You look at a picture and write down its visual technique so that an "
     "image generation model can reproduce the same look on completely "
     "different subjects. You describe the medium and its artefacts -- paper, "
-    "brush, pencil, print, render, fabric, light -- and the palette, line "
-    "quality and level of detail. You never describe what the picture depicts. "
-    "You never name an artist. Reply with JSON only."
+    "brush, pencil, print, render, fabric -- along with line quality and level "
+    "of detail. You never describe what the picture depicts. You never name an "
+    "artist or a copyrighted character.\n\n"
+    "A style is a medium, not a set. This description is appended to every "
+    "page of a book, so anything about *where* the reference picture happens "
+    "or *when* overrides what each page asked for. Never mention a location, "
+    "a habitat, a time of day, a weather condition or a specific lighting "
+    "set-up: no jungle, no forest, no sunset, no dappled sunlight through "
+    "leaves, no golden hour. Describe how light behaves in the medium -- soft "
+    "or hard edges, flat or volumetric shading, how highlights fall -- not "
+    "what is lighting the scene. Palette means the character of the colour "
+    "(muted, chalky, high-contrast, warm-biased), not a list of the scenery's "
+    "colours.\n\n"
+    "Reply with JSON only."
 )
 
 
@@ -211,9 +222,10 @@ def describe_style_from_image(
         "other scenes.\n\n"
         'Reply as {"name": "...", "description": "..."} where name is two or '
         "three words in German for a menu entry, and description is three to "
-        "five English sentences naming the medium, palette, line quality, "
-        "lighting and level of detail, ending with what to avoid. Say nothing "
-        "about the subject of the picture."
+        "five English sentences naming the medium, the character of the "
+        "palette, line quality, how the medium renders light, and level of "
+        "detail, ending with what to avoid. Say nothing about the subject of "
+        "the picture, and nothing about where or when it happens."
     )
     payload = complete_json(DESCRIBE_IMAGE_SYSTEM, user, images=[path],
                             provider=provider, model=model) or {}

@@ -818,6 +818,7 @@ def illustrate_book_batch(
     budget_usd: float | None = None,
     resolve=None,
     on_progress=None,
+    save=None,
     log=print,
     should_stop=None,
 ) -> Book:
@@ -839,13 +840,25 @@ def illustrate_book_batch(
     requests = []
     output = output_for(book.render_quality)
 
-    if wanted is None and (redraw or not book.cover):
+    # A batch left behind by an earlier run is collected before anything new is
+    # ordered. Google has already been paid for it; submitting a second batch
+    # for the same pages would pay twice and throw the first away.
+    resume_job = (book.pending_batch or {}).get("job")
+    if resume_job:
+        by_name = {f"page_{p.index:02d}.png": p for p in book.pages}
+        for name in (book.pending_batch or {}).get("targets", []):
+            todo.append((by_name.get(name), pages_dir / name))
+        log(f"Ein Batch von einem früheren Lauf ist noch offen ({len(todo)} "
+            "Bild(er)) — er wird zuerst eingesammelt.")
+        requests = [None] * len(todo)  # not resubmitted, only collected
+
+    if not resume_job and wanted is None and (redraw or not book.cover):
         references, named = _attach(sheet, list(book.cast), resolve, 5)
         requests.append(GenRequest(prompt=cover_prompt(book, hero, style, named),
                                    reference_images=references, output=output))
         todo.append((None, pages_dir / "cover.png"))
 
-    for page in sorted(book.pages, key=lambda p: p.index):
+    for page in sorted(book.pages, key=lambda p: p.index) if not resume_job else []:
         target = pages_dir / f"page_{page.index:02d}.png"
         if wanted is not None and page.index not in wanted:
             continue
@@ -880,10 +893,23 @@ def illustrate_book_batch(
             log("Der Kostendeckel lässt kein einziges Bild zu.")
             return book
 
+    def remember(job_name: str) -> None:
+        book.pending_batch = {
+            "job": job_name,
+            "targets": [str(target.name) for _, target in todo],
+        }
+        if save is not None:
+            save(book)
+
     results = gemini_mod.run_batch(
         model, requests, [target for _, target in todo],
         log=log, should_stop=stop, on_progress=on_progress,
+        on_submitted=remember, resume_job=resume_job,
     )
+    # Collected -- the handle has done its job and must not be resumed again.
+    book.pending_batch = {}
+    if save is not None:
+        save(book)
 
     drawn = 0
     for (page, target), result in zip(todo, results):

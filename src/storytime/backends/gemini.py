@@ -140,6 +140,8 @@ def run_batch(
     should_stop=None,
     on_progress=None,
     poll_s: int = 20,
+    on_submitted=None,
+    resume_job: str | None = None,
 ) -> list[dict]:
     """Submit every image as one batch job and wait it out.
 
@@ -147,6 +149,12 @@ def run_batch(
     into spare capacity -- minutes to hours, guaranteed within 24 h. Returns
     one dict per request, aligned with the input order: either
     {"data": bytes, "usage": {...}} or {"error": str}.
+
+    `on_submitted` is handed the job name the moment Google accepts it, before
+    any waiting starts, so the caller can write it down. Google bills a batch
+    whether or not anyone is still listening, so a handle held only in this
+    function's stack means a restart during the wait pays full price for images
+    that can never be collected. `resume_job` picks such a job back up.
     """
     from ..pricing import FLAT_IMAGE_USD
 
@@ -163,17 +171,25 @@ def run_batch(
             uploaded[path] = (handle.uri, handle.mime_type or "image/png")
         return uploaded[path]
 
-    unique_refs = {Path(p) for req in requests for p in req.reference_images}
-    log(f"{len(requests)} Bilder werden als Batch eingereicht "
-        f"({len(unique_refs)} Referenzbilder, je einmal hochgeladen) ...")
-    job = client.batches.create(
-        model=backend.model,
-        src=build_inline_requests(requests, uri_for),
-        config={"display_name": "storytime-batch"},
-    )
-    log(f"Batch angenommen: {job.name}")
-    log("Google nimmt sich Zeit -- Minuten bis Stunden, dafuer der halbe "
-        "Preis. Dieser Auftrag wartet und sammelt das Ergebnis ein.")
+    if resume_job:
+        job = client.batches.get(name=resume_job)
+        log(f"Laufender Batch wird wieder aufgenommen: {resume_job}")
+    else:
+        unique_refs = {Path(p) for req in requests for p in req.reference_images}
+        log(f"{len(requests)} Bilder werden als Batch eingereicht "
+            f"({len(unique_refs)} Referenzbilder, je einmal hochgeladen) ...")
+        job = client.batches.create(
+            model=backend.model,
+            src=build_inline_requests(requests, uri_for),
+            config={"display_name": "storytime-batch"},
+        )
+        # Written down before the first sleep: from here on Google will bill
+        # this work whether or not this process survives to collect it.
+        if on_submitted:
+            on_submitted(job.name)
+        log(f"Batch angenommen: {job.name}")
+        log("Google nimmt sich Zeit -- Minuten bis Stunden, dafuer der halbe "
+            "Preis. Dieser Auftrag wartet und sammelt das Ergebnis ein.")
 
     last_state = ""
     while True:

@@ -327,6 +327,11 @@ class Book:
     #: language code -> back-cover text. Separate from the dedication, which is
     #: written to one child and belongs inside the book, not on the outside.
     blurb: dict[str, str] = field(default_factory=dict)
+    #: an accepted batch render that has not been collected yet:
+    #: {"job": "<provider job name>", "targets": ["pages/page_01.png", ...]}.
+    #: Google bills a batch whether or not anyone waits for it, so the handle
+    #: outlives the process that submitted it and the next run resumes it.
+    pending_batch: dict[str, Any] = field(default_factory=dict)
 
     # -- locked references. A book keeps its own copies of the character
     # sheet it was drawn from (under refs/ in the book folder), so changing

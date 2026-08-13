@@ -171,11 +171,16 @@ class BookJobs:
         folder.mkdir(parents=True, exist_ok=True)
 
         photos: list[Path] = []
-        for index, item in enumerate((params.get("photos") or [])[:4], start=1):
+        offered = (params.get("photos") or [])[:4]
+        for index, item in enumerate(offered, start=1):
             saved = save_upload(item, folder / "photos", f"photo_{index}")
             if saved:
                 photos.append(saved)
         hero.photos = [self.library.relative(p) for p in photos]
+        if len(photos) < len(offered):
+            # A rejected upload used to vanish without a word.
+            log(f"{len(offered) - len(photos)} Datei(en) waren keine lesbaren "
+                "Bilder und wurden verworfen.")
 
         if photos:
             hero.source = "photo"

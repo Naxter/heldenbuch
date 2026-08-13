@@ -130,7 +130,11 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .chips{display:flex;flex-wrap:wrap;gap:.45rem;}
 .chip{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:99px;
   border:1px solid var(--line);background:var(--panel);font-size:.88rem;cursor:pointer;user-select:none;}
-.chip input{display:none;}
+/* Hidden but focusable: display:none took the checkboxes out of the tab
+   order, and these chips spend money. */
+.chip{position:relative;}
+.chip input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;}
+.chip:focus-within{outline:2px solid var(--accent);outline-offset:2px;}
 .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
 
 .pick{border:1px solid var(--line);background:var(--panel);border-radius:12px;overflow:hidden;
@@ -326,7 +330,7 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
          nothing else could be heard. -->
     <p id="dsay" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
     <div class="right">
-      <button class="btn ghost tiny" onclick="jobCenter()"
+      <button class="btn ghost tiny" id="djobs" onclick="jobCenter()"
         title="Alle laufenden und letzten Aufträge">Aufträge</button>
       <button class="btn ghost tiny" id="dtoggle">Details</button>
       <button class="btn ghost tiny" id="dcancel">Abbrechen</button>
@@ -348,22 +352,24 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
 <dialog id="modal" class="modal"></dialog>
 <div id="toast" class="hide" role="status" aria-live="polite"></div>
 
-<div id="reader">
+<div id="reader" role="dialog" aria-modal="true" aria-label="Vorlese-Ansicht">
   <button class="btn ghost tiny close" onclick="closeReader()">Schließen</button>
   <div class="sheet">
     <img id="r-img" alt="">
     <div class="words" id="r-text"></div>
   </div>
   <div class="bar">
-    <button onclick="turn(-1)" title="Zurückblättern (Pfeil links)">◀</button>
+    <button onclick="turn(-1)" aria-label="Zurückblättern"
+      title="Zurückblättern (Pfeil links)">◀</button>
     <button id="r-play" onclick="toggleAudio()">▶ Vorlesen</button>
     <button id="r-auto" onclick="toggleAuto()"
       title="Liest jede Seite vor und blättert von selbst weiter">▶▶ Auto</button>
-    <span class="counter" id="r-count"
+    <span class="counter" id="r-count" aria-live="polite"
       title="Blättern: Pfeiltasten oder Leertaste · Schließen: Esc"></span>
-    <select id="r-lang" onchange="readerLangChanged()"
+    <select id="r-lang" onchange="readerLangChanged()" aria-label="Sprache"
       style="width:auto;background:rgba(255,255,255,.12);color:#f6efe2;border-color:rgba(255,255,255,.2)"></select>
-    <button onclick="turn(1)" title="Weiterblättern (Pfeil rechts, Leertaste)">▶</button>
+    <button onclick="turn(1)" aria-label="Weiterblättern"
+      title="Weiterblättern (Pfeil rechts, Leertaste)">▶</button>
   </div>
   <audio id="r-audio" hidden></audio>
 </div>
@@ -434,6 +440,7 @@ const LOCALES = {
     close: "Schließen",
     books_on_shelf: "Bücher im Regal", pages_drawn: "Seiten gezeichnet",
     services: "Bilddienste",
+    ready: "Bereit", jobs: "Aufträge", details: "Details", cancel: "Abbrechen",
   },
   en: {
     tagline: "Make your own picture books",
@@ -447,6 +454,7 @@ const LOCALES = {
     close: "Close",
     books_on_shelf: "Books on the shelf", pages_drawn: "Pages drawn",
     services: "Image services",
+    ready: "Ready", jobs: "Jobs", details: "Details", cancel: "Cancel",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -458,6 +466,12 @@ function applyChrome() {
   $("nav-books").textContent = t("nav_books");
   $("nav-lab").textContent = t("nav_lab");
   $("settings-btn").setAttribute("aria-label", t("settings"));
+  $("djobs").textContent = t("jobs");
+  $("dtoggle").textContent = t("details");
+  $("dcancel").textContent = t("cancel");
+  $("dclose").textContent = t("close");
+  if ($("dtitle").textContent === "Bereit" || $("dtitle").textContent === "Ready")
+    $("dtitle").textContent = t("ready");
   document.title = pageTitle(S.screen);
 }
 
@@ -507,8 +521,11 @@ const S = {
 
 function toast(message) {
   const el = $("toast");
-  el.textContent = message;
+  // Unhide first, then set the text a frame later: a live region whose text
+  // changes while it is display:none is never announced.
   el.classList.remove("hide");
+  el.textContent = "";
+  requestAnimationFrame(() => { el.textContent = message; });
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => el.classList.add("hide"), 3500);
 }
@@ -1123,7 +1140,7 @@ async function renderHero() {
             role="button" tabindex="0" aria-label="Figur ${esc(h.name || "ohne Namen")} wählen">
             <button class="xdel" title="Figur löschen" aria-label="Figur ${esc(h.name || "")} löschen"
               onclick="event.stopPropagation();deleteHero('${h.id}')">×</button>
-            ${h.sheet_url ? `<button class="xzoom" title="Groß ansehen"
+            ${h.sheet_url ? `<button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
               onclick="event.stopPropagation();zoom('${esc(h.sheet_url)}')">🔍</button>` : ""}
             ${h.sheet_url ? `<img src="${esc(tn(h.sheet_url))}" loading="lazy" decoding="async" alt="Charakterblatt von ${esc(h.name || "der Figur")}">` : ""}
             <div class="cap"><b>${esc(h.name || "Ohne Namen")}</b>
@@ -1143,8 +1160,9 @@ async function renderHero() {
           </div>
           <div class="thumbs" id="h-thumbs"></div>
           <p class="small muted" style="margin-top:.6rem">Die Fotos bleiben auf diesem
-            Rechner und werden automatisch aufrecht gedreht. Sie gehen einmal an den
-            Bilddienst, um die Figur zu zeichnen — danach arbeite ich nur mit der Zeichnung.</p>
+            Rechner und werden automatisch aufrecht gedreht. Sie gehen nur für diesen
+            Schritt an Text- und Bilddienst — einmal je gezeichneter Variante — danach
+            arbeite ich nur mit der Zeichnung.</p>
         </div>
         <div>
           <label class="f"><span>Beschreibung (nur nötig, wenn du keine Fotos nimmst)</span>
@@ -1181,7 +1199,7 @@ function heroVariants(hero) {
     <div class="grid g3" style="margin-top:1.2rem">` + hero.variant_urls.map((v) => `
       <div class="pick ${v.path === hero.sheet ? "on" : ""}" role="button" tabindex="0"
         aria-label="Diese Variante wählen" onclick="pickSheet('${v.path}')">
-        <button class="xzoom" title="Groß ansehen"
+        <button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
           onclick="event.stopPropagation();zoom('${esc(v.url)}')">🔍</button>
         <img src="${esc(tn(v.url))}" loading="lazy" decoding="async" alt="Charakterblatt-Variante">
         <div class="cap"><small>${v.path === hero.sheet ? "ausgewählt" : "auswählen"}</small></div>
@@ -1353,7 +1371,7 @@ async function renderLook() {
           onclick="${isReady ? `pickStyle('${s.id}')` : `styleDetail('${s.id}')`}">
           <button class="xdel" title="Stil löschen"
             onclick="event.stopPropagation();deleteStyle('${s.id}')">×</button>
-          ${thumb ? `<button class="xzoom" title="Groß ansehen"
+          ${thumb ? `<button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
             onclick="event.stopPropagation();zoom('${esc(thumb)}')">🔍</button>` : ""}
           ${thumb ? `<img src="${esc(tn(thumb))}" loading="lazy" decoding="async" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
           <div class="cap"><b>${esc(s.name)}</b>
@@ -1372,7 +1390,7 @@ async function renderLook() {
       }).join("") + `</div></div>` : ""}`;
 
   $("preset-list").innerHTML = (S.status.style_presets || []).map((p) => `
-    <label class="chip" onclick="tryPreset('${p.key}')" title="${esc(p.hint)} — ${eur(styleTryUsd())}">${esc(p.name)}</label>
+    <button type="button" class="chip" onclick="tryPreset('${p.key}')" title="${esc(p.hint)} — ${eur(styleTryUsd())}">${esc(p.name)}</button>
   `).join("");
 
   $("style-wish-go").onclick = () => {
@@ -2641,8 +2659,10 @@ function openReader() {
   reader.index = 0;
   reader.auto = false;
   $("r-auto").classList.remove("on");
+  reader.opener = document.activeElement;
   $("reader").classList.add("on");
   document.addEventListener("keydown", readerKeys);
+  document.querySelector("#reader .close").focus();
   showPage(0);
 }
 
@@ -2652,6 +2672,8 @@ function closeReader() {
   const audio = $("r-audio"); audio.pause(); reader.playing = false;
   reader.auto = false; clearTimeout(reader.timer);
   $("r-auto").classList.remove("on");
+  if (reader.opener && document.contains(reader.opener)) reader.opener.focus();
+  reader.opener = null;
 }
 
 function readerLangChanged() {
@@ -2660,7 +2682,27 @@ function readerLangChanged() {
 }
 
 function readerKeys(event) {
-  if (event.key === "Escape") closeReader();
+  if (event.key === "Escape") { closeReader(); return; }
+  if (event.key === "Tab") {
+    // Focus stays inside the overlay while it is open.
+    const focusable = [...document.querySelectorAll(
+      "#reader button:not([disabled]), #reader select")];
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus();
+    }
+    return;
+  }
+  // Keys that operate the focused control must keep doing so: Space clicks
+  // a button, arrows move the language select. Everything else pages.
+  const el = event.target instanceof Element ? event.target : null;
+  if (el && el.closest("#reader")) {
+    if (el.matches("select")) return;
+    if (el.matches("button") && event.key === " ") return;
+  }
   if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); turn(1); }
   if (event.key === "ArrowLeft") turn(-1);
 }
@@ -2671,6 +2713,10 @@ function showPage(index) {
   const page = reader.pages[reader.index];
   const language = $("r-lang").value;
   $("r-img").src = page.image_url;
+  $("r-img").alt = `Illustration Seite ${page.index}`;
+  // So a screen reader pronounces Russian as Russian, not as broken German.
+  if (language === "__all") $("r-text").removeAttribute("lang");
+  else $("r-text").setAttribute("lang", language);
   let track;
   if (language === "__all") {  // every language stacked, for bilingual reading
     const codes = currentBook.languages;

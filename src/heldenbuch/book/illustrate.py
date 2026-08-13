@@ -799,13 +799,18 @@ def illustrate_book(
         nonlocal done
         target = pages_dir / f"page_{page.index:02d}.png"
         members = book.cast_for(page)
-        page.error = None
+        # Page fields are written under the lock: `on_progress` serialises the
+        # whole book from another thread, and asdict over a dict a worker is
+        # mutating at that moment is a torn save.
+        with lock:
+            page.error = None
 
         # Keep the outgoing version so a redraw can be undone.
         if target.is_file():
             keep = pages_dir / f"page_{page.index:02d}_v{len(page.history) + 1}.png"
             shutil.copy2(target, keep)
-            page.history.append(f"pages/{keep.name}")
+            with lock:
+                page.history.append(f"pages/{keep.name}")
 
         # The brief the illustrator is actually given, so the checker grades
         # against the same words rather than the raw stored text.
@@ -819,12 +824,13 @@ def illustrate_book(
                     backend_name=backend_name, model=model,
                     insist=attempt == 2, resolve=resolve,
                 )
-                page.image = f"pages/{target.name}"
-                page.image_from_rev = page.illustration_rev  # picture matches the brief again
+                with lock:
+                    page.image = f"pages/{target.name}"
+                    page.image_from_rev = page.illustration_rev  # picture matches the brief again
                 spend(result.usage, "pages")
             except Exception as exc:
-                page.error = f"{type(exc).__name__}: {exc}"
                 with lock:
+                    page.error = f"{type(exc).__name__}: {exc}"
                     log(f"  Seite {page.index}: fehlgeschlagen — {exc}")
                 return
 
@@ -841,7 +847,8 @@ def illustrate_book(
                     cast_sheets=judge_refs[1:],
                     cast_names=[m.name for m in judge_named],
                 )
-            page.check["attempts"] = attempt
+            with lock:
+                page.check["attempts"] = attempt
             if best is None or _better(page.check, best[1]):
                 # Keep this attempt's pixels aside before the next one
                 # overwrites them, so a worse redraw can be undone.
@@ -862,7 +869,8 @@ def illustrate_book(
         if best is not None:
             if best[1] is not page.check and _better(best[1], page.check):
                 shutil.copy2(best[0], target)
-                page.check = best[1]
+                with lock:
+                    page.check = best[1]
             for leftover in pages_dir.glob(f"page_{page.index:02d}_try*.png"):
                 leftover.unlink(missing_ok=True)
 

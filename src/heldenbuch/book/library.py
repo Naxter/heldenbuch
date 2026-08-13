@@ -13,6 +13,7 @@ copying one directory.
 from __future__ import annotations
 
 import shutil
+import threading
 from dataclasses import fields
 from pathlib import Path
 from typing import Any, TypeVar
@@ -37,6 +38,13 @@ class Library:
         self.root = root
         for name in ("heroes", "styles", "books"):
             (root / name).mkdir(parents=True, exist_ok=True)
+        self._locks: dict[str, threading.Lock] = {}
+        self._locks_guard = threading.Lock()
+
+    def book_lock(self, book_id: str) -> threading.Lock:
+        """One lock per book, shared by every thread in this process."""
+        with self._locks_guard:
+            return self._locks.setdefault(str(book_id), threading.Lock())
 
     # ---------------------------------------------------------------- paths
 
@@ -170,11 +178,59 @@ class Library:
             book.ref_sources[kind] = source_rel
         return book
 
-    def save_book(self, book: Book) -> Book:
+    #: Fields the person editing writes. A background job that saves a copy it
+    #: has held for minutes adopts these from disk first, so a text corrected
+    #: mid-render is not reverted by the render's next save.
+    _EDITORIAL_BOOK = ("title", "idea", "age", "languages", "dedication",
+                       "rhyme", "render_quality", "narration_voice", "cast",
+                       "photo_page", "blurb", "content_rev")
+    _EDITORIAL_PAGE = ("text", "text_rev", "illustration", "illustration_rev",
+                       "layout", "cast")
+    #: Fields the background jobs write. The editor adopts these from disk so
+    #: saving a text edit cannot throw away a page drawn since the screen was
+    #: opened.
+    _RENDERED_BOOK = ("cover", "cover_check", "spend", "pending_batch")
+    _RENDERED_PAGE = ("image", "image_from_rev", "check", "history", "error",
+                      "audio", "audio_from_rev")
+
+    def save_book(self, book: Book, adopt: str | None = None) -> Book:
+        """Write the book, without clobbering the other writer.
+
+        Two parties save whole books: the editor (seconds-old copies) and
+        background jobs (minutes-old copies). `adopt` names what this caller
+        does NOT own -- "editorial" for jobs, "rendered" for the editor. When
+        the disk copy is newer than what this copy was loaded from, the other
+        party's fields are adopted from disk before writing, so neither side's
+        work is lost. Saves without `adopt` keep the old clobbering semantics
+        and should hold only briefly-loaded books.
+        """
         import time
 
-        book.updated = time.time()
-        save_json(self.book_dir(book.id) / "book.json", book.to_dict())
+        with self.book_lock(book.id):
+            path = self.book_dir(book.id) / "book.json"
+            loaded = getattr(book, "_loaded_updated", None)
+            if adopt and loaded is not None and path.is_file():
+                try:
+                    disk = Book.from_dict(load_json(path))
+                except (TypeError, ValueError, OSError):
+                    disk = None
+                if disk is not None and disk.updated > loaded:
+                    book_fields, page_fields = (
+                        (self._EDITORIAL_BOOK, self._EDITORIAL_PAGE)
+                        if adopt == "editorial"
+                        else (self._RENDERED_BOOK, self._RENDERED_PAGE))
+                    for name in book_fields:
+                        setattr(book, name, getattr(disk, name))
+                    by_index = {p.index: p for p in disk.pages}
+                    for page in book.pages:
+                        other = by_index.get(page.index)
+                        if other is None:
+                            continue
+                        for name in page_fields:
+                            setattr(page, name, getattr(other, name))
+            book.updated = time.time()
+            save_json(path, book.to_dict())
+            book._loaded_updated = book.updated
         return book
 
     def get_book(self, book_id: str) -> Book:
@@ -188,6 +244,8 @@ class Library:
         # The id steers every write path for this book, so take it from the
         # folder we actually loaded from rather than from the file's contents.
         book.id = path.parent.name
+        # Remembered so save_book can tell whether someone saved in between.
+        book._loaded_updated = book.updated
         return book
 
     def books(self) -> list[Book]:

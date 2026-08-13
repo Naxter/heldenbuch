@@ -668,8 +668,9 @@ def render_wrap_cover(
                (front_x + safety + int(safety * 0.5), safety + int(safety * 0.55)),
                inner_w - int(safety), align="center")
 
-    # Blurb on the back.
-    blurb = book.dedication.get(language, "") or title
+    # Blurb on the back. Never the dedication: that is written to one child and
+    # printed on the outside of a book that gets handed around.
+    blurb = (book.blurb or {}).get(language, "") or title
     box = (panel_w - 3 * safety, int(page_h * 0.30))
     font, lines, step = fit_text(blurb, family, "italic", box, max_size=int(page_h * 0.034))
     draw_lines(canvas, lines, font, step,
@@ -863,13 +864,20 @@ def export_pdf(
 
     interior = len(pages)
     if preset.pad_to_multiple > 1:
-        blank = Image.new("RGB", preset.page_px(), PAPER)
+        # Bare paper, not the cream the designed pages sit on. PAPER converts
+        # to a four-colour tint at about 9% coverage, so a page the reader
+        # thinks is empty would print as a screened wash -- billed as colour,
+        # and prone to mottling, which is exactly what light tints do on press.
+        blank = Image.new("RGB", preset.page_px(), (255, 255, 255))
         while len(pages) % preset.pad_to_multiple:
             pages.append(blank.copy())
 
     target.parent.mkdir(parents=True, exist_ok=True)
+    # Pillow's PDF writer JPEGs every page at its default quality of 75 with
+    # chroma subsampling, which puts ringing around typeset letterforms at
+    # 300 dpi. Neither is visible on screen and both are visible on paper.
     pages[0].save(target, "PDF", save_all=True, append_images=pages[1:],
-                  resolution=float(preset.dpi),
+                  resolution=float(preset.dpi), quality=95, subsampling=0,
                   title=book.title.get(language) or book.display_title())
 
     return {

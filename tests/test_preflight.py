@@ -99,12 +99,18 @@ def test_never_checked_pages_count_as_unknown(library):
     assert report["pages_unknown_check"] == [1, 2, 3]
 
 
-def test_low_dpi_warns_for_print_but_does_not_block(library):
+def test_low_dpi_blocks_a_print_export(library):
+    """It used to be a warning that left the export button enabled.
+
+    Every illustration is scaled up to fill the page, so the PDF reports the
+    preset's dpi whatever the artwork actually holds -- a print shop's own
+    preflight passes it, and the softness only shows when the book arrives.
+    Nothing downstream can catch this, so it has to stop here.
+    """
     book, resolve = _book(library, check=PASSED, px=512)  # ~59 dpi at 21.6 cm
     report = validate_export_readiness(book, PRESETS["print_square"], ["de"], resolve)
-    assert report["ok"] is True
-    assert report["state"] == "warnung"
-    assert any("dpi" in w for w in report["warnings"])
+    assert report["ok"] is False
+    assert any("dpi" in e for e in report["errors"])
 
 
 def test_dpi_is_judged_against_the_selected_format(library):

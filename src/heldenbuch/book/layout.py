@@ -504,6 +504,26 @@ def book_body_size(texts: list[str], preset: PrintPreset, family: str,
     return max(min_body_px(preset, age), smallest)
 
 
+def text_fits(text: str, preset: PrintPreset, age: str = "",
+              family: str = "georgia") -> bool:
+    """Can this page's words be set at a readable size at all?
+
+    Measured against the widest band the renderer will fall back to, so a
+    False here means no layout can hold them -- not that the first choice was
+    a poor one.
+    """
+    if not (text or "").strip():
+        return True
+    page_w, page_h = preset.page_px()
+    safety = preset.safety_px
+    box = (page_w - 3 * safety, int(page_h * 0.58) - safety)
+    _font, _lines, _step, fits = fit_body(
+        text, family, box, max_size=int(page_h * 0.045),
+        min_size=min_body_px(preset, age),
+    )
+    return fits
+
+
 def book_text_zone(images: list[Path | None], preset: PrintPreset) -> str:
     """The one zone the words sit in, across every page of this book.
 

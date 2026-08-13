@@ -24,7 +24,14 @@ from __future__ import annotations
 from typing import Any
 
 from .illustrate import check_status, cover_flagged
-from .layout import FONT_FAMILIES, PrintPreset, effective_dpi, find_font
+from .layout import (
+    FONT_FAMILIES,
+    PrintPreset,
+    effective_dpi,
+    find_font,
+    join_languages,
+    text_fits,
+)
 from .models import LANGUAGES, Book
 
 #: below this a 300-dpi print preset reads as visibly soft on paper
@@ -134,6 +141,21 @@ def validate_export_readiness(
             f"{len(pages_unknown)} Seite(n) sind ungeprüft — die Prüfung lief "
             "nicht oder brach ab: " + ", ".join(map(str, pages_unknown)) + "."
         )
+    # Text that cannot fit at a readable size. The renderer widens the box and
+    # falls back from vignette to a full page before giving up, so reaching
+    # here means the page is genuinely overfull -- and silently shrinking it
+    # instead is what printed 6 pt type for the oldest age band.
+    overfull = [
+        page.index for page in sorted(book.pages, key=lambda p: p.index)
+        if page.layout != "wordless"
+        and not text_fits(join_languages(page.text, languages), preset, book.age)
+    ]
+    if overfull:
+        (errors if is_print else warnings).append(
+            f"Zu viel Text für {len(overfull)} Seite(n) bei lesbarer Schriftgröße: "
+            + ", ".join(map(str, overfull)) + ". Kürzen oder auf zwei Seiten teilen."
+        )
+
     if low_dpi:
         # An error, not a warning. The PDF reports the resolution of the
         # *upscaled* bitmap, so a 1024 px illustration stretched onto a 300 dpi

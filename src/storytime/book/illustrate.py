@@ -284,6 +284,8 @@ def check_page(
     model: str | None = None,
     scene: str = "",
     spend: dict[str, Any] | None = None,
+    cast_sheets: list[Path] = (),
+    cast_names: list[str] = (),
 ) -> dict[str, Any]:
     """Has the hero survived onto this page -- and does the page show the scene?
 
@@ -332,12 +334,23 @@ def check_page(
         '"panelled": <true|false>, "notes": ["..."]}'
     )
 
+    # The judge used to see the hero sheet and the page, and nothing else, so
+    # a drifted dog or a recoloured dinosaur was invisible to it -- it caught
+    # them only when it happened to mention one in prose.
+    extra = [p for p in cast_sheets if Path(p).is_file()]
+    names = list(cast_names)[:len(extra)]
+    roster = "".join(
+        f"Image {n} is the reference for {name}.\n"
+        for n, name in enumerate(names, start=3)
+    )
     user = (
-        f"The character is {hero.name or 'the child'}.\n\n"
+        f"The character is {hero.name or 'the child'}.\n"
+        f"Image 1 is their reference sheet. Image 2 is the page.\n{roster}\n"
         "Score from 1 to 5:\n"
         "identity: 5 = unmistakably the same character; 4 = same, with one "
         "small detail off; 3 = the face or proportions have shifted; 1 = a "
-        "different character or not visible at all.\n"
+        "different character or not visible at all. Judge everyone who has a "
+        "reference image, not only the first, and take the lowest.\n"
         "style: 5 = the same illustration technique and palette as image 1.\n"
         f"{scene_block}{facts_block}\n"
         "List every concrete difference you can see as short phrases, for "
@@ -348,7 +361,7 @@ def check_page(
 
     try:
         payload = complete_json(
-            CHECK_SYSTEM, user, images=[sheet, page_image], provider=provider,
+            CHECK_SYSTEM, user, images=[sheet, page_image, *extra], provider=provider,
             model=model, spend=spend, what="check",
         ) or {}
         verdict["identity"] = max(1, min(5, int(payload.get("identity", 3))))
@@ -684,6 +697,17 @@ def illustrate_book(
                 )
                 book.cover = f"pages/{target.name}"
                 spend(result.usage, "cover")
+                if check:
+                    # Held to the same standard as a page. It is the image on
+                    # the shelf, and it was the only one nothing looked at.
+                    book.cover_check = check_page(
+                        target, sheet, hero, provider=check_provider,
+                        scene=single_scene(book.cover_illustration or ""),
+                        spend=book.spend,
+                    )
+                    if verdict_from(book.cover_check) == "failed":
+                        log("  Titelbild: bitte ansehen — "
+                            f"{(book.cover_check.get('notes') or ['abgedriftet'])[0]}")
             except Exception as exc:
                 log(f"  fehlgeschlagen: {exc}")
 
@@ -746,9 +770,16 @@ def illustrate_book(
             if not check:
                 break
 
+            # The judge gets the same reference bundle the illustrator did, so
+            # it can grade the cast as well as the hero.
+            judge_refs, judge_named = _attach(sheet, members, resolve, 6)
             with lock:
-                page.check = check_page(target, sheet, hero, provider=check_provider,
-                                        scene=scene_text, spend=book.spend)
+                page.check = check_page(
+                    target, sheet, hero, provider=check_provider,
+                    scene=scene_text, spend=book.spend,
+                    cast_sheets=judge_refs[1:],
+                    cast_names=[m.name for m in judge_named],
+                )
             page.check["attempts"] = attempt
             if best is None or _better(page.check, best[1]):
                 # Keep this attempt's pixels aside before the next one
@@ -950,6 +981,16 @@ def illustrate_book_batch(
             log(f"  Seite {page.index}: {word}")
 
     return book
+
+
+def cover_flagged(book: Book) -> bool:
+    """Does the cover need a person to look at it before printing?
+
+    Only reports a verdict that exists. A book drawn before the cover was
+    checked at all has no evidence either way, and inventing a complaint about
+    every older book would just teach people to ignore the flag.
+    """
+    return bool(book.cover_check) and verdict_from(book.cover_check) == "failed"
 
 
 def flagged_pages(book: Book) -> list[int]:

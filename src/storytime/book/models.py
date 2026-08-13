@@ -327,6 +327,11 @@ class Book:
     #: language code -> back-cover text. Separate from the dedication, which is
     #: written to one child and belongs inside the book, not on the outside.
     blurb: dict[str, str] = field(default_factory=dict)
+    #: the consistency verdict for the cover, in the same shape as Page.check.
+    #: The cover is the one image everybody sees first and it used to be the
+    #: only one nothing checked -- which is how a book called "Claudio und Pip"
+    #: shipped with the dog drawn as a second boy.
+    cover_check: dict[str, Any] = field(default_factory=dict)
     #: an accepted batch render that has not been collected yet:
     #: {"job": "<provider job name>", "targets": ["pages/page_01.png", ...]}.
     #: Google bills a batch whether or not anyone waits for it, so the handle

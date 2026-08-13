@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .illustrate import check_status
+from .illustrate import check_status, cover_flagged
 from .layout import FONT_FAMILIES, PrintPreset, effective_dpi, find_font
 from .models import LANGUAGES, Book
 
@@ -84,6 +84,12 @@ def validate_export_readiness(
         errors.append(
             f"Das Titelbild hat nur etwa {effective_dpi(cover, preset)} dpi — "
             "im Druck wird es weich."
+        )
+    if cover is not None and cover_flagged(book):
+        note = (book.cover_check.get("notes") or ["es weicht von der Vorlage ab"])[0]
+        errors.append(
+            f"Das Titelbild wurde beanstandet: {note}. Es ist das Bild, das man "
+            "zuerst sieht — erst ansehen, dann exportieren."
         )
 
     # ---- pages -------------------------------------------------------------

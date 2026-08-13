@@ -1,0 +1,179 @@
+"""Background jobs.
+
+Anything that costs money or takes more than a moment runs here: drawing a
+character sheet, writing a story, illustrating a book, exporting a PDF. Each
+job runs on its own thread and writes its log into a buffer the browser polls.
+
+One job runs at a time, globally — the book app and the benchmark share the
+same image APIs and rate limits, so running two at once makes both slower and
+the log unreadable. But asking for a second job *queues* it rather than
+refusing it: a twenty-minute print render should not lock you out of pressing
+anything else.
+"""
+
+from __future__ import annotations
+
+import itertools
+import threading
+import time
+import traceback
+from collections import deque
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+Worker = Callable[["Job", Callable[..., None]], None]
+
+
+@dataclass
+class Job:
+    id: str
+    action: str
+    params: dict[str, Any]
+    status: str = "queued"  # queued | running | done | failed | cancelled
+    lines: list[str] = field(default_factory=list)
+    #: whatever the worker wants to hand back to the browser
+    result: dict[str, Any] = field(default_factory=dict)
+    started: float = field(default_factory=time.time)
+    finished: float | None = None
+    error: str | None = None
+    #: (done, total) once the worker knows how much work lies ahead --
+    #: the drawer turns this into a progress bar
+    progress: tuple[int, int] | None = None
+    _cancel: threading.Event = field(default_factory=threading.Event, repr=False)
+
+    #: how many jobs are ahead of this one when it was accepted
+    queued_behind: int = 0
+
+    @property
+    def cancelled(self) -> bool:
+        return self._cancel.is_set()
+
+    def public(self, since: int = 0) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "action": self.action,
+            "params": {k: v for k, v in self.params.items() if k != "photos"},
+            "status": self.status,
+            "error": self.error,
+            "result": self.result,
+            "queued_behind": self.queued_behind,
+            "progress": ({"done": self.progress[0], "total": self.progress[1]}
+                         if self.progress else None),
+            "started": self.started,
+            "finished": self.finished,
+            "elapsed": round((self.finished or time.time()) - self.started, 1),
+            "lines": self.lines[since:],
+            "total_lines": len(self.lines),
+        }
+
+
+class JobManager:
+    def __init__(self, workers: dict[str, Worker] | None = None) -> None:
+        self.workers: dict[str, Worker] = dict(workers or {})
+        self._jobs: dict[str, Job] = {}
+        self._queue: deque[Job] = deque()
+        self._running: Job | None = None
+        self._lock = threading.Lock()
+        self._ids = itertools.count(1)
+
+    def register(self, workers: dict[str, Worker]) -> None:
+        self.workers.update(workers)
+
+    # ---------------------------------------------------------------- access
+
+    def get(self, job_id: str) -> Job | None:
+        return self._jobs.get(job_id)
+
+    def active(self) -> Job | None:
+        """The job currently running, or the next one waiting to."""
+        with self._lock:
+            if self._running and self._running.status == "running":
+                return self._running
+            return self._queue[0] if self._queue else None
+
+    def pending(self) -> int:
+        with self._lock:
+            return len(self._queue) + (1 if self._running else 0)
+
+    def recent(self, limit: int = 10) -> list[dict[str, Any]]:
+        jobs = sorted(self._jobs.values(), key=lambda j: j.started, reverse=True)
+        return [{k: v for k, v in j.public().items() if k != "lines"} for j in jobs[:limit]]
+
+    def cancel(self, job_id: str) -> bool:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if not job or job.status not in ("running", "queued"):
+                return False
+            job._cancel.set()
+            if job.status == "queued":
+                # Never started, so drop it outright.
+                if job in self._queue:
+                    self._queue.remove(job)
+                job.status = "cancelled"
+                job.finished = time.time()
+                job.lines.append("— aus der Warteschlange genommen —")
+                return True
+        job.lines.append("— wird abgebrochen, das aktuelle Bild wird noch fertig —")
+        return True
+
+    # ---------------------------------------------------------------- launch
+
+    def start(self, action: str, params: dict[str, Any]) -> Job:
+        worker = self.workers.get(action)
+        if worker is None:
+            raise ValueError(
+                f"unknown action {action!r}; valid: {', '.join(sorted(self.workers))}"
+            )
+        with self._lock:
+            job = Job(id=str(next(self._ids)), action=action, params=params)
+            job.queued_behind = len(self._queue) + (1 if self._running else 0)
+            self._jobs[job.id] = job
+            self._queue.append(job)
+            if job.queued_behind:
+                job.lines.append(
+                    f"— in der Warteschlange, {job.queued_behind} vor dir —"
+                )
+            should_start = self._running is None
+        if should_start:
+            self._pump()
+        return job
+
+    def _pump(self) -> None:
+        """Start the next queued job, if nothing is running."""
+        with self._lock:
+            if self._running is not None or not self._queue:
+                return
+            job = self._queue.popleft()
+            self._running = job
+            job.status = "running"
+            job.started = time.time()
+        threading.Thread(
+            target=self._execute, args=(job, self.workers[job.action]), daemon=True
+        ).start()
+
+    def _execute(self, job: Job, worker: Worker) -> None:
+        def log(*args) -> None:
+            text = " ".join(str(a) for a in args)
+            job.lines.extend(text.split("\n") if text else [""])
+
+        try:
+            worker(job, log)
+            job.status = "cancelled" if job.cancelled else "done"
+        except Exception as exc:
+            job.status = "failed"
+            # Domain errors (a provider refusal, a validation message) are
+            # written for the person reading the drawer; a traceback under
+            # them is developer noise. Genuinely unexpected exceptions keep
+            # theirs, because then the code is the suspect.
+            expected = isinstance(exc, (ValueError, RuntimeError, FileNotFoundError))
+            job.error = str(exc) if expected else f"{type(exc).__name__}: {exc}"
+            log("")
+            log(f"— fehlgeschlagen: {job.error} —")
+            if not expected:
+                for line in traceback.format_exc().splitlines()[-6:]:
+                    log(f"   {line}")
+        finally:
+            job.finished = time.time()
+            with self._lock:
+                self._running = None
+            self._pump()

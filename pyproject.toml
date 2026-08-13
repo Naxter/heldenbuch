@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "storytime"
+version = "0.1.0"
+description = "Personalised children's picture books, from a character sheet to a print-ready PDF"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["picture-book", "print-on-demand", "image-generation", "typesetting"]
+dependencies = [
+    "numpy>=1.26",
+    # 10.1 is the floor: ImageFont.load_default() only takes a size from then on.
+    "pillow>=10.1",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Live image backends. Neither is needed for the offline `stub` backend.
+gemini = ["google-genai>=2.3.0"]
+# The BFL (FLUX) backend uses only the standard library, so it has no extras.
+
+# Optional embedding metric. Pulls in torch (~2.5 GB) -- install only if you
+# want the objective similarity score alongside the VLM judge.
+embed = ["torch>=2.2", "transformers>=4.44"]
+
+all = ["google-genai>=2.3.0", "torch>=2.2", "transformers>=4.44"]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:storytime.*"]
+
+[project.scripts]
+storytime = "storytime.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"storytime.web" = ["static/*"]

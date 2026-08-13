@@ -1,0 +1,2502 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StoryTime — Bilderbücher selber machen</title>
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#fbf7f0; --panel:#fffdf9; --sunk:#f3ede2; --fg:#241f19; --muted:#7d7466;
+  --line:#e6ddcd; --accent:#c25e2a; --accent-soft:#f6e3d6; --accent-fg:#fff;
+  --good:#2c7a52; --bad:#b03a2e; --warn:#9a6b12;
+  --shadow:0 1px 2px rgba(60,45,25,.06),0 8px 24px rgba(60,45,25,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#16130e; --panel:#201c15; --sunk:#191610; --fg:#efe8dc; --muted:#a2988a;
+    --line:#342e23; --accent:#e08c4a; --accent-soft:#33261a; --accent-fg:#1b1610;
+    --good:#63d094; --bad:#ef8b7f; --warn:#e3ba63;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+  }
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:16px/1.6 "Segoe UI",-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
+a{color:var(--accent);}
+h1,h2,h3{line-height:1.25;margin:0;}
+button{font:inherit;}
+
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+.head{max-width:1180px;margin:0 auto;padding:.85rem 1.25rem;display:flex;align-items:center;gap:1rem;}
+.brand{display:flex;align-items:baseline;gap:.55rem;cursor:pointer;}
+.brand b{font-size:1.15rem;letter-spacing:-.02em;}
+.brand span{font-size:.8rem;color:var(--muted);}
+.head .right{margin-left:auto;display:flex;align-items:center;gap:.9rem;font-size:.82rem;}
+.head .right a{color:var(--muted);text-decoration:none;}
+.head .right a:hover{color:var(--fg);}
+main{max-width:1180px;margin:0 auto;padding:1.75rem 1.25rem 8rem;}
+
+.steps{display:flex;gap:.4rem;margin-bottom:1.75rem;flex-wrap:wrap;}
+.step{display:flex;align-items:center;gap:.5rem;padding:.4rem .8rem .4rem .45rem;border-radius:99px;
+  border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:.85rem;
+  cursor:pointer;transition:.15s;}
+.step .n{width:1.45rem;height:1.45rem;border-radius:50%;background:var(--sunk);color:var(--muted);
+  display:grid;place-items:center;font-size:.75rem;font-weight:700;}
+.step.on{border-color:var(--accent);color:var(--fg);}
+.step.on .n{background:var(--accent);color:var(--accent-fg);}
+.step.done .n{background:var(--good);color:#fff;}
+.step[disabled]{opacity:.45;cursor:not-allowed;}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.4rem;
+  box-shadow:var(--shadow);}
+.card + .card{margin-top:1.1rem;}
+.card h2{font-size:1.15rem;margin-bottom:.3rem;}
+.lede{color:var(--muted);font-size:.92rem;margin:0 0 1.2rem;max-width:62ch;}
+.row{display:flex;gap:.7rem;flex-wrap:wrap;align-items:center;}
+.spread{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;}
+.grid{display:grid;gap:1rem;}
+.g2{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
+.g3{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));}
+.g4{grid-template-columns:repeat(auto-fill,minmax(165px,1fr));}
+.muted{color:var(--muted);} .small{font-size:.85rem;} .hide{display:none !important;}
+
+label.f{display:block;margin-bottom:1rem;}
+label.f > span{display:block;font-size:.82rem;color:var(--muted);margin-bottom:.3rem;}
+input[type=text],input[type=number],select,textarea{
+  width:100%;padding:.6rem .7rem;font:inherit;font-size:.95rem;color:var(--fg);
+  background:var(--bg);border:1px solid var(--line);border-radius:9px;}
+textarea{resize:vertical;line-height:1.55;}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;
+  border-color:transparent;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.check{display:inline-flex;align-items:center;gap:.5rem;font-size:.9rem;cursor:pointer;}
+.check input{width:auto;accent-color:var(--accent);}
+.btn{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.05rem;border-radius:10px;
+  border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);
+  font-weight:600;font-size:.93rem;cursor:pointer;transition:.12s;}
+.btn:hover{filter:brightness(1.06);}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none;}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line);font-weight:500;}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn.tiny{padding:.3rem .6rem;font-size:.8rem;border-radius:7px;}
+
+.chips{display:flex;flex-wrap:wrap;gap:.45rem;}
+.chip{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border-radius:99px;
+  border:1px solid var(--line);background:var(--panel);font-size:.88rem;cursor:pointer;user-select:none;}
+.chip input{display:none;}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600;}
+
+.pick{border:1px solid var(--line);background:var(--panel);border-radius:12px;overflow:hidden;
+  cursor:pointer;transition:.15s;text-align:left;padding:0;color:inherit;width:100%;
+  position:relative;}
+.xdel{position:absolute;top:.45rem;right:.45rem;z-index:2;width:1.6rem;height:1.6rem;
+  border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  cursor:pointer;font-size:.9rem;line-height:1;opacity:0;transition:.15s;}
+.pick:hover .xdel{opacity:1;}
+.xdel:hover{color:var(--bad);border-color:var(--bad);}
+.pick:hover{border-color:var(--accent);transform:translateY(-1px);}
+.pick.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+.pick img{width:100%;aspect-ratio:3/2;object-fit:contain;background:var(--sunk);display:block;}
+.pick.tall img{aspect-ratio:1;object-fit:cover;}
+.pick .cap{padding:.6rem .75rem;}
+.pick .cap b{display:block;font-size:.92rem;}
+.pick .cap small{color:var(--muted);font-size:.79rem;}
+
+.drop{border:2px dashed var(--line);border-radius:12px;padding:1.6rem;text-align:center;
+  background:var(--sunk);cursor:pointer;transition:.15s;}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft);}
+.thumbs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem;}
+.thumbs img{width:74px;height:74px;object-fit:cover;border-radius:9px;border:1px solid var(--line);}
+
+.page{border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden;}
+.page img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--sunk);cursor:zoom-in;}
+.page .body{padding:.7rem .8rem;}
+.page .num{font-size:.75rem;color:var(--muted);font-weight:700;letter-spacing:.04em;}
+.page .acts{display:flex;gap:.35rem;margin-top:.45rem;flex-wrap:wrap;}
+.flag{display:inline-block;padding:.12rem .45rem;border-radius:6px;font-size:.72rem;font-weight:700;}
+.flag.warn{background:var(--accent-soft);color:var(--warn);}
+.flag.bad{background:var(--accent-soft);color:var(--bad);}
+.flag.calm{background:var(--sunk);color:var(--muted);}
+.notes{margin:.4rem 0 0;padding-left:1rem;font-size:.78rem;color:var(--warn);}
+
+#drawer{position:fixed;left:0;right:0;bottom:0;z-index:40;background:var(--panel);
+  border-top:1px solid var(--line);box-shadow:0 -8px 32px rgba(60,45,25,.10);
+  transform:translateY(100%);transition:transform .22s ease;}
+#drawer.open{transform:none;}
+.dhead{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.25rem;max-width:1180px;margin:0 auto;}
+.dhead .title{font-weight:600;font-size:.93rem;}
+.dhead .right{margin-left:auto;display:flex;gap:.5rem;align-items:center;}
+#dlog{max-width:1180px;margin:0 auto;padding:0 1.25rem 1rem;height:0;overflow:auto;
+  font-family:ui-monospace,Consolas,monospace;font-size:.79rem;line-height:1.55;
+  white-space:pre-wrap;color:var(--muted);transition:height .22s ease;}
+#drawer.tall #dlog{height:min(42vh,360px);}
+.spinner{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .8s linear infinite;flex:none;}
+#dprog{flex:1;max-width:240px;height:5px;border-radius:3px;background:var(--sunk);
+  overflow:hidden;position:relative;}
+#dprog>div{height:100%;background:var(--accent);border-radius:3px;transition:width .5s;}
+#dprog.indeterminate>div{width:32% !important;position:absolute;
+  animation:slide 1.4s ease-in-out infinite;}
+@keyframes slide{0%{left:-32%;}100%{left:100%;}}
+#dcount{font-size:.8rem;color:var(--muted);white-space:nowrap;}
+#derror{max-width:1180px;margin:0 auto;padding:0 1.25rem .9rem;}
+#derror .inner{border:1px solid var(--bad);border-radius:10px;padding:.7rem .9rem;
+  font-size:.88rem;white-space:pre-line;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;}
+
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--muted);}
+.empty h2{font-size:1.4rem;color:var(--fg);margin-bottom:.5rem;}
+.banner{padding:.8rem 1rem;border-radius:10px;background:var(--accent-soft);color:var(--warn);
+  font-size:.88rem;margin-bottom:1.2rem;}
+.banner.bad{color:var(--bad);}
+dialog{border:none;border-radius:14px;padding:0;background:var(--panel);max-width:94vw;
+  box-shadow:var(--shadow);}
+dialog img{display:block;max-width:92vw;max-height:88vh;}
+dialog::backdrop{background:rgba(30,22,12,.82);}
+/* the lightbox: one picture, the whole screen, nothing else */
+dialog#viewer{background:transparent;box-shadow:none;max-width:100vw;max-height:100vh;
+  width:100vw;height:100vh;margin:0;}
+#viewer img{width:100vw;height:100vh;max-width:100vw;max-height:100vh;object-fit:contain;
+  cursor:zoom-out;}
+#viewer .vbar{position:fixed;top:1rem;right:1rem;display:flex;gap:.5rem;}
+#viewer .vbar button{background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.25);
+  color:#f6efe2;border-radius:9px;padding:.45rem .8rem;cursor:pointer;font-size:.85rem;}
+#viewer .vbar button:hover{background:rgba(0,0,0,.75);}
+.xzoom{position:absolute;top:.45rem;left:.45rem;z-index:2;width:1.6rem;height:1.6rem;
+  border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  cursor:zoom-in;font-size:.8rem;line-height:1;opacity:0;transition:.15s;}
+.pick:hover .xzoom{opacity:1;}
+.xzoom:hover{color:var(--accent);border-color:var(--accent);}
+.file{display:flex;gap:.8rem;align-items:center;border:1px solid var(--line);
+  border-radius:10px;padding:.65rem .85rem;background:var(--bg);}
+.file .ficon{font-size:1.5rem;flex:none;}
+dialog.modal{padding:1.4rem;width:min(94vw,620px);color:var(--fg);}
+dialog.modal h3{font-size:1.1rem;margin-bottom:.8rem;}
+dialog.modal img{max-width:100%;max-height:none;width:100%;border-radius:9px;
+  border:1px solid var(--line);cursor:zoom-in;}
+dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;display:block;}
+#toast{position:fixed;bottom:4.6rem;left:50%;transform:translateX(-50%);z-index:70;
+  background:var(--fg);color:var(--bg);padding:.55rem 1rem;border-radius:99px;
+  font-size:.88rem;box-shadow:var(--shadow);max-width:88vw;}
+.bookcard img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--sunk);}
+/* the bookshelf: covers first, everything else steps back */
+.shelf{display:grid;gap:1.5rem 1.3rem;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));}
+.tome{position:relative;cursor:pointer;transition:transform .18s;}
+.tome:hover,.tome:focus-visible{transform:translateY(-4px);}
+.tome-cover{position:relative;border-radius:10px;overflow:hidden;
+  box-shadow:0 8px 22px rgba(60,45,25,.20),0 2px 6px rgba(60,45,25,.14);}
+.tome-cover img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:var(--sunk);}
+.tome-blank{width:100%;aspect-ratio:1;background:var(--sunk);display:grid;place-items:center;
+  color:var(--muted);padding:1rem;text-align:center;font-style:italic;}
+.tome-read{position:absolute;inset:0;margin:auto;width:3.4rem;height:3.4rem;border-radius:50%;
+  border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.55);color:#fff;
+  font-size:1.25rem;cursor:pointer;opacity:0;transition:.15s;}
+.tome:hover .tome-read,.tome:focus-within .tome-read{opacity:1;}
+.tome-read:hover{background:var(--accent);}
+.tome-chip{position:absolute;top:.6rem;left:.6rem;background:rgba(0,0,0,.55);color:#fff;
+  padding:.18rem .6rem;border-radius:99px;font-size:.72rem;}
+.tome-cap{padding:.65rem .15rem 0;}
+.tome-cap b{display:block;font-size:.95rem;line-height:1.3;}
+.meter{display:inline-flex;align-items:baseline;gap:.35rem;font-size:.8rem;color:var(--muted);
+  border:1px solid var(--line);border-radius:99px;padding:.2rem .65rem;}
+.meter b{color:var(--fg);font-size:.88rem;}
+
+/* ---------------------------------------------------------- read aloud */
+#reader{position:fixed;inset:0;z-index:60;background:#0d0b07;display:none;
+  align-items:center;justify-content:center;flex-direction:column;}
+#reader.on{display:flex;}
+#reader .sheet{max-width:min(96vw,calc(88vh * 1.0));max-height:88vh;position:relative;}
+#reader img{max-width:100%;max-height:78vh;border-radius:10px;display:block;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);}
+#reader .words{color:#f6efe2;font-size:clamp(1rem,2.2vw,1.5rem);line-height:1.5;
+  text-align:center;margin:1rem auto 0;max-width:46ch;text-shadow:0 2px 12px rgba(0,0,0,.7);
+  white-space:pre-line;}
+#reader .bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:.6rem;align-items:center;
+  justify-content:center;padding:1rem;background:linear-gradient(transparent,rgba(0,0,0,.65));}
+#reader .bar button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  color:#f6efe2;border-radius:10px;padding:.5rem .9rem;cursor:pointer;font-size:.9rem;}
+#reader .bar button:hover{background:rgba(255,255,255,.22);}
+#reader .bar button.on{background:var(--accent);border-color:var(--accent);}
+#reader .counter{color:#cbbfa9;font-size:.85rem;min-width:5rem;text-align:center;}
+#reader .close{position:fixed;top:1rem;right:1rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head">
+    <div class="brand" onclick="go('home')">
+      <b>StoryTime</b><span>Bilderbücher selber machen</span>
+    </div>
+    <div class="right">
+      <a href="#" onclick="go('home');return false">Meine Bücher</a>
+      <a href="/benchmark" title="Technischer Vergleich der Bildmodelle">Labor</a>
+    </div>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<div id="drawer">
+  <div class="dhead">
+    <div class="spinner hide" id="dspin"></div>
+    <div class="dot hide" id="ddot"></div>
+    <div class="title" id="dtitle" role="status" aria-live="polite">Bereit</div>
+    <div id="dprog" class="hide"><div style="width:0%"></div></div>
+    <span id="dcount"></span>
+    <div class="right">
+      <button class="btn ghost tiny" onclick="jobCenter()"
+        title="Alle laufenden und letzten Aufträge">Aufträge</button>
+      <button class="btn ghost tiny" id="dtoggle">Details</button>
+      <button class="btn ghost tiny" id="dcancel">Abbrechen</button>
+      <button class="btn ghost tiny hide" id="dclose">Schließen</button>
+    </div>
+  </div>
+  <div id="derror" class="hide" role="alert"><div class="inner"></div></div>
+  <pre id="dlog"></pre>
+</div>
+
+<dialog id="viewer" aria-label="Großansicht">
+  <img id="viewer-img" alt="Großansicht">
+  <div class="vbar">
+    <button onclick="event.stopPropagation();toggleViewerFullscreen()"
+      title="Echtes Vollbild ohne Browserleiste">⛶ Vollbild</button>
+    <button onclick="event.stopPropagation();$('viewer').close()">✕ Schließen (Esc)</button>
+  </div>
+</dialog>
+<dialog id="modal" class="modal"></dialog>
+<div id="toast" class="hide" role="status" aria-live="polite"></div>
+
+<div id="reader">
+  <button class="btn ghost tiny close" onclick="closeReader()">Schließen</button>
+  <div class="sheet">
+    <img id="r-img" alt="">
+    <div class="words" id="r-text"></div>
+  </div>
+  <div class="bar">
+    <button onclick="turn(-1)" title="Zurückblättern (Pfeil links)">◀</button>
+    <button id="r-play" onclick="toggleAudio()">▶ Vorlesen</button>
+    <button id="r-auto" onclick="toggleAuto()"
+      title="Liest jede Seite vor und blättert von selbst weiter">▶▶ Auto</button>
+    <span class="counter" id="r-count"
+      title="Blättern: Pfeiltasten oder Leertaste · Schließen: Esc"></span>
+    <select id="r-lang" onchange="readerLangChanged()"
+      style="width:auto;background:rgba(255,255,255,.12);color:#f6efe2;border-color:rgba(255,255,255,.2)"></select>
+    <button onclick="turn(1)" title="Weiterblättern (Pfeil rechts, Leertaste)">▶</button>
+  </div>
+  <audio id="r-audio" hidden></audio>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================== plumbing */
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const view = () => $("view");
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { "Content-Type": "application/json" }, ...options,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  return payload;
+}
+
+const store = {
+  get(key, fallback = null) {
+    try { return JSON.parse(localStorage.getItem("storytime." + key)) ?? fallback; }
+    catch { return fallback; }
+  },
+  set(key, value) { localStorage.setItem("storytime." + key, JSON.stringify(value)); },
+};
+
+const S = {
+  status: null, screen: "home",
+  heroId: store.get("heroId"), styleId: store.get("styleId"), bookId: store.get("bookId"),
+  job: null, seen: 0, poll: null, onDone: null,
+  //: jobs still queued/running whose completion callback must not be lost
+  //: when a newer job takes over the drawer
+  watch: [],
+  //: which language the story editor currently edits
+  editLang: null,
+};
+
+/* --------------------------------------------------- toast + modal + money */
+
+function toast(message) {
+  const el = $("toast");
+  el.textContent = message;
+  el.classList.remove("hide");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.add("hide"), 3500);
+}
+
+let modalOpener = null;  // where focus goes back to when the dialog closes
+
+function openModal(html) {
+  const m = $("modal");
+  modalOpener = document.activeElement;
+  m.innerHTML = html;
+  const heading = m.querySelector("h3");
+  if (heading) m.setAttribute("aria-label", heading.textContent);
+  m.showModal();
+  return m;
+}
+function closeModal() { $("modal").close(); }
+$("modal").addEventListener("close", () => {
+  if (modalOpener && document.contains(modalOpener)) modalOpener.focus();
+  modalOpener = null;
+});
+
+// Cards and drop zones are divs (they carry inner buttons, which a real
+// <button> may not). role=button + this handler makes them keyboard-usable.
+document.addEventListener("keydown", (event) => {
+  if ((event.key === "Enter" || event.key === " ")
+      && event.target instanceof Element
+      && event.target.getAttribute("role") === "button") {
+    event.preventDefault();
+    event.target.click();
+  }
+});
+
+function confirmModal(question, detail, verb, onYes) {
+  openModal(`<h3>${esc(question)}</h3>
+    <p class="lede">${esc(detail || "")}</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-yes">${esc(verb)}</button></div>`);
+  $("m-yes").onclick = () => { closeModal(); onYes(); };
+}
+
+// Turns an estimated dollar amount into the "~0,30 €" a button shows.
+// false only when the status says this capability is missing
+function can(name) { return S.status?.capabilities?.[name] !== false; }
+
+function eur(usd) {
+  const rate = S.status?.estimates?.usd_per_eur || 1.08;
+  return `~${(usd / rate).toFixed(2).replace(".", ",")} €`;
+}
+function est() { return S.status?.estimates || {}; }
+function profileEst(key) {
+  const profile = (S.status?.render_profiles || []).find((p) => p.key === key);
+  return profile?.est_usd ?? 0.06;
+}
+/* Which image service and model draw this book. The choice is per action:
+   pick a model, then redraw one page with it, and only that page uses it. */
+function currentBackend() {
+  const ready = (S.status?.image_backends || []).filter((b) => b.ready).map((b) => b.name);
+  const saved = store.get("imageBackend");
+  if (saved && ready.includes(saved)) return saved;
+  const scouted = currentBook?.style?.recommended_backend;  // the scout's pick
+  if (scouted && ready.includes(scouted)) return scouted;
+  return ready.includes("openai") ? "openai" : (ready[0] || "openai");
+}
+function modelsFor(backend) {
+  return (S.status?.image_models || []).filter((m) => m.backend === backend);
+}
+function currentModelInfo() {
+  const models = modelsFor(currentBackend());
+  const saved = store.get("imageModel." + currentBackend());
+  return models.find((m) => m.key === saved) || models[0] || null;
+}
+// per-image price for the chosen service/model at a render profile
+function perImageUsd(profileKey) {
+  const model = currentModelInfo();
+  if (!model) return profileEst(profileKey);
+  if (model.pricing === "flat") {
+    return profileKey === "print" ? (model.usd_print ?? model.usd) : model.usd;
+  }
+  return profileEst(profileKey) * (model.factor ?? 1);
+}
+function drawParams() {
+  const model = currentModelInfo();
+  return { backend: currentBackend(), ...(model ? { model: model.key } : {}) };
+}
+// Sheets are drawn at high quality, previews at medium -- price them for the
+// chosen service and model.
+function sheetUsd() {
+  const m = currentModelInfo();
+  if (!m) return est().sheet_usd || 0.22;
+  return m.pricing === "flat" ? m.usd : (est().sheet_usd || 0.22) * (m.factor ?? 1);
+}
+function previewUsd() {
+  const m = currentModelInfo();
+  if (!m) return est().preview_usd || 0.06;
+  return m.pricing === "flat" ? m.usd : (est().preview_usd || 0.06) * (m.factor ?? 1);
+}
+// The service/model choice, as a compact control any drawing screen can show.
+function pickerHtml() {
+  const ready = (S.status?.image_backends || []).filter((b) => b.ready);
+  const models = modelsFor(currentBackend());
+  if (ready.length < 2 && models.length < 2) return "";
+  return `<span class="row" style="gap:.4rem">
+    ${ready.length > 1 ? `<select style="width:auto" title="Welcher Bilddienst zeichnet"
+      onchange="setBackend(this.value)">${ready.map((b) => `<option value="${b.name}"
+        ${b.name === currentBackend() ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>` : ""}
+    ${models.length > 1 ? `<select style="width:auto" title="Bildmodell"
+      onchange="setModel(this.value)">${models.map((m) => `<option value="${m.key}"
+        ${m.key === currentModelInfo()?.key ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select>` : ""}
+  </span>`;
+}
+
+// What "draw the missing pictures" would cost for this book right now.
+function missingEst(book) {
+  const perImage = perImageUsd(book.render_quality);
+  const pages = book.pages.filter((p) => !p.image_url).length;
+  const cover = book.cover_url ? 0 : 1;
+  const cast = (book.cast || []).filter((c) => !c.sheet_url).length;
+  return { images: pages + cover + cast,
+           usd: (pages + cover) * perImage + cast * perImageUsd("draft") };
+}
+
+function readFile(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, data: reader.result });
+    reader.readAsDataURL(file);
+  });
+}
+
+function zoom(url) { $("viewer-img").src = url; $("viewer").showModal(); }
+$("viewer").onclick = () => $("viewer").close();
+$("viewer").addEventListener("close", () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+});
+function toggleViewerFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else $("viewer").requestFullscreen?.();
+}
+// The language name for a code, everywhere the UI speaks to a person.
+function langName(code) {
+  return (S.status?.languages?.find((l) => l.code === code) || {}).name || code;
+}
+
+/* =========================================================== jobs */
+
+function drawer(open, tall) {
+  $("drawer").classList.toggle("open", open);
+  if (tall !== undefined) $("drawer").classList.toggle("tall", tall);
+}
+$("dtoggle").onclick = () => $("drawer").classList.toggle("tall");
+$("dclose").onclick = () => drawer(false, false);
+$("dcancel").onclick = async () => {
+  if (S.job) await api(`/api/jobs/${S.job}/cancel`, { method: "POST" });
+};
+
+async function runJob(action, params, title, onDone) {
+  $("dlog").textContent = "";
+  $("dtitle").textContent = title;
+  $("dspin").classList.remove("hide");
+  $("ddot").classList.add("hide");
+  $("dcancel").classList.remove("hide");
+  $("dclose").classList.add("hide");
+  $("dprog").classList.add("hide");
+  $("dcount").textContent = "";
+  $("derror").classList.add("hide");
+  drawer(true, true);
+  // The drawer follows the newest job, but an earlier one that is still
+  // queued or running must keep its completion callback.
+  if (S.job) S.watch.push({ id: S.job, onDone: S.onDone });
+  S.seen = 0;
+  S.onDone = onDone;
+
+  try {
+    const job = await api("/api/jobs", {
+      method: "POST", body: JSON.stringify({ action, ...params }),
+    });
+    S.job = job.id;
+    clearInterval(S.poll);
+    S.poll = setInterval(pollJob, 900);
+    pollJob();
+  } catch (exc) {
+    $("dlog").textContent = exc.message;
+    $("dspin").classList.add("hide");
+    $("dclose").classList.remove("hide");
+  }
+}
+
+async function pollJob() {
+  pollWatch();
+  if (!S.job) return;
+  let job;
+  try { job = await api(`/api/jobs/${S.job}?since=${S.seen}`); }
+  catch (exc) { appendLog(`Verbindung verloren: ${exc.message}`); return endJob(null); }
+
+  if (job.lines.length) { S.seen = job.total_lines; appendLog(job.lines.join("\n")); }
+  const name = JOB_NAMES[job.action] || job.action;
+  $("dtitle").textContent = job.status === "queued"
+    ? `${name} — wartet (${job.queued_behind} vor dir)`
+    : `${name} · ${Math.round(job.elapsed)}s`;
+
+  // The bar: real progress when the worker reports it, a wandering shimmer
+  // while a model is thinking and there is nothing to count yet.
+  const bar = $("dprog");
+  if (job.status === "running") {
+    bar.classList.remove("hide");
+    if (job.progress && job.progress.total) {
+      bar.classList.remove("indeterminate");
+      bar.firstElementChild.style.width =
+        `${Math.round(100 * job.progress.done / job.progress.total)}%`;
+      $("dcount").textContent = `${job.progress.done} / ${job.progress.total}`;
+    } else {
+      bar.classList.add("indeterminate");
+      $("dcount").textContent = "";
+    }
+  }
+
+  // Finished pages appear on the book screen while the rest are still drawn.
+  if (job.status === "running" && S.screen === "book"
+      && (job.action === "book_illustrate" || job.action === "book_check")
+      && (pollJob.tick = (pollJob.tick || 0) + 1) % 4 === 0) {
+    patchDrawnPages();
+  }
+
+  if (job.status !== "running" && job.status !== "queued") endJob(job);
+}
+
+/* Swap "noch nicht gezeichnet" placeholders for finished pictures in place --
+   no full re-render, so nothing jumps while the user watches. */
+async function patchDrawnPages() {
+  if (!S.bookId) return;
+  let book;
+  try { book = await api(`/api/book/books/${S.bookId}`); } catch { return; }
+  currentBook = book;
+  for (const page of book.pages) {
+    const card = document.getElementById(`page-${page.index}`);
+    if (!card) continue;
+    const placeholder = card.querySelector("div.small.muted");
+    if (page.image_url && !card.querySelector("img")) {
+      const img = document.createElement("img");
+      img.src = page.image_url;
+      img.alt = `Illustration Seite ${page.index}`;
+      img.onclick = () => zoom(page.image_url);
+      placeholder?.replaceWith(img);
+    } else if (!page.image_url && placeholder) {
+      placeholder.textContent = "wird gezeichnet …";
+    }
+  }
+}
+
+async function pollWatch() {
+  for (const watched of [...S.watch]) {
+    try {
+      const job = await api(`/api/jobs/${watched.id}?since=999999`);
+      if (job.status === "running" || job.status === "queued") continue;
+      S.watch = S.watch.filter((w) => w !== watched);
+      if (watched.onDone) watched.onDone(job);
+    } catch { S.watch = S.watch.filter((w) => w !== watched); }
+  }
+}
+
+function appendLog(text) {
+  const log = $("dlog");
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+  log.textContent += (log.textContent ? "\n" : "") + text;
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+
+function endJob(job) {
+  clearInterval(S.poll); S.poll = null; S.job = null;
+  // A cancelled queued job can finish before an older running one: keep
+  // polling quietly until every watched job has reported back.
+  if (S.watch.length) {
+    S.poll = setInterval(async () => {
+      await pollWatch();
+      if (!S.watch.length && !S.job) { clearInterval(S.poll); S.poll = null; }
+    }, 1200);
+  }
+  $("dspin").classList.add("hide");
+  $("dcancel").classList.add("hide");
+  $("dclose").classList.remove("hide");
+
+  const dot = $("ddot");
+  dot.classList.remove("hide");
+  const ok = job && job.status === "done";
+  dot.style.background = ok ? "var(--good)"
+    : (job && job.status === "cancelled" ? "var(--warn)" : "var(--bad)");
+  $("dtitle").textContent = ok ? "Fertig"
+    : (job ? ({ cancelled: "Abgebrochen", failed: "Fehlgeschlagen" }[job.status] || job.status)
+           : "Fehler");
+  $("dprog").classList.add("hide");
+  $("dcount").textContent = "";
+  if (ok) $("drawer").classList.remove("tall");
+
+  // A failure gets its explanation front and centre -- the advice lives in
+  // the error text itself now, not in a log line someone has to find.
+  if (job && job.status === "failed" && job.error) {
+    $("derror").querySelector(".inner").textContent = job.error;
+    $("derror").classList.remove("hide");
+    $("drawer").classList.add("tall");
+  }
+
+  const callback = S.onDone; S.onDone = null;
+  if (callback && job) callback(job);
+}
+
+/* The job center: every queued, running and recent job in one place, with a
+   retry for failures. The drawer follows only the newest job; this is where
+   an overlapping second job stays visible and understandable. */
+const JOB_NAMES = {
+  hero_create: "Figur zeichnen", hero_more: "Weitere Varianten",
+  style_try: "Stil ausprobieren", style_adopt: "Stil einrichten",
+  style_scout: "Bilddienste vergleichen", voice_preview: "Stimmprobe",
+  story_write: "Geschichte schreiben", story_rewrite: "Seite neu schreiben",
+  story_languages: "Sprache dazu", book_illustrate: "Bilder zeichnen",
+  book_check: "Seiten prüfen", book_undo: "Seite zurück",
+  book_photo: "Fotoseite", book_narrate: "Ton erzeugen", book_export: "PDF bauen",
+};
+const JOB_STATES = {
+  queued: ["wartet", "var(--warn)"], running: ["läuft", "var(--accent)"],
+  done: ["fertig", "var(--good)"], failed: ["fehlgeschlagen", "var(--bad)"],
+  cancelled: ["abgebrochen", "var(--muted)"],
+};
+
+async function jobCenter() {
+  let status;
+  try { status = await api("/api/book/status"); } catch { return; }
+  const jobs = status.jobs || [];
+  const rows = jobs.map((job) => {
+    const [word, colour] = JOB_STATES[job.status] || [job.status, "var(--muted)"];
+    const queuePos = job.status === "queued" && job.queued_behind
+      ? ` — ${job.queued_behind} davor` : "";
+    const canRetry = job.status === "failed";
+    const canCancel = job.status === "running" || job.status === "queued";
+    return `<tr>
+      <td>${esc(JOB_NAMES[job.action] || job.action)}</td>
+      <td style="color:${colour};white-space:nowrap">${word}${queuePos}</td>
+      <td class="muted" style="text-align:right;white-space:nowrap">${Math.round(job.elapsed)}s</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${canCancel ? `<button class="btn ghost tiny" onclick="cancelJob('${job.id}')">abbrechen</button>` : ""}
+        ${canRetry ? `<button class="btn ghost tiny" onclick="retryJob('${job.id}')">erneut</button>` : ""}
+        ${job.status === "failed" && job.error ? `<span class="small muted" title="${esc(job.error)}">warum?</span>` : ""}
+      </td></tr>`;
+  }).join("");
+  openModal(`<h3>Aufträge</h3>
+    ${jobs.length ? `<table class="small" style="width:100%;border-collapse:collapse">
+      ${rows}</table>` : `<p class="lede">Gerade läuft nichts.</p>`}
+    <p class="small muted" style="margin-top:.8rem">Es läuft immer nur ein Auftrag —
+      alles weitere wartet in der Reihe und geht dann von selbst los.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+}
+
+async function cancelJob(id) {
+  await api(`/api/jobs/${id}/cancel`, { method: "POST" });
+  toast("Wird abgebrochen.");
+  closeModal();
+}
+
+async function retryJob(id) {
+  const job = await api(`/api/jobs/${id}`);
+  closeModal();
+  runJob(job.action, job.params || {},
+    `${JOB_NAMES[job.action] || job.action} — neuer Versuch`, () => render());
+}
+
+/* =========================================================== navigation */
+
+const STEPS = [
+  { key: "hero", label: "Held" }, { key: "look", label: "Stil" },
+  { key: "story", label: "Geschichte" }, { key: "book", label: "Buch" },
+];
+
+function go(screen) { S.screen = screen; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+
+function stepsBar(current) {
+  const reached = { hero: true, look: !!S.heroId,
+                    story: !!S.heroId && !!S.styleId, book: !!S.bookId };
+  return `<div class="steps">` + STEPS.map((step, i) => `
+    <button class="step ${step.key === current ? "on" : ""} ${reached[step.key] && step.key !== current ? "done" : ""}"
+      ${reached[step.key] ? "" : "disabled"} onclick="go('${step.key}')">
+      <span class="n">${i + 1}</span>${step.label}
+    </button>`).join("") + `</div>`;
+}
+
+function render() {
+  return ({ home: renderHome, hero: renderHero, look: renderLook,
+            story: renderStory, book: renderBook }[S.screen] || renderHome)();
+}
+
+/* =========================================================== 0. home */
+
+// What each capability needs, in words a person can act on.
+const CAPABILITY_HELP = {
+  writing: ["Geschichten schreiben", "einen OPENAI_API_KEY (oder Anthropic/Gemini) in die Datei .env eintragen"],
+  drawing: ["Bilder zeichnen", "einen Bilddienst-Schlüssel in .env eintragen (OPENAI_API_KEY reicht) — oder lokal ComfyUI starten"],
+  style_analysis: ["Stil aus einem Bild ableiten", "denselben Text-Schlüssel wie fürs Schreiben"],
+  narration: ["Vorlesen (Ton erzeugen)", "einen OPENAI_API_KEY — nur die Sprachausgabe braucht genau diesen"],
+};
+
+function capabilityChecklist() {
+  const caps = S.status?.capabilities || {};
+  const missing = Object.entries(CAPABILITY_HELP).filter(([key]) => caps[key] === false);
+  if (!missing.length) return "";
+  const working = Object.entries(CAPABILITY_HELP).filter(([key]) => caps[key]);
+  return `<div class="banner" role="alert">
+    <b>Noch nicht alles ist einsatzbereit</b> — was geht, geht trotzdem:
+    <ul class="small" style="margin:.4rem 0 0;padding-left:1.2rem">
+      ${working.map(([, [name]]) => `<li>✓ ${esc(name)}</li>`).join("")}
+      ${missing.map(([, [name, fix]]) => `<li>✗ ${esc(name)} — dafür fehlt: ${esc(fix)}.</li>`).join("")}
+    </ul>
+    <button class="btn ghost tiny" style="margin-top:.5rem" onclick="recheckSetup()">Neu prüfen</button>
+  </div>`;
+}
+
+async function recheckSetup() {
+  try { S.status = await api("/api/book/status"); } catch {}
+  toast("Geprüft.");
+  render();
+}
+
+async function renderHome() {
+  const [{ books }, { heroes }] = await Promise.all([
+    api("/api/book/books"), api("/api/book/heroes"),
+  ]);
+
+  const warn = capabilityChecklist();
+
+  if (!books.length && !heroes.length) {
+    view().innerHTML = warn + `
+      <div class="empty">
+        <h2>Noch kein Buch da.</h2>
+        <p class="lede" style="margin:0 auto 1.6rem">
+          In vier Schritten: wer ist der Held, wie soll es aussehen, worum geht es —
+          und dann drucke ich es dir zusammen.</p>
+        <button class="btn" onclick="startNew()">Erstes Buch anfangen</button>
+      </div>`;
+    return;
+  }
+
+  // Making a second book with a hero who already exists skips the two slow,
+  // expensive steps entirely.
+  const shortcuts = heroes.filter((h) => h.sheet).map((h) => `
+    <button class="btn ghost tiny" onclick="newBookWith('${h.id}')">Neues Buch mit ${esc(h.name || "…")}</button>
+  `).join("");
+
+  view().innerHTML = warn + `
+    <div class="spread" style="margin-bottom:1.6rem;align-items:center">
+      <h1 style="font-size:1.6rem">Meine Bücher</h1>
+      <button class="btn" onclick="startNew()">Neues Buch</button>
+    </div>
+    ${books.length ? `<div class="shelf">` + books.map(bookTile).join("") + `</div>`
+                   : `<p class="lede">Noch kein fertiges Buch.</p>`}
+    <div class="row" style="margin-top:2.4rem;padding-top:1rem;border-top:1px solid var(--line)">
+      <span class="small muted">Schnell anfangen:</span>
+      ${shortcuts}
+      <button class="btn ghost tiny" onclick="restoreDialog()"
+        title="Eine Buch-Sicherung (ZIP) aus library/backups zurückholen">Aus Sicherung wiederherstellen</button>
+    </div>`;
+}
+
+/* One book on the shelf: the cover carries it. Hovering offers reading
+   straight away -- the shelf is for the child as much as for the maker. */
+function bookTile(b) {
+  const langs = b.languages.map(langName).join(", ");
+  const unfinished = b.drawn < b.pages;
+  return `<div class="tome" role="button" tabindex="0"
+      aria-label="„${esc(b.title)}“ öffnen" onclick="openBook('${b.id}')">
+    <div class="tome-cover">
+      ${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="Titelbild von ${esc(b.title)}">`
+                    : `<div class="tome-blank">${esc(b.title)}</div>`}
+      ${b.drawn ? `<button class="tome-read" title="Sofort vorlesen"
+        aria-label="„${esc(b.title)}“ vorlesen"
+        onclick="event.stopPropagation();readBook('${b.id}')">▶</button>` : ""}
+      ${unfinished ? `<span class="tome-chip">${b.drawn
+        ? `${b.drawn}/${b.pages} gezeichnet` : "in Arbeit — noch ungezeichnet"}</span>` : ""}
+    </div>
+    <div class="tome-cap"><b>${esc(b.title)}</b>
+      <small class="muted">${esc(langs)}</small></div>
+  </div>`;
+}
+
+async function readBook(id) {
+  await openBook(id);
+  setTimeout(() => openReader(), 450);
+}
+
+function startNew() { S.bookId = null; store.set("bookId", null); go("hero"); }
+
+async function newBookWith(heroId) {
+  S.heroId = heroId; store.set("heroId", heroId);
+  S.bookId = null; store.set("bookId", null);
+  const { styles } = await api(`/api/book/styles?hero=${heroId}`);
+  if (styles.length === 1) {
+    // One compatible style: take it, but say so out loud.
+    S.styleId = styles[0].id; store.set("styleId", S.styleId);
+    toast(`Stil „${styles[0].name}“ übernommen — ändern jederzeit unter „Stil“.`);
+    go("story");
+  } else if (styles.length > 1) {
+    // Several: the choice is real, so it has to be made, not guessed.
+    S.styleId = null; store.set("styleId", null);
+    go("look");
+  } else {
+    go("look");
+  }
+}
+
+async function openBook(id) {
+  S.bookId = id; store.set("bookId", id);
+  const book = await api(`/api/book/books/${id}`);
+  S.heroId = book.hero_id; store.set("heroId", book.hero_id);
+  S.styleId = book.style_id; store.set("styleId", book.style_id);
+  go("book");
+}
+
+/* =========================================================== 1. hero */
+
+let pendingPhotos = [];
+
+async function renderHero() {
+  const { heroes } = await api("/api/book/heroes");
+  const current = heroes.find((h) => h.id === S.heroId);
+
+  // The screen re-renders wholesale (e.g. when the image service changes).
+  // Whatever is already typed or staged must survive that.
+  const keep = {
+    name: $("h-name")?.value ?? "",
+    description: $("h-desc")?.value ?? "",
+    age: $("h-age")?.value ?? "",
+  };
+
+  view().innerHTML = stepsBar("hero") + `
+    <div class="card">
+      <h2>Wer ist der Held?</h2>
+      <p class="lede">Lade ein paar Fotos von deinem Sohn hoch — daraus mache ich eine
+        gezeichnete Figur. Oder beschreib die Figur einfach, wenn es kein Foto sein soll.
+        Das machst du <b>einmal</b>; danach kommt er in jedes Buch.</p>
+
+      ${heroes.length ? `<h3 class="small muted" style="margin-bottom:.6rem">Schon vorhanden</h3>
+        <div class="grid g4" style="margin-bottom:1.6rem">` + heroes.map((h) => `
+          <div class="pick ${h.id === S.heroId ? "on" : ""}" onclick="chooseHero('${h.id}')"
+            role="button" tabindex="0" aria-label="Figur ${esc(h.name || "ohne Namen")} wählen">
+            <button class="xdel" title="Figur löschen" aria-label="Figur ${esc(h.name || "")} löschen"
+              onclick="event.stopPropagation();deleteHero('${h.id}')">×</button>
+            ${h.sheet_url ? `<button class="xzoom" title="Groß ansehen"
+              onclick="event.stopPropagation();zoom('${esc(h.sheet_url)}')">🔍</button>` : ""}
+            ${h.sheet_url ? `<img src="${esc(h.sheet_url)}" alt="Charakterblatt von ${esc(h.name || "der Figur")}">` : ""}
+            <div class="cap"><b>${esc(h.name || "Ohne Namen")}</b>
+              <small>${h.source === "photo" ? "nach Foto" : "beschrieben"}</small></div>
+          </div>`).join("") + `</div>` : ""}
+
+      <h3 class="small muted" style="margin-bottom:.6rem">Neu anlegen</h3>
+      <div class="grid g2">
+        <div>
+          <label class="f"><span>Name</span>
+            <input type="text" id="h-name" placeholder="Mats" value="${esc(keep.name)}"></label>
+          <label class="f"><span>Fotos (optional, bis zu vier)</span></label>
+          <div class="drop" id="h-drop" role="button" tabindex="0"
+            aria-label="Fotos auswählen oder hierher ziehen">
+            <div class="small"><b>Fotos hierher ziehen</b><br>oder klicken zum Auswählen</div>
+            <input type="file" id="h-file" accept="image/*" multiple class="hide">
+          </div>
+          <div class="thumbs" id="h-thumbs"></div>
+          <p class="small muted" style="margin-top:.6rem">Die Fotos bleiben auf diesem
+            Rechner und werden automatisch aufrecht gedreht. Sie gehen einmal an den
+            Bilddienst, um die Figur zu zeichnen — danach arbeite ich nur mit der Zeichnung.</p>
+        </div>
+        <div>
+          <label class="f"><span>Beschreibung (nur nötig, wenn du keine Fotos nimmst)</span>
+            <textarea id="h-desc" rows="7" placeholder="Ein fünfjähriger Junge mit dunkelblonden Locken, blauen Augen und einer roten Latzhose.">${esc(keep.description)}</textarea></label>
+          <label class="f"><span>Ungefähres Alter (hilft beim Zeichnen)</span>
+            <input type="text" id="h-age" placeholder="5" value="${esc(keep.age)}"></label>
+          <div class="row">
+            <button class="btn" id="h-go" ${can("drawing") ? "" : `disabled title="Es fehlt ein Bilddienst — siehe Startseite"`}>Figur zeichnen · ${eur(3 * sheetUsd())}</button>
+            ${pickerHtml()}
+          </div>
+          <p class="small muted" style="margin-top:.6rem">Ich zeichne drei Varianten, du suchst aus.</p>
+        </div>
+      </div>
+    </div>
+    ${current ? heroVariants(current) : ""}`;
+
+  wirePhotoDrop();
+  $("h-go").onclick = createHero;
+}
+
+function heroVariants(hero) {
+  return `<div class="card">
+    <div class="spread"><div>
+      <h2>${esc(hero.name || "Deine Figur")}</h2>
+      <p class="lede" style="margin-bottom:0">Welche passt am besten? Die ausgewählte
+        wird die Vorlage für jedes Bild.</p></div>
+      <div class="row">
+        <button class="btn ghost" onclick="editHero()">Name &amp; Beschreibung</button>
+        <button class="btn ghost" onclick="moreVariants()">Noch welche zeichnen
+          · ${eur(2 * sheetUsd())}</button>
+        ${pickerHtml()}
+        <button class="btn" onclick="go('look')">Weiter zum Look</button>
+      </div></div>
+    <div class="grid g3" style="margin-top:1.2rem">` + hero.variant_urls.map((v) => `
+      <div class="pick ${v.path === hero.sheet ? "on" : ""}" role="button" tabindex="0"
+        aria-label="Diese Variante wählen" onclick="pickSheet('${v.path}')">
+        <button class="xzoom" title="Groß ansehen"
+          onclick="event.stopPropagation();zoom('${esc(v.url)}')">🔍</button>
+        <img src="${esc(v.url)}" alt="Charakterblatt-Variante">
+        <div class="cap"><small>${v.path === hero.sheet ? "ausgewählt" : "auswählen"}</small></div>
+      </div>`).join("") + `</div>
+    <details style="margin-top:1rem"><summary class="small muted">So habe ich ihn beschrieben</summary>
+      <p class="small muted" style="margin-top:.5rem">${esc(hero.description)}</p></details>
+  </div>`;
+}
+
+async function editHero() {
+  const hero = await api(`/api/book/heroes/${S.heroId}`);
+  openModal(`<h3>Figur bearbeiten</h3>
+    <label class="f"><span>Name</span>
+      <input type="text" id="m-name" value="${esc(hero.name)}"></label>
+    <label class="f"><span>Beschreibung — sie ist der Maßstab, an dem jede Seite
+      auf Ähnlichkeit geprüft wird</span>
+      <textarea id="m-desc" rows="7">${esc(hero.description)}</textarea></label>
+    <p class="small muted">Wirkt auf alles, was ab jetzt gezeichnet wird; schon
+      vorhandene Blätter bleiben unverändert.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-save">Speichern</button></div>`);
+  $("m-save").onclick = async () => {
+    await api(`/api/book/heroes/${S.heroId}`, { method: "PUT", body: JSON.stringify(
+      { name: $("m-name").value.trim(), description: $("m-desc").value.trim() }) });
+    closeModal(); toast("Gespeichert."); renderHero();
+  };
+}
+
+function deleteHero(id) {
+  confirmModal("Diese Figur löschen?",
+    "Charakterblätter und Fotos werden vom Rechner gelöscht. Fertige Bücher behalten ihre Bilder, verlieren aber die Verbindung zur Figur.",
+    "Löschen", async () => {
+      await api(`/api/book/heroes/${id}`, { method: "DELETE" });
+      if (S.heroId === id) { S.heroId = null; store.set("heroId", null);
+        S.styleId = null; store.set("styleId", null); }
+      toast("Figur gelöscht."); renderHero();
+    });
+}
+
+function wirePhotoDrop() {
+  const drop = $("h-drop"), input = $("h-file");
+  drop.onclick = () => input.click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove("over");
+    takePhotos([...e.dataTransfer.files]); };
+  input.onchange = () => takePhotos([...input.files]);
+  // Deliberately NOT clearing pendingPhotos here: this runs on every re-render
+  // of the screen, and switching the image service must not discard uploads.
+  renderThumbs();
+}
+
+async function takePhotos(files) {
+  // Append, so choosing photos twice does not silently discard the first batch.
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  const fresh = await Promise.all(images.map(readFile));
+  pendingPhotos = pendingPhotos.concat(fresh).slice(0, 4);
+  renderThumbs();
+}
+
+function renderThumbs() {
+  $("h-thumbs").innerHTML = pendingPhotos.map((p, i) => `
+    <img src="${p.data}" alt="" title="Klicken zum Entfernen"
+      style="cursor:pointer" onclick="dropPhoto(${i})">`).join("");
+}
+
+function dropPhoto(index) { pendingPhotos.splice(index, 1); renderThumbs(); }
+
+function createHero() {
+  const description = $("h-desc").value.trim();
+  if (!pendingPhotos.length && !description) {
+    toast("Entweder Fotos hochladen oder die Figur kurz beschreiben."); return;
+  }
+  runJob("hero_create",
+    { name: $("h-name").value.trim(), description, age_hint: $("h-age").value.trim(),
+      photos: pendingPhotos, variants: 3, ...drawParams() },
+    "Figur wird gezeichnet",
+    (job) => {
+      if (job.result.hero_id) {
+        S.heroId = job.result.hero_id; store.set("heroId", S.heroId);
+        S.styleId = null; store.set("styleId", null);
+        pendingPhotos = [];  // saved with the hero now; the staging is done
+      }
+      renderHero();
+    });
+}
+
+function moreVariants() {
+  runJob("hero_more", { hero_id: S.heroId, variants: 2, ...drawParams() },
+    "Weitere Varianten", renderHero);
+}
+function chooseHero(id) {
+  if (id !== S.heroId) {  // re-clicking the chosen hero must not reset the style
+    S.heroId = id; store.set("heroId", id);
+    S.styleId = null; store.set("styleId", null);
+  }
+  renderHero();
+}
+async function pickSheet(path) {
+  await api(`/api/book/heroes/${S.heroId}`,
+    { method: "PUT", body: JSON.stringify({ sheet: path }) });
+  renderHero();
+}
+
+/* =========================================================== 2. look */
+
+// A style try renders two previews plus the styled character sheet.
+function styleTryUsd() { return 2 * previewUsd() + sheetUsd(); }
+
+async function renderLook() {
+  const [hero, { styles }] = await Promise.all([
+    api(`/api/book/heroes/${S.heroId}`), api("/api/book/styles"),
+  ]);
+  const ready = (s) => !!(s.sheets || {})[S.heroId];
+  const chosen = styles.find((s) => s.id === S.styleId && ready(s));
+  const keptWish = $("style-wish")?.value ?? "";  // survive picker re-renders
+
+  view().innerHTML = stepsBar("look") + `
+    <div class="card">
+      <div class="spread"><div>
+        <h2>Wie soll das Buch aussehen?</h2>
+        <p class="lede">Ich zeichne ${esc(hero.name || "die Figur")} sofort im gewählten Stil,
+          damit du die echte Kombination siehst und nicht nur eine Beschreibung.</p></div>
+        ${chosen ? `<button class="btn" onclick="go('story')">Weiter zur Geschichte</button>` : ""}
+      </div>
+
+      <div class="chips" id="preset-list" style="margin-bottom:.5rem"></div>
+      <div class="row" style="margin:0 0 1.1rem">
+        <p class="small muted" style="margin:0;flex:1;min-width:240px">Ein Klick probiert den
+          Stil sofort aus — zwei Vorschauen und ein Charakterblatt, zusammen
+          ${eur(styleTryUsd())}.</p>
+        ${pickerHtml()}
+      </div>
+
+      <div class="row" style="margin-bottom:.8rem">
+        <input type="text" id="style-wish" placeholder="Oder beschreib es selbst: „wie ein alter Scherenschnitt“"
+          style="flex:1;min-width:260px" value="${esc(keptWish)}">
+        <button class="btn ghost" id="style-wish-go">Ausprobieren · ${eur(styleTryUsd())}</button>
+      </div>
+
+      <div class="drop" id="style-drop" style="padding:1rem" role="button" tabindex="0"
+        aria-label="Stil-Vorlage auswählen oder hierher ziehen">
+        <div class="small"><b>Oder ein Bild als Vorlage</b> — eine Zeichnung deines Sohnes,
+          ein Foto von etwas Gebasteltem. Worte kommen an manche Looks nicht heran.
+          (${eur(styleTryUsd())})
+          <input type="file" id="style-file" accept="image/*" class="hide"></div>
+        <p class="small muted" style="margin:.5rem 0 0">Das Bild wird hier im Stil-Ordner
+          gespeichert und einmal an den Text-Dienst geschickt, um den Look zu beschreiben —
+          danach begleitet es jede Zeichnung mit diesem Stil als Referenz.
+          Stil löschen entfernt es wieder.</p>
+      </div>
+    </div>
+
+    ${styles.length ? `<div class="card">
+      <div class="spread"><div>
+        <h2>Ausprobiert</h2>
+        <p class="lede" style="margin-bottom:0">Ein Klick wählt den Stil für das nächste Buch;
+          „ansehen“ zeigt alle Vorschauen.</p>
+      </div>${chosen && S.status.can_scout ? `
+        <button class="btn ghost" onclick="runScout()">Welcher Bilddienst kann das am besten?</button>` : ""}
+      </div>
+      <div class="grid g2" style="margin-top:1.1rem">` + styles.map((s) => {
+        const isReady = ready(s);
+        const thumb = s.preview_urls[0] || (s.sheets || {})[S.heroId] && s.sheet_urls[S.heroId];
+        return `
+        <div class="pick ${s.id === S.styleId && isReady ? "on" : ""}"
+          role="button" tabindex="0" aria-label="Stil ${esc(s.name)}"
+          onclick="${isReady ? `pickStyle('${s.id}')` : `styleDetail('${s.id}')`}">
+          <button class="xdel" title="Stil löschen"
+            onclick="event.stopPropagation();deleteStyle('${s.id}')">×</button>
+          ${thumb ? `<button class="xzoom" title="Groß ansehen"
+            onclick="event.stopPropagation();zoom('${esc(thumb)}')">🔍</button>` : ""}
+          ${thumb ? `<img src="${esc(thumb)}" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
+          <div class="cap"><b>${esc(s.name)}</b>
+            <small>${isReady
+              ? (s.id === S.styleId ? "ausgewählt" : "auswählen")
+              : "für eine andere Figur angelegt"}${
+              s.recommended_backend ? ` · empfohlen: ${esc(s.recommended_backend)}` : ""}</small>
+            <div class="acts" style="margin-top:.4rem">
+              <button class="btn ghost tiny"
+                onclick="event.stopPropagation();styleDetail('${s.id}')">ansehen</button>
+              ${isReady ? "" : `<button class="btn ghost tiny"
+                onclick="event.stopPropagation();adoptStyle('${s.id}')">
+                Für ${esc(hero.name || "diese Figur")} einrichten · ${eur(sheetUsd())}</button>`}
+            </div></div>
+        </div>`;
+      }).join("") + `</div></div>` : ""}`;
+
+  $("preset-list").innerHTML = (S.status.style_presets || []).map((p) => `
+    <label class="chip" onclick="tryPreset('${p.key}')" title="${esc(p.hint)} — ${eur(styleTryUsd())}">${esc(p.name)}</label>
+  `).join("");
+
+  $("style-wish-go").onclick = () => {
+    const wish = $("style-wish").value.trim();
+    if (!wish) return;
+    runJob("style_try", { hero_id: S.heroId, wish, previews: 2, ...drawParams() },
+      "Stil wird ausprobiert", afterStyle);
+  };
+
+  const drop = $("style-drop"), file = $("style-file");
+  drop.onclick = () => file.click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = async (e) => { e.preventDefault(); drop.classList.remove("over");
+    await styleFromImage([...e.dataTransfer.files][0]); };
+  file.onchange = () => styleFromImage(file.files[0]);
+}
+
+async function styleFromImage(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const reference = await readFile(file);
+  runJob("style_try", { hero_id: S.heroId, reference, previews: 2, ...drawParams() },
+    "Stil wird aus dem Bild abgeleitet", afterStyle);
+}
+
+function tryPreset(key) {
+  runJob("style_try", { hero_id: S.heroId, preset: key, previews: 2, ...drawParams() },
+    "Stil wird ausprobiert", afterStyle);
+}
+function afterStyle(job) {
+  if (job.result.style_id) { S.styleId = job.result.style_id; store.set("styleId", S.styleId); }
+  renderLook();
+}
+function pickStyle(id) { S.styleId = id; store.set("styleId", id); renderLook(); }
+
+async function styleDetail(id) {
+  const { styles } = await api("/api/book/styles");
+  const s = styles.find((x) => x.id === id);
+  if (!s) return;
+  const sheet = (s.sheet_urls || {})[S.heroId];
+  const blocks = [
+    ...s.preview_urls.map((u, i) => [u, `Vorschau ${i + 1}`]),
+    ...(sheet ? [[sheet, "Charakterblatt in diesem Stil"]] : []),
+    ...(s.reference_url ? [[s.reference_url, "Vorlage"]] : []),
+  ];
+  openModal(`<h3>${esc(s.name)}</h3>
+    <p class="small muted" style="margin-bottom:1rem">${esc(s.description)}</p>
+    ${blocks.length ? `<div class="grid g3" style="margin-bottom:1rem">` + blocks.map(([u, label]) => `
+      <div><img src="${esc(u)}" alt="" onclick="zoom('${esc(u)}')">
+        <span class="vlabel">${esc(label)}</span></div>`).join("") + `</div>` : ""}
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" style="color:var(--bad)"
+        onclick="closeModal();deleteStyle('${s.id}')">Löschen</button>
+      <button class="btn ghost" onclick="closeModal()">Schließen</button>
+      ${sheet ? `<button class="btn" onclick="closeModal();pickStyle('${s.id}')">Diesen Stil wählen</button>`
+              : `<button class="btn" onclick="closeModal();adoptStyle('${s.id}')">
+                  Für diese Figur einrichten · ${eur(sheetUsd())}</button>`}
+    </div>`);
+}
+
+function adoptStyle(id) {
+  runJob("style_adopt", { hero_id: S.heroId, style_id: id, ...drawParams() },
+    "Stil wird eingerichtet", afterStyle);
+}
+
+function deleteStyle(id) {
+  confirmModal("Diesen Stil löschen?",
+    "Vorschauen und Charakterblätter dieses Stils werden gelöscht. Bücher, die damit gezeichnet wurden, behalten ihre Bilder.",
+    "Löschen", async () => {
+      await api(`/api/book/styles/${id}`, { method: "DELETE" });
+      if (S.styleId === id) { S.styleId = null; store.set("styleId", null); }
+      toast("Stil gelöscht."); renderLook();
+    });
+}
+
+function runScout() {
+  const backends = (S.status.image_backends || []).filter((b) => b.ready).length;
+  const usd = 2 * backends * (est().preview_usd || 0.06);
+  confirmModal("Bilddienste vergleichen?",
+    `Zwei Testszenen mit jedem der ${backends} verfügbaren Bilddienste — ${2 * backends} Bilder, ${eur(usd)}.`,
+    "Vergleichen", () =>
+      runJob("style_scout", { hero_id: S.heroId, style_id: S.styleId },
+        "Bilddienste werden verglichen", renderLook));
+}
+
+/* =========================================================== 3. story */
+
+async function renderStory() {
+  const book = S.bookId ? await api(`/api/book/books/${S.bookId}`).catch(() => null) : null;
+
+  const languageChips = (selected) => (S.status.languages || []).map((l) => `
+    <label class="chip ${selected.includes(l.code) ? "on" : ""}">
+      <input type="checkbox" value="${l.code}" ${selected.includes(l.code) ? "checked" : ""}
+        onchange="this.parentNode.classList.toggle('on',this.checked)">${esc(l.name)}</label>`).join("");
+
+  view().innerHTML = stepsBar("story") + `
+    <div class="card">
+      <h2>Worum soll es gehen?</h2>
+      <p class="lede">Ein Satz reicht. Wenn dir nichts einfällt, lass das Feld leer —
+        dann denke ich mir etwas aus, das zu dem Alter passt.</p>
+
+      <label class="f"><span>Die Idee</span>
+        <textarea id="s-idea" rows="3"
+          placeholder="Eine Geschichte über Angst im Dunkeln, mit einem Leuchtturm.">${esc(book?.idea || "")}</textarea></label>
+
+      <div class="grid g2">
+        <label class="f"><span>Für welches Alter?</span>
+          <select id="s-age">${(S.status.ages || []).map((a) => `
+            <option value="${a.key}" ${(book?.age || "4-5") === a.key ? "selected" : ""}>
+              ${esc(a.label)} — ${a.pages} Seiten</option>`).join("")}</select></label>
+        <label class="f"><span>Bildqualität</span>
+          <select id="s-quality">${(S.status.render_profiles || []).map((p) => `
+            <option value="${p.key}" ${(book?.render_quality || "draft") === p.key ? "selected" : ""}>
+              ${esc(p.label)}</option>`).join("")}</select></label>
+      </div>
+
+      <label class="f"><span>Sprachen — die Bilder sind für alle dieselben, nur die Worte ändern sich</span></label>
+      <div class="chips" id="s-langs">${languageChips(book?.languages || ["de"])}</div>
+
+      <div class="row" style="margin-top:1rem">
+        <label class="check"><input type="checkbox" id="s-rhyme" ${book?.rhyme ? "checked" : ""}>
+          In Reimen</label>
+        <label class="check"><input type="checkbox" id="s-revise" checked>
+          Danach noch einmal überarbeiten <span class="muted small">(empfohlen)</span></label>
+      </div>
+
+      <div class="row" style="margin-top:1.3rem">
+        <button class="btn" id="s-go" ${can("writing") ? "" : `disabled title="Es fehlt ein Text-Schlüssel — siehe Startseite"`}>${book ? "Neue Geschichte schreiben" : "Geschichte schreiben"}</button>
+        ${book ? `<button class="btn ghost" onclick="go('book')">Zu den Bildern</button>` : ""}
+      </div>
+    </div>
+    ${book ? storyEditor(book) : ""}`;
+
+  $("s-go").onclick = () => {
+    const languages = [...$("s-langs").querySelectorAll("input:checked")].map((i) => i.value);
+    if (!languages.length) return toast("Mindestens eine Sprache auswählen.");
+    runJob("story_write", {
+      hero_id: S.heroId, style_id: S.styleId, idea: $("s-idea").value.trim(),
+      age: $("s-age").value, languages, render_quality: $("s-quality").value,
+      rhyme: $("s-rhyme").checked, revise: $("s-revise").checked,
+    }, "Geschichte wird geschrieben", (job) => {
+      if (job.result.book_id) { S.bookId = job.result.book_id; store.set("bookId", S.bookId); }
+      renderStory();
+    });
+  };
+}
+
+function storyEditor(book) {
+  const language = (S.editLang && book.languages.includes(S.editLang))
+    ? S.editLang : (book.primary_language || book.languages[0]);
+  const layoutOptions = (current) => (S.status.layouts || []).map((l) =>
+    `<option value="${l.key}" ${l.key === current ? "selected" : ""}>${esc(l.key)}</option>`).join("");
+
+  const languageTabs = book.languages.length > 1 ? `
+    <div class="chips" style="margin-top:1rem">${book.languages.map((code) => {
+      const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
+      return `<label class="chip ${code === language ? "on" : ""}"
+        onclick="setEditLang('${code}')">${esc(name)}</label>`;
+    }).join("")}</div>` : "";
+
+  // The rail: one dot per page, coloured by what needs attention, jumping
+  // straight to the page. Sixteen pages of forms need a map.
+  const rail = book.pages.length > 6 ? `
+    <div class="row" style="gap:.25rem;margin-top:1rem" aria-label="Seiten-Navigation">
+      ${book.pages.map((p) => {
+        const colour = p.error ? "var(--bad)"
+          : (p.check_status === "failed" || p.image_stale) ? "var(--warn)"
+          : p.image_url ? "var(--good)" : "var(--line)";
+        return `<a href="#edit-page-${p.index}" title="Seite ${p.index}"
+          style="width:1.5rem;height:1.5rem;border-radius:6px;display:grid;place-items:center;
+          font-size:.7rem;text-decoration:none;color:var(--fg);
+          border:2px solid ${colour}">${p.index}</a>`;
+      }).join("")}</div>` : "";
+
+  return `<div class="card">
+    <div class="spread"><div>
+      <h2>${esc(book.title[language] || book.display_title)}</h2>
+      <p class="lede" style="margin-bottom:0">${book.pages.length} Seiten. Text und
+        Bildanweisung sind direkt editierbar und werden beim Verlassen des Feldes
+        gespeichert — „KI: neu“ lässt die Seite stattdessen neu schreiben.</p></div>
+      <button class="btn" onclick="go('book')">Bilder zeichnen</button></div>
+
+    ${book.cast.length ? `<p class="small muted" style="margin-top:.8rem">
+      Weitere Figuren und Orte, die auch ein Referenzblatt bekommen:
+      ${book.cast.map((c) => esc(c.name)).join(", ")}</p>` : ""}
+    ${languageTabs}
+    ${rail}
+
+    <div style="margin-top:1.2rem">` + book.pages.map((p) => `
+      <div id="edit-page-${p.index}"
+        style="display:flex;gap:.9rem;padding:.7rem 0;border-bottom:1px solid var(--line)">
+        ${p.image_url
+          ? `<img src="${esc(p.image_url)}" alt="Bild Seite ${p.index}" onclick="zoom('${esc(p.image_url)}')"
+              style="width:76px;height:76px;object-fit:cover;border-radius:8px;cursor:zoom-in;flex:none">`
+          : `<div class="num" style="min-width:1.8rem;padding-top:.5rem">${p.index}</div>`}
+        <div style="flex:1">
+          ${p.image_url ? `<div class="num">SEITE ${p.index}
+            ${p.image_stale ? `<span class="flag warn"
+              title="Seit dem Zeichnen geändert — das Bild zeigt noch die alte Anweisung">Bild noch alt</span>` : ""}</div>` : ""}
+          <textarea rows="2" data-page="${p.index}" data-lang="${language}"
+            aria-label="Text Seite ${p.index}" onchange="savePage(this)">${esc(p.text[language] || "")}</textarea>
+          <label class="small muted" style="display:flex;gap:.4rem;align-items:baseline;margin-top:.3rem">
+            Bild:
+            <input type="text" value="${esc(p.illustration)}" title="Was die Illustration zeigt (englisch)"
+              style="flex:1;font-size:.82rem;padding:.25rem .5rem"
+              onchange="saveIllustration(${p.index}, this.value)">
+          </label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">
+          <label class="small muted" style="text-align:right">Seitenlayout
+            <select style="width:auto;font-size:.78rem;padding:.2rem .4rem;display:block"
+              aria-label="Layout Seite ${p.index}"
+              onchange="saveLayout(${p.index}, this.value)">${layoutOptions(p.layout)}</select></label>
+          <button class="btn ghost tiny" onclick="rewrite(${p.index})"
+            title="Die KI schreibt Text und Bildanweisung dieser Seite neu">KI: neu</button>
+        </div>
+      </div>`).join("") + `</div></div>`;
+}
+
+function setEditLang(code) { S.editLang = code; renderStory(); }
+
+async function savePage(element) {
+  try {
+    await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
+      pages: [{ index: Number(element.dataset.page),
+                text: { [element.dataset.lang]: element.value } }] }) });
+    toast(`Seite ${element.dataset.page} gespeichert.`);
+  } catch (exc) {
+    toast(`Speichern fehlgeschlagen: ${exc.message}`);
+  }
+}
+async function saveLayout(index, layout) {
+  try {
+    await api(`/api/book/books/${S.bookId}`,
+      { method: "PUT", body: JSON.stringify({ pages: [{ index, layout }] }) });
+    toast(`Layout von Seite ${index} gespeichert.`);
+  } catch (exc) {
+    toast(`Speichern fehlgeschlagen: ${exc.message}`);
+  }
+}
+async function saveIllustration(index, illustration) {
+  if (!illustration.trim()) return;
+  await api(`/api/book/books/${S.bookId}`,
+    { method: "PUT", body: JSON.stringify({ pages: [{ index, illustration }] }) });
+  toast(`Bildanweisung für Seite ${index} gespeichert — wirkt beim nächsten Zeichnen.`);
+}
+function rewrite(index) {
+  openModal(`<h3>Seite ${index} neu schreiben</h3>
+    <label class="f"><span>Was soll anders sein? (leer lassen = einfach besser machen)</span>
+      <textarea id="m-note" rows="3" placeholder="Weniger Text. Und es soll regnen."></textarea></label>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-go">Neu schreiben</button></div>`);
+  $("m-go").onclick = () => {
+    const note = $("m-note").value.trim();
+    closeModal();
+    runJob("story_rewrite", { book_id: S.bookId, index, note }, `Seite ${index} neu`,
+      () => (S.screen === "book" ? renderBook() : renderStory()));
+  };
+}
+
+/* =========================================================== 4. book */
+
+let currentBook = null;
+
+async function renderBook() {
+  const book = await api(`/api/book/books/${S.bookId}`);
+  currentBook = book;
+  const language = book.primary_language || book.languages[0];
+  const drawn = book.pages.filter((p) => p.image).length;
+  const spend = book.spend || {};
+  const missing = missingEst(book);
+  const perImage = perImageUsd(book.render_quality);
+  const redrawAllUsd = (book.pages.length + 1) * perImage;
+
+  const qualityPicker = `<select id="b-quality" style="width:auto" title="Bildqualität"
+    onchange="setQuality(this.value)">${(S.status.render_profiles || []).map((p) => `
+      <option value="${p.key}" ${book.render_quality === p.key ? "selected" : ""}>
+        ${esc(p.label)} — ${eur(perImageUsd(p.key))}/Bild</option>`).join("")}</select>`;
+
+
+  view().innerHTML = stepsBar("book") + `
+    <div class="card">
+      <div class="spread"><div>
+        <h2>${esc(book.title[language] || book.display_title)}
+          <button class="btn ghost tiny" style="vertical-align:middle"
+            onclick="editBookMeta()">bearbeiten</button></h2>
+        <p class="lede" style="margin-bottom:0">${drawn} von ${book.pages.length} Seiten gezeichnet
+          ${book.flagged.length ? `· <span style="color:var(--warn)">${book.flagged.length} zum Anschauen</span>` : ""}
+          ${spend.calls ? ` · <button class="meter" style="cursor:pointer"
+            title="Aufschlüsselung ansehen" onclick="costDialog()">bisher
+            <b>~${spend.eur.toFixed(2)} €</b> geschätzt</button>` : ""}
+          ${book.export_stale && (book.exports || []).length ? ` · <span class="flag warn"
+            title="Seit dem letzten Export wurde am Buch geändert">Export veraltet</span>` : ""}</p>
+        <p class="small" style="margin:.5rem 0 0">${nextStep(book, missing)}</p>
+      </div>
+      <div class="row">
+        ${drawn ? `<button class="btn ghost" onclick="openReader()">Vorlesen</button>` : ""}
+        <button class="btn ghost" onclick="go('story')">Text ändern</button>
+        ${pickerHtml()}${qualityPicker}
+        ${missing.images
+          ? `<button class="btn" onclick="illustrate(false)">
+              ${drawn ? "Fehlende Bilder zeichnen" : "Bilder zeichnen"}
+              (${missing.images}) · ${eur(missing.usd)}</button>`
+          : `<button class="btn" onclick="redrawAll()">Alle Seiten neu zeichnen
+              · ${eur(redrawAllUsd)}</button>`}
+      </div></div>
+
+      <div id="review">${referencesBanner(book)}${reviewBanners(book, perImage)}</div>
+
+      ${book.cast.length ? `<details style="margin-top:1rem">
+        <summary class="small muted">Nebenfiguren und Orte (${book.cast.length}) — bearbeiten möglich</summary>
+        <div class="grid g4" style="margin-top:.7rem">` + book.cast.map((c, i) => `
+          <div class="pick" style="cursor:default">
+            ${c.sheet_url ? `<img src="${esc(c.sheet_url)}" alt="Referenzblatt ${esc(c.name)}"
+                onclick="zoom('${esc(c.sheet_url)}')" style="cursor:zoom-in">`
+                          : `<div style="aspect-ratio:3/2;background:var(--sunk)"></div>`}
+            <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? "Ort" : "Figur"}
+              ${c.sheet_url ? "" : " · noch kein Blatt"}</small>
+              <div class="acts" style="margin-top:.4rem">
+                <button class="btn ghost tiny" onclick="editCast(${i})">bearbeiten</button>
+                <button class="btn ghost tiny" onclick="redrawCast(${i})"
+                  title="Neues Referenzblatt · ${eur(perImageUsd('draft'))}">Blatt neu</button>
+              </div></div></div>`).join("") + `</div></details>` : ""}
+    </div>
+
+    ${drawn === 0 && book.pages.length ? storyboardCard(book, language, missing) : ""}
+    ${printPanel(book)}
+
+    <div class="card" id="seiten">
+      <h2>Seiten</h2>
+      <div class="grid g3" style="margin-top:1rem">
+        ${book.cover_url ? `<div class="page">
+          <img src="${esc(book.cover_url)}" onclick="zoom('${esc(book.cover_url)}')" alt="Titelbild">
+          <div class="body"><div class="num">TITELBILD</div>
+            <div class="acts">
+              <button class="btn ghost tiny" onclick="redrawCover()"
+                title="Nur das Titelbild">neu zeichnen · ${eur(perImage)}</button>
+              <button class="btn ghost tiny" onclick="editBookMeta()">Motiv ändern</button>
+            </div></div></div>` : ""}
+        ` + book.pages.map((p) => pageCard(p, language)).join("") + `
+      </div>
+    </div>
+
+    ${drawn ? `<div id="export">${exportPanel(book)}</div>` : ""}
+
+    <details class="card" id="tools" ${drawn && (book.pages.some((p) => (p.audio_stale || []).length)) ? "open" : ""}>
+      <summary style="cursor:pointer"><b>Weitere Werkzeuge</b>
+        <span class="muted small">— Vorlesen lassen, Fotoseite</span></summary>
+      <div style="margin-top:1rem">
+        ${drawn ? soundPanel(book) : `<p class="lede">Ton gibt es, sobald Seiten gezeichnet sind.</p>`}
+        ${photoPanel(book, language)}
+      </div>
+    </details>
+
+    <div class="row" style="margin-top:1.4rem;justify-content:flex-end">
+      <button class="btn ghost" style="color:var(--bad)" onclick="deleteBook()">Buch löschen</button>
+    </div>`;
+
+  refreshPreflight();  // async; fills the readiness box once the answer is in
+}
+
+/* The storyboard: the last look before money is spent. Everything the
+   illustrator will be told, page by page, plus the total -- and the way back
+   to the editor if something reads wrong. */
+function storyboardCard(book, language, missing) {
+  const rows = book.pages.map((p) => `
+    <tr style="border-bottom:1px solid var(--line);vertical-align:top">
+      <td class="num" style="padding:.4rem .5rem .4rem 0">${p.index}</td>
+      <td style="padding:.4rem .8rem .4rem 0">${esc((p.text[language] || "—").slice(0, 90))}</td>
+      <td class="small muted" style="padding:.4rem .8rem .4rem 0">${esc(p.illustration.slice(0, 90))}</td>
+      <td class="small muted" style="white-space:nowrap">${esc(p.layout)}${
+        p.cast.length ? ` · ${p.cast.map(esc).join(", ")}` : ""}</td>
+    </tr>`).join("");
+  return `<div class="card">
+    <h2>Storyboard — vor dem ersten Zeichnen prüfen</h2>
+    <p class="lede">So wird der Illustrator gebrieft. Liest sich eine Zeile falsch,
+      ist Ändern jetzt kostenlos — nach dem Zeichnen kostet jede Korrektur ein Bild.
+      Insgesamt: <b>${missing.images} Bilder, ${eur(missing.usd)}</b>.</p>
+    <div style="overflow-x:auto"><table class="small" style="width:100%;border-collapse:collapse">
+      <tr class="muted"><th style="text-align:left;padding-right:.5rem">Nr</th>
+        <th style="text-align:left">Text</th><th style="text-align:left">Bildanweisung</th>
+        <th style="text-align:left">Layout · Figuren</th></tr>
+      ${rows}</table></div>
+    <div class="row" style="margin-top:1rem">
+      <button class="btn ghost" onclick="go('story')">Noch etwas ändern</button>
+      <button class="btn" onclick="illustrate(false)">Passt — zeichnen (${missing.images} · ${eur(missing.usd)})</button>
+    </div></div>`;
+}
+
+/* The proof sheet: every page in order, compact, with exactly the numbers a
+   print decision needs -- faster than scrolling a wall of cards. */
+function proofDialog() {
+  const book = currentBook;
+  const presetKey = $("e-preset")?.value || "print_square";
+  const preset = (S.status.print_presets || []).find((p) => p.key === presetKey) || {};
+  const language = book.primary_language || book.languages[0];
+  const pageMm = presetKey === "print_kinderbuch" ? 162 : 222.25;  // incl. bleed
+  const isPrint = !!preset.bleed;
+  const dpi = (px) => Math.round(px / (pageMm / 25.4));
+  const cells = book.pages.map((p) => {
+    const d = p.image_px ? dpi(p.image_px) : null;
+    const marks = [
+      p.error ? "Fehler" : "",
+      p.check_status === "failed" ? "prüfen" : "",
+      (p.check_status === "unknown" || p.check_status === "unchecked") ? "ungeprüft" : "",
+      p.image_stale ? "Bild veraltet" : "",
+      isPrint && d && d < 280 ? `${d} dpi` : "",
+    ].filter(Boolean);
+    return `<div style="border:1px solid ${marks.length ? "var(--warn)" : "var(--line)"};
+        border-radius:8px;overflow:hidden">
+      ${p.image_url ? `<img src="${esc(p.image_url)}" alt="Seite ${p.index}"
+        style="aspect-ratio:1;object-fit:cover">`
+        : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
+            class="small muted">fehlt</div>`}
+      <div class="small" style="padding:.3rem .45rem">
+        <b>${p.index}</b> ${esc((p.text[language] || "").slice(0, 40))}
+        ${marks.length ? `<div style="color:var(--warn)">${marks.map(esc).join(" · ")}</div>` : ""}
+      </div></div>`;
+  }).join("");
+  openModal(`<h3>Druckbogen — ${esc(preset.name || presetKey)}</h3>
+    <div class="grid g4" style="margin-bottom:1rem">${cells}</div>
+    <p class="small muted">Gelb gerahmte Seiten brauchen einen Blick, bevor gedruckt wird.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+}
+
+// One plain sentence saying what to do next -- the antidote to a screen with
+// nine buttons on it.
+function nextStep(book, missing) {
+  const review = book.review || { failed: [], unknown: [], errors: [] };
+  if (missing.images) {
+    return `Als Nächstes: ${missing.images} fehlende${missing.images === 1 ? "s" : ""} Bild${missing.images === 1 ? "" : "er"} zeichnen.`;
+  }
+  if (review.failed.length + review.errors.length) {
+    return `Als Nächstes: die beanstandeten Seiten ansehen — <a href="#review">zu den Hinweisen</a>.`;
+  }
+  if (review.unknown.length) {
+    return `Als Nächstes: die ungeprüften Seiten prüfen lassen — <a href="#review">zu den Hinweisen</a>.`;
+  }
+  if (book.export_stale && (book.exports || []).length) {
+    return `Als Nächstes: neu exportieren, der Text ist neuer als die Dateien — <a href="#export">zum Export</a>.`;
+  }
+  if (!(book.exports || []).length) {
+    return `Alles gezeichnet. Als Nächstes: anhören („Vorlesen“) oder <a href="#export">exportieren</a>.`;
+  }
+  return "Fertig — Dateien sind exportiert und aktuell.";
+}
+
+/* A book is frozen to the references it was made with. When the hero or the
+   style has moved on since, that is worth a calm note -- and an explicit
+   button, never an automatic switch. */
+function referencesBanner(book) {
+  const refs = book.references || {};
+  const reasons = [];
+  if (refs.hero_changed) reasons.push("die Figur hat inzwischen ein anderes Charakterblatt");
+  if (refs.style_changed) reasons.push("der Stil wurde inzwischen neu gezeichnet");
+  if (refs.style_missing) reasons.push("der Stil dieses Buches wurde gelöscht — das Buch behält seine eigene Kopie");
+  if (!reasons.length) return "";
+  const canAdopt = refs.hero_changed || refs.style_changed;
+  return `<div class="banner" style="margin-top:1.1rem">
+    Dieses Buch zeichnet mit seiner <b>eingefrorenen</b> Referenz weiter,
+    denn ${reasons.join(", ")}. Bestehende Seiten ändern sich dadurch nie von selbst.
+    ${canAdopt ? `<div style="margin-top:.6rem"><button class="btn ghost tiny"
+      onclick="adoptReferences()">Auf die neue Referenz umstellen</button>
+      <span class="small muted">— wirkt erst beim nächsten Zeichnen; schon
+      gezeichnete Seiten bleiben, bis du sie neu zeichnest.</span></div>` : ""}
+  </div>`;
+}
+
+/* The header figure, opened up: what exactly was paid for. Every image and
+   audio call leaves a ledger entry server-side; text calls (story, checks)
+   cost cents at most and are billed against free contingents, so they are
+   noted rather than counted. */
+function costDialog() {
+  const spend = currentBook?.spend || {};
+  const nice = { pages: "Seitenbilder", cover: "Titelbild", narration: "Ton",
+                 scout: "Bilddienst-Vergleich", cast: "Nebenfiguren-Blätter" };
+  const rows = Object.entries(spend.by || {}).map(([what, b]) => `
+    <tr><td>${esc(nice[what] || what)}</td>
+      <td style="text-align:right">${b.calls}×</td>
+      <td style="text-align:right">${eur(b.usd)}</td></tr>`).join("");
+  const recent = (spend.entries || []).slice(-12).reverse().map((e) => `
+    <tr><td class="muted">${esc(nice[e.what] || e.what)}</td>
+      <td class="muted">${esc(e.model || "")}</td>
+      <td style="text-align:right">${eur(e.usd)}</td></tr>`).join("");
+  openModal(`<h3>Kosten dieses Buchs — ~${(spend.eur ?? 0).toFixed(2)} €</h3>
+    <table class="small" style="width:100%;border-collapse:collapse;margin-bottom:1rem">
+      ${rows || `<tr><td class="muted">Noch nichts ausgegeben.</td></tr>`}
+    </table>
+    ${recent ? `<details><summary class="small muted">Letzte Einzelposten</summary>
+      <table class="small" style="width:100%;border-collapse:collapse;margin-top:.5rem">${recent}</table>
+    </details>` : ""}
+    <p class="small muted" style="margin-top:.8rem">Alles Schätzwerte auf Basis der
+      Listenpreise (BFL meldet exakt). Text-Aufrufe — Geschichte, Überarbeitung,
+      Prüfungen — kosten Centbeträge und sind hier nicht mitgezählt.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+}
+
+/* Cast corrections: the story generator invents the recurring cast, and it
+   sometimes gets a name, a description or a page list wrong. This is where a
+   person fixes it -- including regenerating just the one reference sheet. */
+function editCast(index) {
+  const member = currentBook.cast[index];
+  if (!member) return;
+  const pageChips = currentBook.pages.map((p) => `
+    <label class="chip ${(member.pages || []).includes(p.index) ? "on" : ""}">
+      <input type="checkbox" value="${p.index}"
+        ${(member.pages || []).includes(p.index) ? "checked" : ""}
+        onchange="this.parentNode.classList.toggle('on',this.checked)">${p.index}</label>`).join("");
+  openModal(`<h3>${esc(member.name)} bearbeiten</h3>
+    <label class="f"><span>Name</span>
+      <input type="text" id="m-cname" value="${esc(member.name)}"></label>
+    <label class="f"><span>Beschreibung (englisch, fürs Zeichnen)</span>
+      <textarea id="m-cdesc" rows="3">${esc(member.description)}</textarea></label>
+    <label class="f"><span>Kommt vor auf den Seiten</span></label>
+    <div class="chips" id="m-cpages" style="margin-bottom:1rem">${pageChips}</div>
+    <p class="small muted">Nach einer geänderten Beschreibung das Blatt neu zeichnen
+      lassen — sonst zeigt die Referenz weiter die alte Fassung.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" style="color:var(--bad)" id="m-cremove">Entfernen</button>
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-csave">Speichern</button></div>`);
+  $("m-csave").onclick = async () => {
+    const pages = [...$("m-cpages").querySelectorAll("input:checked")].map((i) => Number(i.value));
+    await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
+      cast: [{ index, name: $("m-cname").value, description: $("m-cdesc").value, pages }] }) });
+    closeModal(); toast("Gespeichert."); renderBook();
+  };
+  $("m-cremove").onclick = () => {
+    closeModal();
+    confirmModal(`${member.name} aus dem Buch entfernen?`,
+      "Die Figur verschwindet von allen Seitenlisten; schon gezeichnete Bilder bleiben, bis sie neu gezeichnet werden.",
+      "Entfernen", async () => {
+        await api(`/api/book/books/${S.bookId}`, { method: "PUT",
+          body: JSON.stringify({ cast: [{ index, remove: true }] }) });
+        toast("Entfernt."); renderBook();
+      });
+  };
+}
+
+function redrawCast(index) {
+  runJob("cast_redraw", { book_id: S.bookId, cast_index: index, ...drawParams() },
+    "Referenzblatt wird gezeichnet", renderBook);
+}
+
+async function adoptReferences() {
+  await api(`/api/book/books/${S.bookId}`,
+    { method: "PUT", body: JSON.stringify({ adopt_references: true }) });
+  toast("Referenz übernommen — neue Zeichnungen folgen jetzt dem aktuellen Stand.");
+  renderBook();
+}
+
+// Failed and unknown checks are different problems with different fixes:
+// failed pages get redrawn (costs images), unknown pages get re-checked
+// (costs a vision call). One banner each, so the action matches the problem.
+function reviewBanners(book, perImage) {
+  const review = book.review || { failed: book.flagged || [], unknown: [], errors: [] };
+  const trouble = [...review.failed, ...review.errors];
+  const pageLinks = (list) => list.map((i) => `<a href="#page-${i}">${i}</a>`).join(", ");
+  let html = "";
+  if (trouble.length) {
+    html += `<div class="banner" style="margin-top:1.1rem" role="alert">
+      Auf ${trouble.length === 1 ? "einer Seite" : `${trouble.length} Seiten`}
+      stimmt etwas nicht (Figur, Szene oder der Zeichenversuch selbst):
+      Seite ${pageLinks(trouble)}. Jede geprüfte davon wurde schon einmal
+      automatisch nachgezeichnet — das hier blieb übrig.
+      <div style="margin-top:.6rem"><button class="btn ghost tiny"
+        onclick="illustrate(true, [${trouble.join(",")}])">
+        Alle ${trouble.length} neu zeichnen · ${eur(trouble.length * perImage)}</button></div>
+    </div>`;
+  }
+  if (review.unknown.length) {
+    html += `<div class="banner" style="margin-top:${trouble.length ? ".6rem" : "1.1rem"}">
+      ${review.unknown.length === 1 ? "Eine Seite ist" : `${review.unknown.length} Seiten sind`}
+      <b>ungeprüft</b> — die Ähnlichkeitsprüfung brach ab, bevor sie urteilen
+      konnte: Seite ${pageLinks(review.unknown)}. Die Bilder können völlig in
+      Ordnung sein; verifiziert hat sie nur niemand.
+      <div style="margin-top:.6rem"><button class="btn ghost tiny"
+        onclick="recheck([${review.unknown.join(",")}])">
+        Jetzt prüfen — kostet keine Bilder, nur einen Blick</button></div>
+    </div>`;
+  }
+  return html;
+}
+
+function recheck(only) {
+  runJob("book_check", { book_id: S.bookId, only: only || [] },
+    "Seiten werden geprüft", renderBook);
+}
+
+async function setQuality(key) {
+  await api(`/api/book/books/${S.bookId}`,
+    { method: "PUT", body: JSON.stringify({ render_quality: key }) });
+  toast("Bildqualität umgestellt — sie gilt für alles, was ab jetzt gezeichnet wird.");
+  renderBook();
+}
+
+function setBackend(name) { store.set("imageBackend", name); render(); }
+function setModel(key) { store.set("imageModel." + currentBackend(), key); render(); }
+
+/* The confirm for the two expensive runs, with an optional spending ceiling:
+   the job stops queueing new pages once the ceiling is crossed. */
+function bigRunModal(title, detail, verb, params, jobTitle) {
+  // Gemini can run the whole batch at half price, if you can wait for it.
+  const gemini = currentBackend() === "gemini";
+  const count = (currentBook?.pages.length || 0) + 1;
+  const profile = params.render_quality || currentBook?.render_quality || "draft";
+  const batchUsd = count * perImageUsd(profile) * 0.5;
+  openModal(`<h3>${esc(title)}</h3>
+    <p class="lede">${esc(detail)} Wird eine Seite von der Prüfung beanstandet,
+      kostet die automatische Wiederholung je ein weiteres Bild.</p>
+    ${gemini ? `<label class="check" style="margin-bottom:1rem">
+      <input type="checkbox" id="m-batch">
+      <span><b>Batch-Modus: ${eur(batchUsd)} statt des vollen Preises.</b>
+      Google zeichnet alles in einem Rutsch, wann es Kapazität hat — Minuten
+      bis Stunden statt sofort. Keine automatische Wiederholung; beanstandete
+      Seiten bleiben markiert.</span></label>` : ""}
+    <label class="f" style="max-width:260px"><span>Kostendeckel in € (leer = keiner)</span>
+      <input type="number" id="m-budget" min="0" step="0.5" placeholder="z. B. 3"></label>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-go">${esc(verb)}</button></div>`);
+  $("m-go").onclick = () => {
+    const eurCap = parseFloat($("m-budget").value);
+    const batch = !!$("m-batch")?.checked;
+    closeModal();
+    const budget = Number.isFinite(eurCap) && eurCap > 0
+      ? { budget_usd: eurCap * (est().usd_per_eur || 1.08) } : {};
+    runJob("book_illustrate",
+      { book_id: S.bookId, ...params, ...budget, ...(batch ? { batch: true } : {}),
+        ...drawParams() },
+      batch ? `${jobTitle} (Batch)` : jobTitle, renderBook);
+  };
+}
+
+function redrawAll() {
+  const book = currentBook;
+  const usd = (book.pages.length + 1) * perImageUsd(book.render_quality);
+  bigRunModal("Wirklich alle Seiten neu zeichnen?",
+    `${book.pages.length} Seiten und das Titelbild, in der eingestellten Qualität — zusammen ${eur(usd)}. Die bisherigen Fassungen bleiben als Versionen erhalten.`,
+    "Alles neu zeichnen", { redraw: true }, "Bilder werden gezeichnet");
+}
+
+function redrawCover() {
+  runJob("book_illustrate", { book_id: S.bookId, cover_only: true, ...drawParams() },
+    "Titelbild wird gezeichnet", renderBook);
+}
+
+// The print-readiness check: are the drawn pictures big enough for 300 dpi?
+function printPanel(book) {
+  const drawnPages = book.pages.filter((p) => p.image_px);
+  if (!drawnPages.length) return "";
+  // The square print preset: 21.6 cm trim plus 3.175 mm bleed on both sides.
+  const pageMm = 215.9 + 2 * 3.175;
+  const dpi = (px) => Math.round(px / (pageMm / 25.4));
+  const worst = Math.min(...drawnPages.map((p) => dpi(p.image_px)));
+  const weak = drawnPages.filter((p) => dpi(p.image_px) < 280).length;
+  if (!weak) {
+    return `<div class="card"><h2>Reif für die Druckerei</h2>
+      <p class="lede" style="margin-bottom:0">Alle gezeichneten Seiten liegen bei etwa
+        <b>${worst} dpi</b> und mehr — genug für die 300 dpi, die eine Druckerei will.</p></div>`;
+  }
+  const usd = (book.pages.length + 1) * perImageUsd("print");
+  return `<div class="card"><h2>Noch nicht reif für die Druckerei</h2>
+    <p class="lede">Eine Druckerei will 300 dpi („dots per inch“ — Druckpunkte pro Zoll).
+      ${weak} von ${drawnPages.length} gezeichneten Seiten liegen darunter, die schwächste
+      bei etwa <b>${worst} dpi</b>. Am Bildschirm fällt das nicht auf, im Druck wird es weich.
+      Zum Vorlesen am Bildschirm reicht es so.</p>
+    <button class="btn ghost" onclick="rerenderPrint()">
+      Alles in Druckqualität neu zeichnen · ${eur(usd)}</button></div>`;
+}
+
+function rerenderPrint() {
+  const book = currentBook;
+  const usd = (book.pages.length + 1) * perImageUsd("print");
+  bigRunModal("Alles in Druckqualität neu zeichnen?",
+    `${book.pages.length} Seiten und das Titelbild bei 2624 px — das dauert deutlich länger und kostet ${eur(usd)}. Die bisherigen Fassungen bleiben als Versionen erhalten.`,
+    "In Druckqualität zeichnen", { redraw: true, render_quality: "print" },
+    "Druckqualität wird gezeichnet");
+}
+
+async function editBookMeta() {
+  const book = currentBook;
+  openModal(`<h3>Titel, Widmung, Titelbild</h3>
+    ${book.languages.map((code) => `
+      <label class="f"><span>Titel (${esc(code)})</span>
+        <input type="text" id="m-title-${code}" value="${esc(book.title[code] || "")}"></label>`).join("")}
+    ${book.languages.map((code) => `
+      <label class="f"><span>Widmung (${esc(code)})</span>
+        <input type="text" id="m-ded-${code}" value="${esc(book.dedication[code] || "")}"></label>`).join("")}
+    <label class="f"><span>Was das Titelbild zeigt (englisch — wirkt beim nächsten Zeichnen)</span>
+      <textarea id="m-cover" rows="2">${esc(book.cover_illustration || "")}</textarea></label>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-save">Speichern</button></div>`);
+  $("m-save").onclick = async () => {
+    const title = {}, dedication = {};
+    for (const code of book.languages) {
+      title[code] = $(`m-title-${code}`).value;
+      dedication[code] = $(`m-ded-${code}`).value;
+    }
+    await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify(
+      { title, dedication, cover_illustration: $("m-cover").value }) });
+    closeModal(); toast("Gespeichert."); renderBook();
+  };
+}
+
+function deleteBook() {
+  confirmModal(`„${currentBook.display_title}“ löschen?`,
+    "Alle Bilder, Tonspuren und PDFs dieses Buches werden vom Rechner gelöscht. Das lässt sich nicht rückgängig machen.",
+    "Löschen", async () => {
+      await api(`/api/book/books/${S.bookId}`, { method: "DELETE" });
+      S.bookId = null; store.set("bookId", null);
+      toast("Buch gelöscht."); go("home");
+    });
+}
+
+function pageCard(page, language) {
+  const check = page.check || {};
+  const status = page.check_status || (check.ok === false ? "failed" : "");
+  const notes = (check.notes || []).slice(0, 2).map((n) => `<li>${esc(n)}</li>`).join("");
+  return `<div class="page" id="page-${page.index}">
+    ${page.image_url
+      ? `<img src="${esc(page.image_url)}" onclick="zoom('${esc(page.image_url)}')"
+           alt="Illustration Seite ${page.index}">`
+      : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
+           class="small muted">noch nicht gezeichnet</div>`}
+    <div class="body">
+      <div class="num">SEITE ${page.index}
+        ${status === "failed" ? `<span class="flag warn">prüfen</span>` : ""}
+        ${status === "unknown" ? `<span class="flag warn" title="Die Prüfung brach ab — niemand hat diese Seite verifiziert">ungeprüft</span>` : ""}
+        ${status === "unchecked" && page.image_url ? `<span class="flag calm" title="Diese Seite wurde nie geprüft">ohne Prüfung</span>` : ""}
+        ${page.image_stale ? `<span class="flag warn" title="Die Bildanweisung wurde seit dem Zeichnen geändert — das Bild zeigt noch die alte Fassung">Bild veraltet</span>` : ""}
+        ${(page.audio_stale || []).length ? `<span class="flag warn" title="Der Text wurde nach der Aufnahme geändert (${esc((page.audio_stale || []).join(", "))}) — der Ton liest noch den alten">Ton veraltet</span>` : ""}
+        ${page.error ? `<span class="flag bad">Fehler</span>` : ""}
+        ${page.layout !== "full" ? `<span class="flag calm">${esc(page.layout)}</span>` : ""}</div>
+      <div class="small" style="margin-top:.3rem">${esc((page.text[language] || "").slice(0, 120))}</div>
+      ${notes ? `<ul class="notes">${notes}</ul>` : ""}
+      <div class="acts">
+        <button class="btn ghost tiny" onclick="editPage(${page.index})"
+          title="Text, Bildanweisung und Layout dieser Seite ändern">bearbeiten</button>
+        <button class="btn ghost tiny" onclick="illustrate(true,[${page.index}])"
+          title="Kostet etwa ${eur(perImageUsd(currentBook.render_quality))}">neu zeichnen</button>
+        ${(page.history_urls || []).length ? `<button class="btn ghost tiny"
+          onclick="showVersions(${page.index})">Versionen (${page.history_urls.length})</button>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* The page-edit window at the final step: everything one page is made of,
+   in one place, without a detour back to the story screen. */
+function editPage(index) {
+  const page = currentBook.pages.find((p) => p.index === index);
+  if (!page) return;
+  const layouts = (S.status.layouts || []).map((l) =>
+    `<option value="${l.key}" ${l.key === page.layout ? "selected" : ""}>${esc(l.key)} — ${esc(l.hint)}</option>`).join("");
+  openModal(`<h3>Seite ${index} bearbeiten</h3>
+    <div class="row" style="align-items:flex-start;gap:1rem">
+      ${page.image_url ? `<img src="${esc(page.image_url)}" alt="Seite ${index}"
+        onclick="zoom('${esc(page.image_url)}')" title="Groß ansehen"
+        style="width:120px;border-radius:9px;cursor:zoom-in;flex:none">` : ""}
+      <div style="flex:1;min-width:260px">
+        ${currentBook.languages.map((code) => `<label class="f"><span>Text (${esc(langName(code))})</span>
+          <textarea id="m-pt-${code}" rows="2">${esc(page.text[code] || "")}</textarea></label>`).join("")}
+      </div>
+    </div>
+    <label class="f"><span>Was das Bild zeigt (englisch — wirkt beim nächsten Zeichnen)</span>
+      <textarea id="m-pb" rows="2">${esc(page.illustration)}</textarea></label>
+    <label class="f" style="max-width:320px"><span>Seitenlayout</span>
+      <select id="m-pl">${layouts}</select></label>
+    <div class="row" style="justify-content:space-between">
+      <span class="row">
+        <button class="btn ghost" onclick="closeModal();rewrite(${index})"
+          title="Die KI schreibt die Seite neu, statt dass du selbst tippst">KI: neu schreiben lassen</button>
+        <button class="btn ghost" onclick="closeModal();typesetPreview(${index})"
+          title="Diese Seite fertig gesetzt ansehen">Setzprobe</button></span>
+      <span class="row">
+        <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+        <button class="btn" id="m-psave">Speichern</button></span>
+    </div>`);
+  $("m-psave").onclick = async () => {
+    const text = {};
+    for (const code of currentBook.languages) text[code] = $(`m-pt-${code}`).value;
+    await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
+      pages: [{ index, text, illustration: $("m-pb").value, layout: $("m-pl").value }] }) });
+    closeModal(); toast(`Seite ${index} gespeichert.`); renderBook();
+  };
+}
+
+function showVersions(index) {
+  const page = currentBook.pages.find((p) => p.index === index);
+  if (!page) return;
+  const older = (page.history_urls || []).slice().reverse();  // newest first
+  openModal(`<h3>Seite ${index} — Versionen</h3>
+    <div class="grid g3" style="margin-bottom:1rem">
+      <div><img src="${esc(page.image_url)}" alt="" onclick="zoom('${esc(page.image_url)}')">
+        <span class="vlabel"><b>aktuell</b></span></div>
+      ${older.map((url, i) => `
+        <div><img src="${esc(url)}" alt="" onclick="zoom('${esc(url)}')">
+          <span class="vlabel">${i === 0 ? "davor" : `${i + 1} Fassungen davor`}</span></div>`).join("")}
+    </div>
+    <p class="small muted">„Zurück“ stellt jeweils die letzte vorherige Fassung wieder
+      her — mehrmals drücken geht weiter zurück.</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button>
+      <button class="btn" onclick="closeModal();undoPage(${index})">Zurück zur vorherigen</button>
+    </div>`);
+}
+
+function illustrate(redraw, only) {
+  runJob("book_illustrate",
+    { book_id: S.bookId, redraw: !!redraw, only: only || [], ...drawParams() },
+    only ? `Seite ${only.join(", ")} wird gezeichnet` : "Bilder werden gezeichnet", renderBook);
+}
+function undoPage(index) {
+  runJob("book_undo", { book_id: S.bookId, index }, `Seite ${index} zurück`, renderBook);
+}
+
+/* ---------------------------------------------------------- sound */
+
+function soundPanel(book) {
+  const done = book.pages.filter((p) => Object.keys(p.audio_urls || {}).length).length;
+  const spoken = book.pages.filter((p) => Object.values(p.text || {}).some((t) => t)).length;
+  const usd = spoken * book.languages.length * (est().narration_page_usd || 0.003);
+  const stale = book.pages.filter((p) => (p.audio_stale || []).length).length;
+  return `<div class="card">
+    <div class="spread"><div>
+      <h2>Vorlesen lassen</h2>
+      <p class="lede" style="margin-bottom:0">Eine Tonspur pro Seite und Sprache.
+        ${done ? `${done} von ${book.pages.length} Seiten haben schon Ton.` : ""}
+        ${stale ? `<span style="color:var(--warn)"> ${stale} davon ${stale === 1 ? "liest" : "lesen"}
+          noch den alten Text — „Ton erzeugen“ nimmt sie neu auf.</span>` : ""}
+        ${book.narration_voice ? `<span class="muted"> Bisherige Stimme: ${esc(book.narration_voice)}.</span>` : ""}</p></div>
+      <div class="row">
+        <select id="n-voice" style="width:auto">${(S.status.voices || []).map((v) =>
+          `<option value="${v.key}">${esc(v.key)} — ${esc(v.hint)}</option>`).join("")}</select>
+        <button class="btn ghost tiny" onclick="previewVoice()" ${can("narration") ? "" : `disabled title="Braucht einen OPENAI_API_KEY"`}
+          title="Ein kurzer Satz zum Anhören; einmal erzeugt, dann gespeichert">Probehören</button>
+        <button class="btn ghost" onclick="narrate()" ${can("narration") ? "" : `disabled title="Braucht einen OPENAI_API_KEY"`}>Ton erzeugen · ${eur(usd)}</button>
+      </div></div></div>`;
+}
+
+function narrate() {
+  runJob("book_narrate", { book_id: S.bookId, voice: $("n-voice").value },
+    "Ton wird erzeugt", renderBook);
+}
+
+function previewVoice() {
+  runJob("voice_preview", { voice: $("n-voice").value }, "Stimmprobe", (job) => {
+    if (job.result.url) new Audio(job.result.url).play();
+  });
+}
+
+/* ---------------------------------------------------------- photo page */
+
+function photoPanel(book, language) {
+  const photo = book.photo_page || {};
+  const caption = (photo.caption || {})[language] || "";
+  return `<div class="card">
+    <h2>Letzte Seite: ein echtes Foto</h2>
+    <p class="lede">Optional. Ein Bild von deinem Sohn und eine Zeile darunter —
+      das schlägt jedes erfundene Ende.</p>
+    <div class="grid g2">
+      <div>
+        <div class="drop" id="p-drop" style="padding:1rem" role="button" tabindex="0"
+          aria-label="Foto auswählen oder hierher ziehen">
+          <div class="small"><b>Foto hierher ziehen</b> oder klicken
+            <input type="file" id="p-file" accept="image/*" class="hide"></div>
+        </div>
+        <p class="small muted" style="margin:.5rem 0 0">Das Foto bleibt auf diesem Rechner
+          im Buchordner (und damit in Backups), wird an keinen Dienst geschickt und
+          verschwindet mit „Fotoseite entfernen“ wieder.</p>
+        ${photo.image_url ? `<img src="${esc(photo.image_url)}" alt="Foto der letzten Seite"
+          onclick="zoom('${esc(photo.image_url)}')" title="Groß ansehen"
+          style="margin-top:.8rem;max-width:180px;border-radius:9px;border:1px solid var(--line);cursor:zoom-in">` : ""}
+      </div>
+      <div>
+        <label class="f"><span>Zeile darunter (${esc(language)})</span>
+          <input type="text" id="p-caption" value="${esc(caption)}"
+            placeholder="Für Mats, Weihnachten 2026"></label>
+        <div class="row">
+          <button class="btn ghost" onclick="savePhotoCaption('${language}')">Zeile speichern</button>
+          ${photo.image_url ? `<button class="btn ghost" onclick="removePhoto()">Fotoseite entfernen</button>` : ""}
+        </div>
+      </div>
+    </div></div>`;
+}
+
+function wirePhotoPage() {
+  const drop = $("p-drop"), file = $("p-file");
+  if (!drop) return;
+  drop.onclick = () => file.click();
+  drop.ondragover = (e) => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = async (e) => { e.preventDefault(); drop.classList.remove("over");
+    await uploadPhotoPage([...e.dataTransfer.files][0]); };
+  file.onchange = () => uploadPhotoPage(file.files[0]);
+}
+
+async function uploadPhotoPage(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  const photo = await readFile(file);
+  runJob("book_photo", { book_id: S.bookId, photo }, "Foto wird gespeichert", renderBook);
+}
+function savePhotoCaption(language) {
+  runJob("book_photo", { book_id: S.bookId, caption: { [language]: $("p-caption").value } },
+    "Zeile wird gespeichert", renderBook);
+}
+function removePhoto() {
+  runJob("book_photo", { book_id: S.bookId, remove: true }, "Fotoseite wird entfernt", renderBook);
+}
+
+/* ---------------------------------------------------------- export */
+
+function exportPanel(book) {
+  const handoff = (book.exports || []).find((f) => f.name.endsWith(".md"));
+  return `<div class="card">
+    <h2>Fertig machen</h2>
+    <p class="lede">Ein PDF pro Sprache. Für die Druckerei ist der Beschnitt schon drin,
+      der Umschlag kommt mit Rücken und Rückseite, und dazu schreibe ich auf,
+      was du wo hochladen musst.</p>
+    <div id="preflight" aria-live="polite"></div>
+    <div class="grid g2">
+      <label class="f"><span>Format</span>
+        <select id="e-preset" onchange="refreshPreflight()">${(S.status.print_presets || []).map((p) => `
+          <option value="${p.key}">${esc(p.name)}</option>`).join("")}</select></label>
+      <label class="f"><span>Schrift</span>
+        <select id="e-font" onchange="refreshPreflight()">${(S.status.fonts || []).map((f) => `
+          <option value="${f.key}">${esc(f.name)}</option>`).join("")}</select></label>
+    </div>
+    <div class="grid g2">
+      <label class="f"><span>Druckerei (für die Anleitung)</span>
+        <select id="e-shop">${(S.status.print_shops || []).map((s) => `
+          <option value="${s.key}">${esc(s.name)} — ${esc(s.where)}</option>`).join("")}</select></label>
+      <div><label class="f"><span>Sprachen</span></label>
+        <div class="chips" id="e-langs">${book.languages.map((code) => {
+          const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
+          return `<label class="chip on"><input type="checkbox" value="${code}" checked
+            onchange="this.parentNode.classList.toggle('on',this.checked);refreshPreflight()">${esc(name)}</label>`;
+        }).join("")}</div></div>
+    </div>
+
+    ${book.languages.length > 1 ? `<label class="check" style="margin:.2rem 0 .9rem">
+      <input type="checkbox" id="e-combine">
+      Alle gewählten Sprachen zusammen auf jede Seite — ein zweisprachiges Buch
+      statt einer Datei pro Sprache</label>` : ""}
+
+    <div class="row" style="margin-top:1rem">
+      <button class="btn" id="e-go" onclick="doExport()">PDF erzeugen</button>
+      <button class="btn ghost" onclick="proofDialog()"
+        title="Alle Seiten kompakt, mit dpi, Prüfstatus und Auffälligkeiten">Druckbogen prüfen</button>
+      <button class="btn ghost" onclick="typesetPreview(0)"
+        title="Jede Seite fertig gesetzt, mit Schnitt- und Sicherheitslinien — bevor ein PDF entsteht">Setzprobe</button>
+      <button class="btn ghost" onclick="addLanguage()">Sprache dazu</button>
+      <button class="btn ghost" onclick="backupBook()"
+        title="Der ganze Buchordner als eine Datei — Bilder, Ton, Text, PDFs">Buch sichern (ZIP)</button>
+    </div>
+
+    ${(book.exports || []).length ? `<div style="margin-top:1.3rem">
+      <div class="spread" style="margin-bottom:.6rem">
+        <h3 class="small muted" style="margin:0">Dein Buch als Datei (${book.exports.length})</h3>
+        <button class="btn ghost tiny" onclick="openExportFolder()"
+          title="Den Ordner mit allen Dateien im Datei-Explorer öffnen">Ordner öffnen</button>
+      </div>
+      <div class="grid g2">
+      ${book.exports.map((f) => {
+        const icon = { interior: "📖", wrap: "📚", cover: "🖼️", handoff: "📋" }[f.kind] || "📄";
+        const size = f.size_kb > 1024 ? `${(f.size_kb / 1024).toFixed(1)} MB` : `${f.size_kb} KB`;
+        return `<div class="file">
+          <div class="ficon" aria-hidden="true">${icon}</div>
+          <div style="flex:1;min-width:0"><b class="small">${esc(f.label || f.name)}</b>
+            <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${esc(f.name)}">${size}${book.export_stale ? " · älter als der letzte Stand" : ""}</div></div>
+          <span class="row" style="gap:.3rem;flex:none">
+            ${f.kind === "handoff"
+              ? `<button class="btn ghost tiny" onclick="showHandoff('${esc(f.url)}')">lesen</button>`
+              : `<a class="btn ghost tiny" href="${esc(f.url)}" target="_blank"
+                  style="text-decoration:none">ansehen</a>`}
+            <a class="btn ghost tiny" href="${esc(f.url)}" download
+              style="text-decoration:none">speichern</a>
+          </span></div>`;
+      }).join("")}</div></div>` : ""}
+  </div>`;
+}
+
+async function openExportFolder() {
+  try {
+    await api(`/api/book/books/${S.bookId}/open-folder`, { method: "POST" });
+  } catch (exc) {
+    toast(`Konnte den Ordner nicht öffnen: ${exc.message}`);
+  }
+}
+
+/* The print-shop instructions, rendered readable instead of served as a raw
+   .md download. The file itself stays on disk for anyone who wants it. */
+async function showHandoff(url) {
+  let text;
+  try { text = await (await fetch(url)).text(); }
+  catch { return toast("Anleitung nicht gefunden."); }
+  openModal(`<h3>Anleitung für die Druckerei</h3>
+    <div style="max-height:60vh;overflow:auto">${mdToHtml(text)}</div>
+    <div class="row" style="justify-content:flex-end;margin-top:1rem">
+      <a class="btn ghost" href="${esc(url)}" download style="text-decoration:none">Als Datei speichern</a>
+      <button class="btn" onclick="closeModal()">Schließen</button></div>`);
+}
+
+// Just enough Markdown for the handoff sheet: headings, lists, tables, bold.
+function mdToHtml(md) {
+  const inline = (t) => esc(t)
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+    .replace(/`(.+?)`/g, "<code>$1</code>")
+    .replace(/_(.+?)_/g, "<i>$1</i>");
+  let html = "", list = null, table = false;
+  const closeAll = () => {
+    if (list) { html += `</${list}>`; list = null; }
+    if (table) { html += "</table>"; table = false; }
+  };
+  for (const line of md.split("\n")) {
+    if (/^\|[\s\-|]+\|\s*$/.test(line)) continue;  // table separator row
+    if (/^\|/.test(line)) {
+      if (!table) { closeAll(); table = true;
+        html += `<table class="small" style="border-collapse:collapse;margin:.4rem 0">`; }
+      html += "<tr>" + line.split("|").slice(1, -1).map((cell) =>
+        `<td style="padding:.15rem .8rem .15rem 0;vertical-align:top">${inline(cell.trim())}</td>`).join("") + "</tr>";
+    } else if (/^#+\s/.test(line)) {
+      closeAll();
+      const level = Math.min(line.match(/^#+/)[0].length + 2, 5);
+      html += `<h${level} style="margin:.9rem 0 .3rem">${inline(line.replace(/^#+\s*/, ""))}</h${level}>`;
+    } else if (/^\s*[-*]\s/.test(line)) {
+      if (list !== "ul") { closeAll(); list = "ul"; html += `<ul class="small" style="margin:.2rem 0;padding-left:1.2rem">`; }
+      html += `<li>${inline(line.replace(/^\s*[-*]\s*/, ""))}</li>`;
+    } else if (/^\s*\d+\.\s/.test(line)) {
+      if (list !== "ol") { closeAll(); list = "ol"; html += `<ol class="small" style="margin:.2rem 0;padding-left:1.2rem">`; }
+      html += `<li>${inline(line.replace(/^\s*\d+\.\s*/, ""))}</li>`;
+    } else if (!line.trim()) {
+      closeAll();
+    } else {
+      closeAll();
+      html += `<p class="small" style="margin:.3rem 0">${inline(line)}</p>`;
+    }
+  }
+  closeAll();
+  return html;
+}
+
+/* The Setzprobe: the page as the export will actually set it -- same layout
+   engine, same font logic, at screen resolution. Until now the exported PDF
+   was the first typeset thing anyone saw. */
+const setPreview = { index: 0 };
+
+function typesetPreview(index) {
+  setPreview.index = index ?? 0;
+  openModal(`<h3>Setzprobe — so wird die Seite gesetzt</h3>
+    <div id="sp-stage" style="text-align:center;min-height:280px;display:grid;place-items:center">
+      <p class="lede">Seite wird gesetzt …</p></div>
+    <div class="row" style="justify-content:center;margin-top:.7rem">
+      <button class="btn ghost tiny" onclick="turnSetPreview(-1)">◀</button>
+      <span class="small muted" id="sp-count" style="min-width:9rem;text-align:center"></span>
+      <button class="btn ghost tiny" onclick="turnSetPreview(1)">▶</button>
+    </div>
+    <p class="small muted" id="sp-legend" style="margin:.6rem 0 0"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+  loadSetPreview();
+}
+
+function turnSetPreview(step) {
+  const last = currentBook?.pages.length || 0;
+  setPreview.index = Math.max(0, Math.min(last, setPreview.index + step));
+  loadSetPreview();
+}
+
+async function loadSetPreview() {
+  const stage = $("sp-stage");
+  if (!stage) return;
+  stage.innerHTML = `<p class="lede">Seite wird gesetzt …</p>`;
+  const query = new URLSearchParams({
+    preset: $("e-preset")?.value || "screen",
+    font: $("e-font")?.value || "georgia",
+    index: setPreview.index,
+  });
+  // Mirror the export: combined -> all chosen languages on the page,
+  // otherwise the first chosen language alone.
+  const chosen = [...($("e-langs")?.querySelectorAll("input:checked") || [])].map((i) => i.value);
+  const langs = $("e-combine")?.checked ? chosen : chosen.slice(0, 1);
+  for (const code of langs) query.append("languages", code);
+
+  let result;
+  try { result = await api(`/api/book/books/${S.bookId}/page-preview?${query}`); }
+  catch (exc) { stage.innerHTML = `<p class="lede">Setzen fehlgeschlagen: ${esc(exc.message)}</p>`; return; }
+  stage.innerHTML = `<img src="${esc(result.url)}" alt="Gesetzte Seite"
+    style="max-width:100%;max-height:58vh;object-fit:contain;border:1px solid var(--line);
+    border-radius:6px;cursor:zoom-in" onclick="zoom('${esc(result.url)}')">`;
+  const count = $("sp-count");
+  if (count) count.textContent = setPreview.index === 0
+    ? "Titelseite" : `Seite ${setPreview.index} von ${result.pages}`;
+  const legend = $("sp-legend");
+  if (legend) legend.textContent = result.print
+    ? "Rote Linie: hier schneidet die Druckerei. Blaue Linie: Sicherheitsabstand — aller Text bleibt innerhalb."
+    : "";
+}
+
+/* The readiness gate. The server enforces the same check inside the export
+   job -- this fetch exists so the user sees WHY before pressing anything. */
+let preflightState = null;
+
+async function refreshPreflight() {
+  if (!S.bookId || !$("preflight")) return;
+  const query = new URLSearchParams({ preset: $("e-preset")?.value || "print_square",
+                                      font: $("e-font")?.value || "georgia" });
+  for (const input of $("e-langs")?.querySelectorAll("input:checked") || []) {
+    query.append("languages", input.value);
+  }
+  let report;
+  try { report = await api(`/api/book/books/${S.bookId}/preflight?${query}`); }
+  catch { return; }
+  preflightState = report.state;
+  renderPreflightBox(report);
+}
+
+function renderPreflightBox(report) {
+  const box = $("preflight");
+  if (!box) return;
+  const heads = {
+    "bereit": ["var(--good)", "Bereit für den Export."],
+    "warnung": ["var(--warn)", "Export möglich — mit Abstrichen:"],
+    "unbekannt": ["var(--warn)", "Prüfung unbekannt — es gibt ungeprüfte Seiten:"],
+    "unvollständig": ["var(--bad)", "Noch nicht exportbereit:"],
+  };
+  const [colour, head] = heads[report.state] || heads["unvollständig"];
+  const line = (text, mark) => `<li>${mark} ${esc(text)}</li>`;
+  const items =
+    report.errors.map((t) => line(t, "✗")).join("")
+    + report.unknowns.map((t) => line(t, "?")).join("")
+    + report.warnings.map((t) => line(t, "⚠")).join("");
+  const jump = [
+    ...report.pages_missing, ...report.pages_failed_check, ...report.pages_unknown_check,
+  ];
+  const links = [...new Set(jump)].sort((a, b) => a - b)
+    .map((i) => `<a href="#page-${i}">Seite ${i}</a>`).join(" · ");
+
+  box.innerHTML = `<div style="border:1px solid ${colour};border-radius:10px;
+      padding:.7rem .9rem;margin-bottom:1.1rem">
+    <b style="color:${colour}">${head}</b>
+    ${items ? `<ul style="margin:.4rem 0 0;padding-left:1.2rem" class="small">${items}</ul>` : ""}
+    ${links ? `<div class="small" style="margin-top:.4rem">Direkt hin: ${links}</div>` : ""}
+    ${report.state === "unbekannt" ? `<label class="check small" style="margin-top:.5rem">
+      <input type="checkbox" id="e-allow-unknown" onchange="applyPreflightGate()">
+      Trotzdem exportieren — ich übernehme das Ansehen der ungeprüften Seiten selbst</label>` : ""}
+  </div>`;
+  applyPreflightGate();
+}
+
+function applyPreflightGate() {
+  const go = $("e-go");
+  if (!go) return;
+  const blocked = preflightState === "unvollständig"
+    || (preflightState === "unbekannt" && !$("e-allow-unknown")?.checked);
+  go.disabled = blocked;
+  go.title = blocked ? "Erst die Punkte oben lösen — der Export würde ein kaputtes Buch bauen." : "";
+}
+
+function doExport() {
+  const languages = [...$("e-langs").querySelectorAll("input:checked")].map((i) => i.value);
+  if (!languages.length) return toast("Mindestens eine Sprache auswählen.");
+  runJob("book_export", { book_id: S.bookId, preset: $("e-preset").value,
+    font: $("e-font").value, provider_hint: $("e-shop").value, languages,
+    combine: !!$("e-combine")?.checked,
+    allow_unknown: !!$("e-allow-unknown")?.checked },
+    "PDF wird gebaut", renderBook);
+}
+
+function addLanguage() {
+  const have = currentBook ? currentBook.languages : [];
+  const options = (S.status.languages || []).filter((l) => !have.includes(l.code));
+  if (!options.length) return toast("Alle verfügbaren Sprachen sind schon drin.");
+  openModal(`<h3>Sprache dazu</h3>
+    <p class="lede">Die Bilder bleiben dieselben; die Geschichte wird in der neuen
+      Sprache eigenständig geschrieben, nicht übersetzt. Kostet nur Centbeträge.</p>
+    <div class="chips" style="margin-bottom:1.2rem">${options.map((l) => `
+      <label class="chip"><input type="checkbox" value="${l.code}"
+        onchange="this.parentNode.classList.toggle('on',this.checked)">${esc(l.name)}</label>`).join("")}
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn" id="m-go">Schreiben</button></div>`);
+  $("m-go").onclick = () => {
+    const languages = [...$("modal").querySelectorAll("input:checked")].map((i) => i.value);
+    if (!languages.length) return toast("Mindestens eine Sprache anhaken.");
+    closeModal();
+    runJob("story_languages", { book_id: S.bookId, languages },
+      "Wird geschrieben", renderBook);
+  };
+}
+
+async function restoreDialog() {
+  const { backups } = await api("/api/book/backups");
+  if (!backups.length) {
+    return toast("Keine Sicherungen gefunden — ZIPs gehören in library/backups.");
+  }
+  openModal(`<h3>Buch wiederherstellen</h3>
+    <p class="lede">Jede Sicherung wird vor dem Einspielen geprüft (Manifest und
+      Prüfsummen). Existiert das Buch noch, entsteht eine Kopie — überschrieben
+      wird nie.</p>
+    ${backups.map((b) => `<div class="row" style="padding:.3rem 0">
+      <button class="btn ghost tiny" onclick="doRestore('${esc(b.file)}')">wiederherstellen</button>
+      <span class="small">${esc(b.name)}</span>
+      <span class="small muted">${b.size_kb} KB</span></div>`).join("")}
+    <div class="row" style="justify-content:flex-end;margin-top:.8rem">
+      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+}
+
+async function doRestore(file) {
+  closeModal();
+  try {
+    const result = await api("/api/book/restore",
+      { method: "POST", body: JSON.stringify({ file }) });
+    toast(`„${result.title}“ wiederhergestellt — ${result.files} Dateien geprüft.`);
+    renderHome();
+  } catch (exc) {
+    toast(`Wiederherstellen abgelehnt: ${exc.message}`);
+  }
+}
+
+async function backupBook() {
+  const info = await api(`/api/book/books/${S.bookId}/backup`, { method: "POST" });
+  toast(`Gesichert — ${info.size_kb} KB. Der Download startet.`);
+  const link = document.createElement("a");
+  link.href = info.url; link.download = "";
+  document.body.appendChild(link); link.click(); link.remove();
+}
+
+/* =========================================================== read aloud */
+
+const reader = { index: 0, pages: [], playing: false, auto: false, timer: null };
+
+function openReader() {
+  const book = currentBook;
+  if (!book) return;
+  reader.pages = book.pages.filter((p) => p.image_url);
+  if (!reader.pages.length) return toast("Es gibt noch keine gezeichneten Seiten.");
+  $("r-lang").innerHTML = book.languages.map((code) => {
+    const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
+    return `<option value="${code}">${esc(name)}</option>`;
+  }).join("") + (book.languages.length > 1
+    ? `<option value="__all">alle zusammen</option>` : "");
+  const saved = store.get("readerLang");
+  if (saved && (book.languages.includes(saved)
+      || (saved === "__all" && book.languages.length > 1))) $("r-lang").value = saved;
+  reader.index = 0;
+  reader.auto = false;
+  $("r-auto").classList.remove("on");
+  $("reader").classList.add("on");
+  document.addEventListener("keydown", readerKeys);
+  showPage(0);
+}
+
+function closeReader() {
+  $("reader").classList.remove("on");
+  document.removeEventListener("keydown", readerKeys);
+  const audio = $("r-audio"); audio.pause(); reader.playing = false;
+  reader.auto = false; clearTimeout(reader.timer);
+  $("r-auto").classList.remove("on");
+}
+
+function readerLangChanged() {
+  store.set("readerLang", $("r-lang").value);
+  showPage(reader.index);
+}
+
+function readerKeys(event) {
+  if (event.key === "Escape") closeReader();
+  if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); turn(1); }
+  if (event.key === "ArrowLeft") turn(-1);
+}
+
+function showPage(index) {
+  clearTimeout(reader.timer);
+  reader.index = Math.max(0, Math.min(reader.pages.length - 1, index));
+  const page = reader.pages[reader.index];
+  const language = $("r-lang").value;
+  $("r-img").src = page.image_url;
+  let track;
+  if (language === "__all") {  // every language stacked, for bilingual reading
+    const codes = currentBook.languages;
+    $("r-text").textContent = codes.map((c) => page.text[c]).filter(Boolean).join("\n");
+    track = codes.map((c) => (page.audio_urls || {})[c]).find(Boolean);
+  } else {
+    $("r-text").textContent = page.text[language] || "";
+    track = (page.audio_urls || {})[language];
+  }
+  $("r-count").textContent = `${reader.index + 1} / ${reader.pages.length}`;
+  const audio = $("r-audio");
+  $("r-play").style.opacity = track ? "1" : ".4";
+  $("r-play").disabled = !track;
+  audio.pause();
+  reader.playing = false;
+  $("r-play").textContent = "▶ Vorlesen";
+  if (track) audio.src = track;
+  if (reader.auto) playCurrent();
+}
+
+function turn(step) {
+  const next = reader.index + step;
+  if (next < 0 || next >= reader.pages.length) return;
+  showPage(next);
+}
+
+function toggleAudio() {
+  const audio = $("r-audio");
+  if (!audio.src) return;
+  if (reader.playing) { audio.pause(); reader.playing = false; $("r-play").textContent = "▶ Vorlesen"; }
+  else { audio.play(); reader.playing = true; $("r-play").textContent = "❚❚ Pause"; }
+}
+
+/* Autoplay: read the page, turn it, read the next. Pages without audio (for
+   example a wordless spread) get a few seconds of looking time instead. */
+function toggleAuto() {
+  reader.auto = !reader.auto;
+  $("r-auto").classList.toggle("on", reader.auto);
+  if (reader.auto) playCurrent();
+  else { clearTimeout(reader.timer); $("r-audio").pause();
+         reader.playing = false; $("r-play").textContent = "▶ Vorlesen"; }
+}
+
+function playCurrent() {
+  clearTimeout(reader.timer);
+  const audio = $("r-audio");
+  if (audio.src && !$("r-play").disabled) {
+    audio.play(); reader.playing = true; $("r-play").textContent = "❚❚ Pause";
+  } else {
+    reader.timer = setTimeout(advanceAuto, 4000);
+  }
+}
+
+function advanceAuto() {
+  if (!reader.auto) return;
+  if (reader.index >= reader.pages.length - 1) { toggleAuto(); return; }
+  turn(1);  // showPage sees reader.auto and keeps the chain going
+}
+
+$("r-audio").onended = () => {
+  reader.playing = false; $("r-play").textContent = "▶ Vorlesen";
+  if (reader.auto) advanceAuto();
+};
+
+/* =========================================================== boot */
+
+// Panels are re-rendered wholesale, so drag-and-drop has to be re-wired after
+// every render rather than bound once at load.
+const observer = new MutationObserver(() => wirePhotoPage());
+observer.observe($("view"), { childList: true, subtree: false });
+
+(async function boot() {
+  try { S.status = await api("/api/book/status"); }
+  catch (exc) {
+    view().innerHTML = `<div class="banner bad">Server nicht erreichbar: ${esc(exc.message)}</div>`;
+    return;
+  }
+  if (S.status.active_job) {
+    S.job = S.status.active_job;
+    S.poll = setInterval(pollJob, 900);
+    drawer(true, true);
+  }
+  render();
+})();
+</script>
+</body>
+</html>

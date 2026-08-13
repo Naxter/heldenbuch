@@ -1,0 +1,129 @@
+# StoryTime consistency benchmark spec.
+#
+# The whole experiment is described by this one file. The character is designed
+# to be *checkable*: every signature attribute is countable or has an exact
+# colour, so a judge (human or model) can say plainly whether a page got it
+# right. Vague characters make drift impossible to measure.
+
+run_name: rusty-fox
+
+character:
+  name: Rusty
+
+  # Used verbatim in the `text_only` strategy, and to build the sheet prompt.
+  # Keep every attribute concrete and countable.
+  description: |
+    Rusty is a small fox cub, about the size of a house cat, with warm
+    rust-orange fur and a cream-white chest and muzzle.
+
+    Signature attributes, which must be identical on every page:
+      - exactly three cream-white rings near the tip of the bushy tail
+      - a moss-green knitted scarf, worn loose, with a frayed left end
+      - large amber-yellow eyes
+      - a small V-shaped notch in the upper edge of the LEFT ear
+      - a small brass compass on a leather cord around the neck, hanging over
+        the scarf
+
+    Rusty walks upright on two legs like a storybook animal, with small paws
+    and an alert, curious expression.
+
+  # Optional. If omitted, the sheet prompt is built from description + style.
+  sheet_prompt: |
+    A character reference sheet for a children's picture book, on a plain
+    off-white background.
+
+    Show the SAME character four times in a row: front view, three-quarter
+    view, side profile facing right, and back view. Full body, standing, evenly
+    lit, no shadows on the background, no text or labels anywhere in the image.
+
+style:
+  name: soft watercolour
+  description: |
+    Soft watercolour and coloured-pencil children's picture book illustration.
+    Visible paper grain, gentle washes with slightly uneven edges, warm muted
+    palette, soft natural light, no harsh outlines, no digital gloss, no 3D
+    render look. Gentle and friendly, suitable for ages 4-7.
+
+output:
+  aspect_ratio: "4:3"   # gemini: 1:1 3:2 2:3 3:4 4:3 4:5 5:4 9:16 16:9 21:9
+  image_size: "1K"      # gemini: 512px 1K 2K 4K -- also drives bfl width/height
+  seed: 20260811        # used by bfl; gemini currently exposes no seed
+  quality: medium       # openai only: low | medium | high (high costs ~4x)
+
+# The pages. Ordered -- `sheet_plus_prev` chains through them in this order.
+# Each is deliberately chosen to stress a different failure mode.
+scenes:
+  - id: "01"
+    stress: baseline full body, neutral lighting
+    action: |
+      Rusty stands at the edge of a misty forest at dawn, one paw raised,
+      looking down a narrow path between tall birch trees.
+
+  - id: "02"
+    stress: close-up -- face and small props
+    action: |
+      A close-up of Rusty's face and shoulders as Rusty peers at the brass
+      compass held up in both paws, eyes wide.
+
+  - id: "03"
+    stress: back view -- tail rings and ear notch are hard to place
+    action: |
+      Seen from behind, Rusty climbs a mossy slope towards a gap in the trees,
+      tail held high.
+
+  - id: "04"
+    stress: night lighting -- palette shift pulls fur and scarf colour
+    action: |
+      Rusty sits on a fallen log under a full moon, the scarf pulled tight,
+      watching fireflies drift over a dark pond.
+
+  - id: "05"
+    stress: motion, dynamic pose
+    action: |
+      Rusty runs across a meadow of tall grass in bright afternoon sun, scarf
+      streaming out behind, ears flattened back.
+
+  - id: "06"
+    stress: second character -- attributes leak between characters
+    action: |
+      Rusty shares a piece of bread with a grey field mouse on a tree stump.
+      The mouse wears a tiny blue cap. They sit facing each other.
+
+  - id: "07"
+    stress: partial occlusion
+    action: |
+      Rusty peeks out from behind a large mushroom, only the head, one paw and
+      the tail tip visible.
+
+  - id: "08"
+    stress: extreme wide shot -- character is small in frame
+    action: |
+      A wide view of a wooden bridge over a river gorge, with Rusty small in
+      the middle of the bridge, looking down at the water.
+
+  - id: "09"
+    stress: indoor warm light, seated, props interact with the scarf
+    action: |
+      Rusty sits in an armchair inside a hollow tree, reading a map by
+      candlelight, with a mug of tea on a small table.
+
+  - id: "10"
+    stress: emotional close-up, eyes closed -- eye colour cue removed
+    action: |
+      Rusty hugs the grey field mouse goodbye at sunset, eyes closed, smiling.
+
+# Which backends x strategies to run. `storytime run` uses these unless you
+# override them on the command line.
+experiment:
+  backends:
+    - stub          # offline placeholder, no API key -- swap for the real ones
+    # - gemini
+    # - bfl
+  strategies:
+    - text_only        # description only, no reference image (the baseline)
+    - sheet_ref        # character sheet passed as a reference image
+    - sheet_plus_prev  # sheet + the previous page, chained
+
+judge:
+  provider: gemini            # gemini | anthropic | none
+  model: gemini-3-pro         # anthropic default: claude-opus-5

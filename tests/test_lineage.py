@@ -248,3 +248,45 @@ def test_a_failed_job_keeps_the_spend_already_recorded(library, monkeypatch):
     refreshed = library.get_book(book.id)
     assert refreshed.spend.get("usd") == pytest.approx(0.5), \
         "the money spent before the crash must survive it"
+
+
+def test_a_truncated_page_is_redrawn_on_resume(tmp_path, monkeypatch):
+    """Resuming skips pages whose file exists. A render killed mid-write left a
+    half PNG that was adopted as finished work and could never be redrawn.
+    """
+    from storytime.book.illustrate import _usable_image
+
+    good = tmp_path / "good.png"
+    Image.new("RGB", (16, 16), (10, 20, 30)).save(good)
+    assert _usable_image(good) is True
+
+    truncated = tmp_path / "half.png"
+    truncated.write_bytes(good.read_bytes()[: good.stat().st_size // 2])
+    assert _usable_image(truncated) is False
+
+    empty = tmp_path / "empty.png"
+    empty.touch()
+    assert _usable_image(empty) is False
+
+    assert _usable_image(tmp_path / "absent.png") is False
+
+
+def test_image_writes_are_atomic(tmp_path, monkeypatch):
+    """An interrupted write must leave the previous page intact."""
+    from storytime.backends.stub import StubBackend
+    from storytime.types import GenRequest, OutputSpec
+
+    backend = StubBackend()
+    target = tmp_path / "page_01.png"
+    backend.generate(GenRequest(prompt="a fox", output=OutputSpec()), target)
+    before = target.read_bytes()
+
+    def explode(_src, _dst):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("storytime.backends.base.os.replace", explode)
+    with pytest.raises(OSError):
+        backend.generate(GenRequest(prompt="a different fox", output=OutputSpec()), target)
+
+    assert target.read_bytes() == before
+    assert not list(tmp_path.glob("*.tmp"))

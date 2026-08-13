@@ -8,6 +8,7 @@ polling -- stays inside the backend.
 from __future__ import annotations
 
 import abc
+import os
 import time
 from pathlib import Path
 
@@ -99,7 +100,17 @@ class Backend(abc.ABC):
                 break
             else:
                 out_path.parent.mkdir(parents=True, exist_ok=True)
-                out_path.write_bytes(data)
+                # Write beside the target and rename. A page file that exists
+                # is treated as finished work and is never redrawn, so a render
+                # interrupted mid-write would otherwise leave a truncated PNG
+                # that the next run adopts as a completed page.
+                tmp = out_path.with_name(f"{out_path.name}.{os.getpid()}.tmp")
+                try:
+                    tmp.write_bytes(data)
+                    os.replace(tmp, out_path)
+                except BaseException:
+                    tmp.unlink(missing_ok=True)
+                    raise
                 return GenResult(
                     image_path=out_path,
                     backend=self.name,

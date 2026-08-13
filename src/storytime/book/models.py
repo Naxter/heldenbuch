@@ -15,6 +15,7 @@ book is just a story idea away.
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 import uuid
@@ -320,6 +321,9 @@ class Book:
     photo_page: dict[str, Any] = field(default_factory=dict)
     #: running tally of what this book has actually cost to make
     spend: dict[str, Any] = field(default_factory=dict)
+    #: set when book.json could not be read. The folder is listed anyway so a
+    #: damaged book is visible and restorable instead of silently missing.
+    broken: bool = False
 
     # -- locked references. A book keeps its own copies of the character
     # sheet it was drawn from (under refs/ in the book folder), so changing
@@ -397,5 +401,20 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def save_json(path: Path, payload: Any) -> None:
+    """Write JSON so a reader never sees a half-written file.
+
+    `book.json` is the only index a book has -- page-to-file mapping, story
+    text, spend and check results -- and it is rewritten after every drawn
+    page. A plain write truncates first, so an interrupted render (or a reader
+    polling mid-write) could leave or observe a torn file. Writing beside the
+    target and renaming makes the swap atomic on both Windows and POSIX.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    text = json.dumps(payload, indent=2, ensure_ascii=False)
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise

@@ -91,7 +91,21 @@ def test_oversized_upload_is_refused(tmp_path):
     assert save_upload({"name": "big.jpg", "data": payload}, tmp_path, "p") is None
 
 
-def test_a_file_that_is_not_an_image_is_left_alone_not_crashed(tmp_path):
+def test_a_file_that_is_not_an_image_is_rejected_and_not_kept(tmp_path):
+    """Bytes that are not a picture used to be written and kept under an image
+    name, then sent to a third-party API as a "photo" and fail there instead --
+    a confusing error a long way from the upload that caused it."""
     payload = base64.b64encode(b"this is plain text, not a picture").decode("ascii")
-    target = save_upload({"name": "notes.jpg", "data": payload}, tmp_path, "p")
-    assert target is not None and target.is_file()
+    assert save_upload({"name": "notes.jpg", "data": payload}, tmp_path, "p") is None
+    assert list(tmp_path.glob("p.*")) == []
+
+
+@pytest.mark.filterwarnings("ignore::PIL.Image.DecompressionBombWarning")
+def test_a_decompression_bomb_is_refused(tmp_path):
+    """A small file that decodes to an enormous bitmap. The declared size is
+    checked before any decoding, so the memory is never allocated."""
+    buffer = io.BytesIO()
+    Image.new("L", (12000, 12000)).save(buffer, format="PNG")
+    payload = base64.b64encode(buffer.getvalue()).decode("ascii")
+    assert save_upload({"name": "bomb.png", "data": payload}, tmp_path, "p") is None
+    assert list(tmp_path.glob("p.*")) == []

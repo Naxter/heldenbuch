@@ -12,6 +12,7 @@ from ..backends import REQUIRED_KEY
 from ..book import preflight
 from ..book.handoff import PROVIDERS as PRINT_SHOPS
 from ..book.illustrate import RENDER_PROFILES, check_status, flagged_pages, review_split
+from ..book.layout import FONT_FAMILIES
 from ..book.layout import PRESETS as PRINT_PRESETS
 from ..book.layout import available_families
 from ..book.library import Library
@@ -483,7 +484,13 @@ class BookApi:
         preset = PRINT_PRESETS.get((query.get("preset") or ["screen"])[0],
                                    PRINT_PRESETS["screen"])
         languages = [c for c in (query.get("languages") or []) if c in book.languages]
+        # Whitelisted before use, not after: `family` reaches the preview
+        # filename below, so a value with a separator in it would write outside
+        # the book folder. Every other input to this handler is checked the
+        # same way.
         family = (query.get("font") or ["georgia"])[0]
+        if family not in FONT_FAMILIES:
+            family = "georgia"
         index = int((query.get("index") or ["0"])[0])
 
         root = self.library.book_dir(book.id)

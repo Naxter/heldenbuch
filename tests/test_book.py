@@ -281,3 +281,117 @@ def test_spend_accumulates_by_bucket():
     assert total["usd"] == pytest.approx(9.0, abs=0.01)
     assert total["by"]["pages"]["usd"] == pytest.approx(6.0, abs=0.01)
     assert total["estimate"] is True
+
+
+# --------------------------------------------------------------- path safety
+
+
+class TestLibraryPathSafety:
+    """A member id arrives from a URL and reaches shutil.rmtree.
+
+    `delete_book("..")` used to remove the entire library -- every hero, every
+    style, every book, and the uploaded photos -- and report success, because
+    rmtree ran with ignore_errors=True.
+    """
+
+    @staticmethod
+    def _library(tmp_path):
+        from storytime.book.library import Library
+
+        return Library(tmp_path / "library")
+
+    @pytest.mark.parametrize("bad", [
+        "..", "../..", "..\\..", "a/../..", "/etc", "", ".",
+    ])
+    def test_a_traversing_id_is_refused(self, tmp_path, bad):
+        library = self._library(tmp_path)
+        for accessor in (library.hero_dir, library.style_dir, library.book_dir):
+            with pytest.raises(ValueError):
+                accessor(bad)
+
+    @pytest.mark.parametrize("candidate", [
+        "..", "../..", "..\\..", "a/../..", "/etc", "C:evil", "", ".",
+        "book_1/../..", "....//", "%2e%2e", "a b",
+    ])
+    def test_the_result_is_always_inside_the_library(self, tmp_path, candidate):
+        """The invariant, stated so it holds on every platform.
+
+        Some inputs are contained rather than refused -- on Windows a
+        drive-relative `C:evil` joins inside the parent when both sit on the
+        same drive. Either outcome is safe; escaping is not.
+        """
+        library = self._library(tmp_path)
+        root = (tmp_path / "library").resolve()
+        for accessor in (library.hero_dir, library.style_dir, library.book_dir):
+            try:
+                target = accessor(candidate)
+            except ValueError:
+                continue
+            assert target.resolve().is_relative_to(root), candidate
+
+    def test_delete_cannot_escape_the_library(self, tmp_path):
+        library = self._library(tmp_path)
+        victim = tmp_path / "library" / "heroes" / "keep_me.txt"
+        victim.write_text("x", encoding="utf-8")
+
+        with pytest.raises(ValueError):
+            library.delete_book("..")
+        assert victim.is_file()
+        assert (tmp_path / "library").is_dir()
+
+    def test_an_ordinary_id_still_works(self, tmp_path):
+        library = self._library(tmp_path)
+        assert library.book_dir("book_abc123").name == "book_abc123"
+
+    def test_reading_an_invalid_id_reads_as_missing(self, tmp_path):
+        """A book with no hero yet passes an empty id and expects not-found."""
+        library = self._library(tmp_path)
+        with pytest.raises(FileNotFoundError):
+            library.get_hero("")
+        with pytest.raises(FileNotFoundError):
+            library.get_book("../..")
+
+
+class TestAtomicSave:
+    def test_a_book_survives_an_interrupted_write(self, tmp_path):
+        """book.json is the only index a book has, and it is rewritten after
+        every drawn page. A torn file used to make the book vanish silently."""
+        from storytime.book.library import Library
+        from storytime.book.models import Book, save_json
+
+        library = Library(tmp_path / "library")
+        book = library.save_book(Book(title={"de": "Erst"}))
+        path = library.book_dir(book.id) / "book.json"
+        before = path.read_text(encoding="utf-8")
+
+        class Boom(Exception):
+            pass
+
+        def explode(_src, _dst):
+            raise Boom()
+
+        # Fail at the moment of the swap: the new content is fully written to
+        # the temp file, and the rename is what does not happen.
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr("storytime.book.models.os.replace", explode)
+            with pytest.raises(Boom):
+                save_json(path, {"id": book.id, "title": {"de": "Zweit"}})
+
+        assert path.read_text(encoding="utf-8") == before
+        assert not list(path.parent.glob("*.tmp"))
+
+    def test_an_unreadable_book_is_listed_not_hidden(self, tmp_path):
+        """It used to be skipped by an except clause, so the book disappeared
+        from the shelf with no error anywhere."""
+        from storytime.book.library import Library
+        from storytime.book.models import Book
+
+        library = Library(tmp_path / "library")
+        good = library.save_book(Book(title={"de": "Heil"}))
+        broken = library.save_book(Book(title={"de": "Kaputt"}))
+        (library.book_dir(broken.id) / "book.json").write_text("{ttt", encoding="utf-8")
+
+        listed = {b.id: b for b in library.books()}
+        assert set(listed) == {good.id, broken.id}
+        assert listed[broken.id].broken is True
+        assert listed[good.id].broken is False

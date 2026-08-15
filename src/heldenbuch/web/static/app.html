@@ -656,6 +656,71 @@ const LOCALES = {
     draw_missing_q: "Alle fehlenden Bilder zeichnen?",
     draw_missing_detail: "{n} Bild(er) werden gezeichnet.",
     draw_verb: "Zeichnen", job_page_undo: "Seite {n} zurück",
+    /* sound, photo page, export */
+    sound_title: "Vorlesen lassen", sound_lede: "Eine Tonspur pro Seite und Sprache.",
+    sound_done: "{done} von {total} Seiten haben schon Ton.",
+    sound_stale_one: "{n} davon liest noch den alten Text — „Ton erzeugen“ nimmt sie neu auf.",
+    sound_stale_many: "{n} davon lesen noch den alten Text — „Ton erzeugen“ nimmt sie neu auf.",
+    sound_voice: "Bisherige Stimme: {voice}.",
+    needs_openai_key: "Braucht einen OPENAI_API_KEY",
+    sound_preview_title: "Ein kurzer Satz zum Anhören; einmal erzeugt, dann gespeichert",
+    sound_preview: "Probehören", sound_make: "Ton erzeugen",
+    job_narrate: "Ton wird erzeugt", job_voice_preview: "Stimmprobe",
+    photo_title: "Letzte Seite: ein echtes Foto",
+    photo_lede: "Optional. Ein Bild von deinem Sohn und eine Zeile darunter — das schlägt jedes erfundene Ende.",
+    photo_drop_aria: "Foto auswählen oder hierher ziehen",
+    photo_drop_hint: "<b>Foto hierher ziehen</b> oder klicken",
+    photo_privacy: "Das Foto bleibt auf diesem Rechner im Buchordner (und damit in Backups), wird an keinen Dienst geschickt und verschwindet mit „Fotoseite entfernen“ wieder.",
+    photo_alt: "Foto der letzten Seite",
+    photo_caption_label: "Zeile darunter ({code})",
+    photo_caption_placeholder: "Für Claudio, Weihnachten 2026",
+    photo_save_caption: "Zeile speichern", photo_remove: "Fotoseite entfernen",
+    job_photo_save: "Foto wird gespeichert", job_caption_save: "Zeile wird gespeichert",
+    job_photo_remove: "Fotoseite wird entfernt",
+    export_title: "Fertig machen",
+    export_lede: "Ein PDF pro Sprache. Für die Druckerei ist der Beschnitt schon drin, der Umschlag kommt mit Rücken und Rückseite, und dazu schreibe ich auf, was du wo hochladen musst.",
+    export_format: "Format", export_font: "Schrift",
+    export_shop: "Druckerei (für die Anleitung)", export_languages: "Sprachen",
+    export_combine: "Alle gewählten Sprachen zusammen auf jede Seite — ein zweisprachiges Buch statt einer Datei pro Sprache",
+    export_go: "PDF erzeugen",
+    export_proof_title: "Alle Seiten kompakt, mit dpi, Prüfstatus und Auffälligkeiten",
+    export_proof: "Druckbogen prüfen",
+    export_typeset_title: "Jede Seite fertig gesetzt, mit Schnitt- und Sicherheitslinien — bevor ein PDF entsteht",
+    export_add_language: "Sprache dazu",
+    export_backup_title: "Der ganze Buchordner als eine Datei — Bilder, Ton, Text, PDFs",
+    export_backup: "Buch sichern (ZIP)",
+    export_files: "Dein Buch als Datei ({n})",
+    export_folder_title: "Den Ordner mit allen Dateien im Datei-Explorer öffnen",
+    export_folder: "Ordner öffnen", export_file_stale: "älter als der letzte Stand",
+    read_file: "lesen", save_file: "speichern",
+    folder_open_failed: "Konnte den Ordner nicht öffnen: {message}",
+    handoff_missing: "Anleitung nicht gefunden.",
+    handoff_title: "Anleitung für die Druckerei", handoff_save: "Als Datei speichern",
+    job_export: "PDF wird gebaut",
+    typeset_title: "Setzprobe — so wird die Seite gesetzt",
+    typeset_loading: "Seite wird gesetzt …",
+    typeset_failed: "Setzen fehlgeschlagen: {message}",
+    typeset_alt: "Gesetzte Seite", typeset_cover: "Titelseite",
+    typeset_count: "Seite {n} von {total}",
+    typeset_legend: "Rote Linie: hier schneidet die Druckerei. Blaue Linie: Sicherheitsabstand — aller Text bleibt innerhalb.",
+    pf_ready: "Bereit für den Export.",
+    pf_warning: "Export möglich — mit Abstrichen:",
+    pf_unknown: "Prüfung unbekannt — es gibt ungeprüfte Seiten:",
+    pf_incomplete: "Noch nicht exportbereit:",
+    pf_jump_to: "Direkt hin: {links}",
+    pf_allow_unknown: "Trotzdem exportieren — ich übernehme das Ansehen der ungeprüften Seiten selbst",
+    pf_blocked_title: "Erst die Punkte oben lösen — der Export würde ein kaputtes Buch bauen.",
+    lang_all_present: "Alle verfügbaren Sprachen sind schon drin.",
+    lang_add_lede: "Die Bilder bleiben dieselben; die Geschichte wird in der neuen Sprache eigenständig geschrieben, nicht übersetzt. Kostet nur Centbeträge.",
+    lang_write: "Schreiben", pick_a_language_tick: "Mindestens eine Sprache anhaken.",
+    job_writing: "Wird geschrieben",
+    restore_none: "Keine Sicherungen gefunden — ZIPs gehören in library/backups.",
+    restore_title: "Buch wiederherstellen",
+    restore_lede: "Jede Sicherung wird vor dem Einspielen geprüft (Manifest und Prüfsummen). Existiert das Buch noch, entsteht eine Kopie — überschrieben wird nie.",
+    restore_verb: "wiederherstellen",
+    restored: "„{title}“ wiederhergestellt — {files} Dateien geprüft.",
+    restore_failed: "Wiederherstellen abgelehnt: {message}",
+    backup_done: "Gesichert — {kb} KB. Der Download startet.",
   },
   en: {
     tagline: "Make your own picture books",
@@ -885,6 +950,71 @@ const LOCALES = {
     draw_missing_q: "Draw all the missing pictures?",
     draw_missing_detail: "{n} picture(s) will be drawn.",
     draw_verb: "Draw", job_page_undo: "Page {n} back",
+    /* sound, photo page, export */
+    sound_title: "Have it read aloud", sound_lede: "One sound track per page and language.",
+    sound_done: "{done} of {total} pages already have sound.",
+    sound_stale_one: "{n} of them still reads the old text — “Make the sound” records it again.",
+    sound_stale_many: "{n} of them still read the old text — “Make the sound” records them again.",
+    sound_voice: "Voice used so far: {voice}.",
+    needs_openai_key: "Needs an OPENAI_API_KEY",
+    sound_preview_title: "A short sentence to listen to; generated once, then kept",
+    sound_preview: "Hear a sample", sound_make: "Make the sound",
+    job_narrate: "Making the sound", job_voice_preview: "Voice sample",
+    photo_title: "Last page: a real photo",
+    photo_lede: "Optional. A picture of your son and a line underneath it — that beats any invented ending.",
+    photo_drop_aria: "Choose a photo or drag it here",
+    photo_drop_hint: "<b>Drag a photo here</b> or click",
+    photo_privacy: "The photo stays on this computer in the book folder (and so in backups), is sent to no service, and disappears again with “Remove the photo page”.",
+    photo_alt: "Photo on the last page",
+    photo_caption_label: "The line underneath ({code})",
+    photo_caption_placeholder: "For Claudio, Christmas 2026",
+    photo_save_caption: "Save the line", photo_remove: "Remove the photo page",
+    job_photo_save: "Saving the photo", job_caption_save: "Saving the line",
+    job_photo_remove: "Removing the photo page",
+    export_title: "Finish it off",
+    export_lede: "One PDF per language. The bleed is already in for the print shop, the cover comes with a spine and a back, and I write down what you have to upload where.",
+    export_format: "Format", export_font: "Typeface",
+    export_shop: "Print shop (for the instructions)", export_languages: "Languages",
+    export_combine: "All chosen languages together on every page — one bilingual book instead of a file per language",
+    export_go: "Make the PDF",
+    export_proof_title: "Every page compactly, with dpi, check status and anything that stands out",
+    export_proof: "Check the print sheet",
+    export_typeset_title: "Every page fully typeset, with trim and safety lines — before a PDF exists",
+    export_add_language: "Add a language",
+    export_backup_title: "The whole book folder as a single file — pictures, sound, text, PDFs",
+    export_backup: "Back the book up (ZIP)",
+    export_files: "Your book as files ({n})",
+    export_folder_title: "Open the folder with all the files in the file explorer",
+    export_folder: "Open the folder", export_file_stale: "older than the current state",
+    read_file: "read", save_file: "save",
+    folder_open_failed: "Could not open the folder: {message}",
+    handoff_missing: "Instructions not found.",
+    handoff_title: "Instructions for the print shop", handoff_save: "Save as a file",
+    job_export: "Building the PDF",
+    typeset_title: "Typeset proof — how the page will be set",
+    typeset_loading: "Setting the page …",
+    typeset_failed: "Typesetting failed: {message}",
+    typeset_alt: "Typeset page", typeset_cover: "Title page",
+    typeset_count: "Page {n} of {total}",
+    typeset_legend: "Red line: this is where the print shop cuts. Blue line: safety margin — all text stays inside it.",
+    pf_ready: "Ready to export.",
+    pf_warning: "Export is possible — with compromises:",
+    pf_unknown: "Check unknown — there are unchecked pages:",
+    pf_incomplete: "Not ready to export yet:",
+    pf_jump_to: "Straight there: {links}",
+    pf_allow_unknown: "Export anyway — I will look at the unchecked pages myself",
+    pf_blocked_title: "Sort out the points above first — the export would build a broken book.",
+    lang_all_present: "Every available language is already in.",
+    lang_add_lede: "The pictures stay the same; the story is written independently in the new language, not translated. Costs cents at most.",
+    lang_write: "Write it", pick_a_language_tick: "Tick at least one language.",
+    job_writing: "Writing",
+    restore_none: "No backups found — ZIPs belong in library/backups.",
+    restore_title: "Restore a book",
+    restore_lede: "Every backup is verified before it is read in (manifest and checksums). If the book still exists, a copy is made — nothing is ever overwritten.",
+    restore_verb: "restore",
+    restored: "“{title}” restored — {files} files verified.",
+    restore_failed: "Restore refused: {message}",
+    backup_done: "Backed up — {kb} KB. The download is starting.",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -2676,28 +2806,29 @@ function soundPanel(book) {
   const stale = book.pages.filter((p) => (p.audio_stale || []).length).length;
   return `<div class="card">
     <div class="spread"><div>
-      <h2>Vorlesen lassen</h2>
-      <p class="lede" style="margin-bottom:0">Eine Tonspur pro Seite und Sprache.
-        ${done ? `${done} von ${book.pages.length} Seiten haben schon Ton.` : ""}
-        ${stale ? `<span style="color:var(--warn)"> ${stale} davon ${stale === 1 ? "liest" : "lesen"}
-          noch den alten Text — „Ton erzeugen“ nimmt sie neu auf.</span>` : ""}
-        ${book.narration_voice ? `<span class="muted"> Bisherige Stimme: ${esc(book.narration_voice)}.</span>` : ""}</p></div>
+      <h2>${t("sound_title")}</h2>
+      <p class="lede" style="margin-bottom:0">${t("sound_lede")}
+        ${done ? ti("sound_done", { done, total: book.pages.length }) : ""}
+        ${stale ? `<span style="color:var(--warn)"> ${
+          ti(stale === 1 ? "sound_stale_one" : "sound_stale_many", { n: stale })}</span>` : ""}
+        ${book.narration_voice ? `<span class="muted"> ${
+          esc(ti("sound_voice", { voice: book.narration_voice }))}</span>` : ""}</p></div>
       <div class="row">
         <select id="n-voice" style="width:auto">${(S.status.voices || []).map((v) =>
           `<option value="${v.key}">${esc(v.key)} — ${esc(v.hint)}</option>`).join("")}</select>
-        <button class="btn ghost tiny" onclick="previewVoice()" ${can("narration") ? "" : `disabled title="Braucht einen OPENAI_API_KEY"`}
-          title="Ein kurzer Satz zum Anhören; einmal erzeugt, dann gespeichert">Probehören</button>
-        <button class="btn ghost" onclick="narrate()" ${can("narration") ? "" : `disabled title="Braucht einen OPENAI_API_KEY"`}>Ton erzeugen · ${eur(usd)}</button>
+        <button class="btn ghost tiny" onclick="previewVoice()" ${can("narration") ? "" : `disabled title="${t("needs_openai_key")}"`}
+          title="${t("sound_preview_title")}">${t("sound_preview")}</button>
+        <button class="btn ghost" onclick="narrate()" ${can("narration") ? "" : `disabled title="${t("needs_openai_key")}"`}>${t("sound_make")} · ${eur(usd)}</button>
       </div></div></div>`;
 }
 
 function narrate() {
   runJob("book_narrate", { book_id: S.bookId, voice: $("n-voice").value },
-    "Ton wird erzeugt", renderBook);
+    t("job_narrate"), renderBook);
 }
 
 function previewVoice() {
-  runJob("voice_preview", { voice: $("n-voice").value }, "Stimmprobe", (job) => {
+  runJob("voice_preview", { voice: $("n-voice").value }, t("job_voice_preview"), (job) => {
     if (job.result.url) new Audio(job.result.url).play();
   });
 }
@@ -2708,30 +2839,27 @@ function photoPanel(book, language) {
   const photo = book.photo_page || {};
   const caption = (photo.caption || {})[language] || "";
   return `<div class="card">
-    <h2>Letzte Seite: ein echtes Foto</h2>
-    <p class="lede">Optional. Ein Bild von deinem Sohn und eine Zeile darunter —
-      das schlägt jedes erfundene Ende.</p>
+    <h2>${t("photo_title")}</h2>
+    <p class="lede">${t("photo_lede")}</p>
     <div class="grid g2">
       <div>
         <div class="drop" id="p-drop" style="padding:1rem" role="button" tabindex="0"
-          aria-label="Foto auswählen oder hierher ziehen">
-          <div class="small"><b>Foto hierher ziehen</b> oder klicken
+          aria-label="${t("photo_drop_aria")}">
+          <div class="small">${t("photo_drop_hint")}
             <input type="file" id="p-file" accept="image/*" class="hide"></div>
         </div>
-        <p class="small muted" style="margin:.5rem 0 0">Das Foto bleibt auf diesem Rechner
-          im Buchordner (und damit in Backups), wird an keinen Dienst geschickt und
-          verschwindet mit „Fotoseite entfernen“ wieder.</p>
-        ${photo.image_url ? `<img src="${esc(tn(photo.image_url))}" loading="lazy" decoding="async" alt="Foto der letzten Seite"
-          onclick="zoom('${esc(photo.image_url)}')" title="Groß ansehen"
+        <p class="small muted" style="margin:.5rem 0 0">${t("photo_privacy")}</p>
+        ${photo.image_url ? `<img src="${esc(tn(photo.image_url))}" loading="lazy" decoding="async" alt="${t("photo_alt")}"
+          onclick="zoom('${esc(photo.image_url)}')" title="${t("zoom_large")}"
           style="margin-top:.8rem;max-width:180px;border-radius:9px;border:1px solid var(--line);cursor:zoom-in">` : ""}
       </div>
       <div>
-        <label class="f"><span>Zeile darunter (${esc(language)})</span>
+        <label class="f"><span>${esc(ti("photo_caption_label", { code: language }))}</span>
           <input type="text" id="p-caption" value="${esc(caption)}"
-            placeholder="Für Claudio, Weihnachten 2026"></label>
+            placeholder="${esc(t("photo_caption_placeholder"))}"></label>
         <div class="row">
-          <button class="btn ghost" onclick="savePhotoCaption('${language}')">Zeile speichern</button>
-          ${photo.image_url ? `<button class="btn ghost" onclick="removePhoto()">Fotoseite entfernen</button>` : ""}
+          <button class="btn ghost" onclick="savePhotoCaption('${language}')">${t("photo_save_caption")}</button>
+          ${photo.image_url ? `<button class="btn ghost" onclick="removePhoto()">${t("photo_remove")}</button>` : ""}
         </div>
       </div>
     </div></div>`;
@@ -2751,14 +2879,14 @@ function wirePhotoPage() {
 async function uploadPhotoPage(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const photo = await readFile(file);
-  runJob("book_photo", { book_id: S.bookId, photo }, "Foto wird gespeichert", renderBook);
+  runJob("book_photo", { book_id: S.bookId, photo }, t("job_photo_save"), renderBook);
 }
 function savePhotoCaption(language) {
   runJob("book_photo", { book_id: S.bookId, caption: { [language]: $("p-caption").value } },
-    "Zeile wird gespeichert", renderBook);
+    t("job_caption_save"), renderBook);
 }
 function removePhoto() {
-  runJob("book_photo", { book_id: S.bookId, remove: true }, "Fotoseite wird entfernt", renderBook);
+  runJob("book_photo", { book_id: S.bookId, remove: true }, t("job_photo_remove"), renderBook);
 }
 
 /* ---------------------------------------------------------- export */
@@ -2766,24 +2894,22 @@ function removePhoto() {
 function exportPanel(book) {
   const handoff = (book.exports || []).find((f) => f.name.endsWith(".md"));
   return `<div class="card">
-    <h2>Fertig machen</h2>
-    <p class="lede">Ein PDF pro Sprache. Für die Druckerei ist der Beschnitt schon drin,
-      der Umschlag kommt mit Rücken und Rückseite, und dazu schreibe ich auf,
-      was du wo hochladen musst.</p>
+    <h2>${t("export_title")}</h2>
+    <p class="lede">${t("export_lede")}</p>
     <div id="preflight" aria-live="polite"></div>
     <div class="grid g2">
-      <label class="f"><span>Format</span>
+      <label class="f"><span>${t("export_format")}</span>
         <select id="e-preset" onchange="refreshPreflight()">${(S.status.print_presets || []).map((p) => `
           <option value="${p.key}">${esc(p.name)}</option>`).join("")}</select></label>
-      <label class="f"><span>Schrift</span>
+      <label class="f"><span>${t("export_font")}</span>
         <select id="e-font" onchange="refreshPreflight()">${(S.status.fonts || []).map((f) => `
           <option value="${f.key}">${esc(f.name)}</option>`).join("")}</select></label>
     </div>
     <div class="grid g2">
-      <label class="f"><span>Druckerei (für die Anleitung)</span>
+      <label class="f"><span>${t("export_shop")}</span>
         <select id="e-shop">${(S.status.print_shops || []).map((s) => `
           <option value="${s.key}">${esc(s.name)} — ${esc(s.where)}</option>`).join("")}</select></label>
-      <div><label class="f"><span>Sprachen</span></label>
+      <div><label class="f"><span>${t("export_languages")}</span></label>
         <div class="chips" id="e-langs">${book.languages.map((code) => {
           const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
           return `<label class="chip on"><input type="checkbox" value="${code}" checked
@@ -2793,25 +2919,24 @@ function exportPanel(book) {
 
     ${book.languages.length > 1 ? `<label class="check" style="margin:.2rem 0 .9rem">
       <input type="checkbox" id="e-combine">
-      Alle gewählten Sprachen zusammen auf jede Seite — ein zweisprachiges Buch
-      statt einer Datei pro Sprache</label>` : ""}
+      ${t("export_combine")}</label>` : ""}
 
     <div class="row" style="margin-top:1rem">
-      <button class="btn" id="e-go" onclick="doExport()">PDF erzeugen</button>
+      <button class="btn" id="e-go" onclick="doExport()">${t("export_go")}</button>
       <button class="btn ghost" onclick="proofDialog()"
-        title="Alle Seiten kompakt, mit dpi, Prüfstatus und Auffälligkeiten">Druckbogen prüfen</button>
+        title="${t("export_proof_title")}">${t("export_proof")}</button>
       <button class="btn ghost" onclick="typesetPreview(0)"
-        title="Jede Seite fertig gesetzt, mit Schnitt- und Sicherheitslinien — bevor ein PDF entsteht">Setzprobe</button>
-      <button class="btn ghost" onclick="addLanguage()">Sprache dazu</button>
+        title="${t("export_typeset_title")}">${t("typeset")}</button>
+      <button class="btn ghost" onclick="addLanguage()">${t("export_add_language")}</button>
       <button class="btn ghost" onclick="backupBook()"
-        title="Der ganze Buchordner als eine Datei — Bilder, Ton, Text, PDFs">Buch sichern (ZIP)</button>
+        title="${t("export_backup_title")}">${t("export_backup")}</button>
     </div>
 
     ${(book.exports || []).length ? `<div style="margin-top:1.3rem">
       <div class="spread" style="margin-bottom:.6rem">
-        <h3 class="small muted" style="margin:0">Dein Buch als Datei (${book.exports.length})</h3>
+        <h3 class="small muted" style="margin:0">${ti("export_files", { n: book.exports.length })}</h3>
         <button class="btn ghost tiny" onclick="openExportFolder()"
-          title="Den Ordner mit allen Dateien im Datei-Explorer öffnen">Ordner öffnen</button>
+          title="${t("export_folder_title")}">${t("export_folder")}</button>
       </div>
       <div class="grid g2">
       ${book.exports.map((f) => {
@@ -2821,14 +2946,14 @@ function exportPanel(book) {
           <div class="ficon" aria-hidden="true">${icon}</div>
           <div style="flex:1;min-width:0"><b class="small">${esc(f.label || f.name)}</b>
             <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-              title="${esc(f.name)}">${size}${book.export_stale ? " · älter als der letzte Stand" : ""}</div></div>
+              title="${esc(f.name)}">${size}${book.export_stale ? ` · ${t("export_file_stale")}` : ""}</div></div>
           <span class="row" style="gap:.3rem;flex:none">
             ${f.kind === "handoff"
-              ? `<button class="btn ghost tiny" onclick="showHandoff('${esc(f.url)}')">lesen</button>`
+              ? `<button class="btn ghost tiny" onclick="showHandoff('${esc(f.url)}')">${t("read_file")}</button>`
               : `<a class="btn ghost tiny" href="${esc(f.url)}" target="_blank"
-                  style="text-decoration:none">ansehen</a>`}
+                  style="text-decoration:none">${t("view")}</a>`}
             <a class="btn ghost tiny" href="${esc(f.url)}" download
-              style="text-decoration:none">speichern</a>
+              style="text-decoration:none">${t("save_file")}</a>
           </span></div>`;
       }).join("")}</div></div>` : ""}
   </div>`;
@@ -2838,7 +2963,7 @@ async function openExportFolder() {
   try {
     await api(`/api/book/books/${S.bookId}/open-folder`, { method: "POST" });
   } catch (exc) {
-    toast(`Konnte den Ordner nicht öffnen: ${exc.message}`);
+    toast(ti("folder_open_failed", { message: exc.message }));
   }
 }
 
@@ -2847,12 +2972,12 @@ async function openExportFolder() {
 async function showHandoff(url) {
   let text;
   try { text = await (await fetch(url)).text(); }
-  catch { return toast("Anleitung nicht gefunden."); }
-  openModal(`<h3>Anleitung für die Druckerei</h3>
+  catch { return toast(t("handoff_missing")); }
+  openModal(`<h3>${t("handoff_title")}</h3>
     <div style="max-height:60vh;overflow:auto">${mdToHtml(text)}</div>
     <div class="row" style="justify-content:flex-end;margin-top:1rem">
-      <a class="btn ghost" href="${esc(url)}" download style="text-decoration:none">Als Datei speichern</a>
-      <button class="btn" onclick="closeModal()">Schließen</button></div>`);
+      <a class="btn ghost" href="${esc(url)}" download style="text-decoration:none">${t("handoff_save")}</a>
+      <button class="btn" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
 // Just enough Markdown for the handoff sheet: headings, lists, tables, bold.
@@ -2901,9 +3026,9 @@ const setPreview = { index: 0 };
 
 function typesetPreview(index) {
   setPreview.index = index ?? 0;
-  openModal(`<h3>Setzprobe — so wird die Seite gesetzt</h3>
+  openModal(`<h3>${t("typeset_title")}</h3>
     <div id="sp-stage" style="text-align:center;min-height:280px;display:grid;place-items:center">
-      <p class="lede">Seite wird gesetzt …</p></div>
+      <p class="lede">${t("typeset_loading")}</p></div>
     <div class="row" style="justify-content:center;margin-top:.7rem">
       <button class="btn ghost tiny" onclick="turnSetPreview(-1)">◀</button>
       <span class="small muted" id="sp-count" style="min-width:9rem;text-align:center"></span>
@@ -2911,7 +3036,7 @@ function typesetPreview(index) {
     </div>
     <p class="small muted" id="sp-legend" style="margin:.6rem 0 0"></p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
   loadSetPreview();
 }
 
@@ -2924,7 +3049,7 @@ function turnSetPreview(step) {
 async function loadSetPreview() {
   const stage = $("sp-stage");
   if (!stage) return;
-  stage.innerHTML = `<p class="lede">Seite wird gesetzt …</p>`;
+  stage.innerHTML = `<p class="lede">${t("typeset_loading")}</p>`;
   const query = new URLSearchParams({
     preset: $("e-preset")?.value || "screen",
     font: $("e-font")?.value || "georgia",
@@ -2938,17 +3063,16 @@ async function loadSetPreview() {
 
   let result;
   try { result = await api(`/api/book/books/${S.bookId}/page-preview?${query}`); }
-  catch (exc) { stage.innerHTML = `<p class="lede">Setzen fehlgeschlagen: ${esc(exc.message)}</p>`; return; }
-  stage.innerHTML = `<img src="${esc(result.url)}" alt="Gesetzte Seite"
+  catch (exc) { stage.innerHTML = `<p class="lede">${esc(ti("typeset_failed", { message: exc.message }))}</p>`; return; }
+  stage.innerHTML = `<img src="${esc(result.url)}" alt="${t("typeset_alt")}"
     style="max-width:100%;max-height:58vh;object-fit:contain;border:1px solid var(--line);
     border-radius:6px;cursor:zoom-in" onclick="zoom('${esc(result.url)}')">`;
   const count = $("sp-count");
   if (count) count.textContent = setPreview.index === 0
-    ? "Titelseite" : `Seite ${setPreview.index} von ${result.pages}`;
+    ? t("typeset_cover")
+    : ti("typeset_count", { n: setPreview.index, total: result.pages });
   const legend = $("sp-legend");
-  if (legend) legend.textContent = result.print
-    ? "Rote Linie: hier schneidet die Druckerei. Blaue Linie: Sicherheitsabstand — aller Text bleibt innerhalb."
-    : "";
+  if (legend) legend.textContent = result.print ? t("typeset_legend") : "";
 }
 
 /* The readiness gate. The server enforces the same check inside the export
@@ -2972,11 +3096,12 @@ async function refreshPreflight() {
 function renderPreflightBox(report) {
   const box = $("preflight");
   if (!box) return;
+  // The keys are the server's state words; only the wording is translated.
   const heads = {
-    "bereit": ["var(--good)", "Bereit für den Export."],
-    "warnung": ["var(--warn)", "Export möglich — mit Abstrichen:"],
-    "unbekannt": ["var(--warn)", "Prüfung unbekannt — es gibt ungeprüfte Seiten:"],
-    "unvollständig": ["var(--bad)", "Noch nicht exportbereit:"],
+    "bereit": ["var(--good)", t("pf_ready")],
+    "warnung": ["var(--warn)", t("pf_warning")],
+    "unbekannt": ["var(--warn)", t("pf_unknown")],
+    "unvollständig": ["var(--bad)", t("pf_incomplete")],
   };
   const [colour, head] = heads[report.state] || heads["unvollständig"];
   const line = (text, mark) => `<li>${mark} ${esc(text)}</li>`;
@@ -2988,16 +3113,16 @@ function renderPreflightBox(report) {
     ...report.pages_missing, ...report.pages_failed_check, ...report.pages_unknown_check,
   ];
   const links = [...new Set(jump)].sort((a, b) => a - b)
-    .map((i) => `<a href="#page-${i}">Seite ${i}</a>`).join(" · ");
+    .map((i) => `<a href="#page-${i}">${ti("page_n", { n: i })}</a>`).join(" · ");
 
   box.innerHTML = `<div style="border:1px solid ${colour};border-radius:10px;
       padding:.7rem .9rem;margin-bottom:1.1rem">
     <b style="color:${colour}">${head}</b>
     ${items ? `<ul style="margin:.4rem 0 0;padding-left:1.2rem" class="small">${items}</ul>` : ""}
-    ${links ? `<div class="small" style="margin-top:.4rem">Direkt hin: ${links}</div>` : ""}
+    ${links ? `<div class="small" style="margin-top:.4rem">${ti("pf_jump_to", { links })}</div>` : ""}
     ${report.state === "unbekannt" ? `<label class="check small" style="margin-top:.5rem">
       <input type="checkbox" id="e-allow-unknown" onchange="applyPreflightGate()">
-      Trotzdem exportieren — ich übernehme das Ansehen der ungeprüften Seiten selbst</label>` : ""}
+      ${t("pf_allow_unknown")}</label>` : ""}
   </div>`;
   applyPreflightGate();
 }
@@ -3008,57 +3133,54 @@ function applyPreflightGate() {
   const blocked = preflightState === "unvollständig"
     || (preflightState === "unbekannt" && !$("e-allow-unknown")?.checked);
   go.disabled = blocked;
-  go.title = blocked ? "Erst die Punkte oben lösen — der Export würde ein kaputtes Buch bauen." : "";
+  go.title = blocked ? t("pf_blocked_title") : "";
 }
 
 function doExport() {
   const languages = [...$("e-langs").querySelectorAll("input:checked")].map((i) => i.value);
-  if (!languages.length) return toast("Mindestens eine Sprache auswählen.");
+  if (!languages.length) return toast(t("pick_a_language"));
   runJob("book_export", { book_id: S.bookId, preset: $("e-preset").value,
     font: $("e-font").value, provider_hint: $("e-shop").value, languages,
     combine: !!$("e-combine")?.checked,
     allow_unknown: !!$("e-allow-unknown")?.checked },
-    "PDF wird gebaut", renderBook);
+    t("job_export"), renderBook);
 }
 
 function addLanguage() {
   const have = currentBook ? currentBook.languages : [];
   const options = (S.status.languages || []).filter((l) => !have.includes(l.code));
-  if (!options.length) return toast("Alle verfügbaren Sprachen sind schon drin.");
-  openModal(`<h3>Sprache dazu</h3>
-    <p class="lede">Die Bilder bleiben dieselben; die Geschichte wird in der neuen
-      Sprache eigenständig geschrieben, nicht übersetzt. Kostet nur Centbeträge.</p>
+  if (!options.length) return toast(t("lang_all_present"));
+  openModal(`<h3>${t("export_add_language")}</h3>
+    <p class="lede">${t("lang_add_lede")}</p>
     <div class="chips" style="margin-bottom:1.2rem">${options.map((l) => `
       <label class="chip"><input type="checkbox" value="${l.code}"
         onchange="this.parentNode.classList.toggle('on',this.checked)">${esc(l.name)}</label>`).join("")}
     </div>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-      <button class="btn" id="m-go">Schreiben</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-go">${t("lang_write")}</button></div>`);
   $("m-go").onclick = () => {
     const languages = [...$("modal").querySelectorAll("input:checked")].map((i) => i.value);
-    if (!languages.length) return toast("Mindestens eine Sprache anhaken.");
+    if (!languages.length) return toast(t("pick_a_language_tick"));
     closeModal();
     runJob("story_languages", { book_id: S.bookId, languages },
-      "Wird geschrieben", renderBook);
+      t("job_writing"), renderBook);
   };
 }
 
 async function restoreDialog() {
   const { backups } = await api("/api/book/backups");
   if (!backups.length) {
-    return toast("Keine Sicherungen gefunden — ZIPs gehören in library/backups.");
+    return toast(t("restore_none"));
   }
-  openModal(`<h3>Buch wiederherstellen</h3>
-    <p class="lede">Jede Sicherung wird vor dem Einspielen geprüft (Manifest und
-      Prüfsummen). Existiert das Buch noch, entsteht eine Kopie — überschrieben
-      wird nie.</p>
+  openModal(`<h3>${t("restore_title")}</h3>
+    <p class="lede">${t("restore_lede")}</p>
     ${backups.map((b) => `<div class="row" style="padding:.3rem 0">
-      <button class="btn ghost tiny" onclick="doRestore('${esc(b.file)}')">wiederherstellen</button>
+      <button class="btn ghost tiny" onclick="doRestore('${esc(b.file)}')">${t("restore_verb")}</button>
       <span class="small">${esc(b.name)}</span>
       <span class="small muted">${b.size_kb} KB</span></div>`).join("")}
     <div class="row" style="justify-content:flex-end;margin-top:.8rem">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
 async function doRestore(file) {
@@ -3066,16 +3188,16 @@ async function doRestore(file) {
   try {
     const result = await api("/api/book/restore",
       { method: "POST", body: JSON.stringify({ file }) });
-    toast(`„${result.title}“ wiederhergestellt — ${result.files} Dateien geprüft.`);
+    toast(ti("restored", { title: result.title, files: result.files }));
     renderHome();
   } catch (exc) {
-    toast(`Wiederherstellen abgelehnt: ${exc.message}`);
+    toast(ti("restore_failed", { message: exc.message }));
   }
 }
 
 async function backupBook() {
   const info = await api(`/api/book/books/${S.bookId}/backup`, { method: "POST" });
-  toast(`Gesichert — ${info.size_kb} KB. Der Download startet.`);
+  toast(ti("backup_done", { kb: info.size_kb }));
   const link = document.createElement("a");
   link.href = info.url; link.download = "";
   document.body.appendChild(link); link.click(); link.remove();

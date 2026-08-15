@@ -543,6 +543,119 @@ const LOCALES = {
     rewrite_label: "Was soll anders sein? (leer lassen = einfach besser machen)",
     rewrite_placeholder: "Weniger Text. Und es soll regnen.",
     rewrite_verb: "Neu schreiben", job_page_rewrite: "Seite {n} neu",
+    /* book */
+    edit: "bearbeiten", redraw: "neu zeichnen",
+    remove: "Entfernen", removed: "Entfernt.",
+    typeset: "Setzprobe", book_per_image: "{price}/Bild",
+    book_drawn_of: "{drawn} von {total} Seiten gezeichnet",
+    book_to_review: "{n} zum Anschauen", book_cost_title: "Aufschlüsselung ansehen",
+    book_spend_so_far: "bisher <b>~{amount} €</b> geschätzt",
+    book_export_stale_title: "Seit dem letzten Export wurde am Buch geändert",
+    book_export_stale: "Export veraltet",
+    book_read_aloud: "Vorlesen", book_edit_text: "Text ändern",
+    book_draw_missing: "Fehlende Bilder zeichnen", book_from_price: "ab {price}",
+    book_redraw_all: "Alle Seiten neu zeichnen",
+    book_cast_summary: "Nebenfiguren und Orte ({n}) — bearbeiten möglich",
+    book_cast_sheet_alt: "Referenzblatt {name}",
+    book_kind_place: "Ort", book_kind_character: "Figur",
+    book_no_sheet: "noch kein Blatt",
+    book_new_sheet_title: "Neues Referenzblatt", book_sheet_redraw: "Blatt neu",
+    book_pages_heading: "Seiten",
+    book_cover_alt: "Titelbild", book_cover_caps: "TITELBILD",
+    book_cover_only_title: "Nur das Titelbild", book_cover_change: "Motiv ändern",
+    book_more_tools: "Weitere Werkzeuge",
+    book_more_tools_hint: "— Vorlesen lassen, Fotoseite",
+    book_sound_later: "Ton gibt es, sobald Seiten gezeichnet sind.",
+    book_delete: "Buch löschen",
+    sb_title: "Storyboard — vor dem ersten Zeichnen prüfen",
+    sb_lede: "So wird der Illustrator gebrieft. Liest sich eine Zeile falsch, ist Ändern jetzt kostenlos — nach dem Zeichnen kostet jede Korrektur ein Bild. Insgesamt: <b>{images} Bilder, {price}</b>.",
+    sb_col_no: "Nr", sb_col_text: "Text", sb_col_brief: "Bildanweisung",
+    sb_col_layout: "Layout · Figuren",
+    sb_change: "Noch etwas ändern", sb_go: "Passt — zeichnen",
+    mark_error: "Fehler", mark_check: "prüfen", mark_unchecked: "ungeprüft",
+    mark_no_check: "ohne Prüfung", mark_image_stale: "Bild veraltet",
+    mark_audio_stale: "Ton veraltet",
+    proof_title: "Druckbogen — {name}", proof_missing: "fehlt",
+    proof_note: "Gelb gerahmte Seiten brauchen einen Blick, bevor gedruckt wird.",
+    next_draw_one: "Als Nächstes: {n} fehlendes Bild zeichnen.",
+    next_draw_many: "Als Nächstes: {n} fehlende Bilder zeichnen.",
+    next_review: "Als Nächstes: die beanstandeten Seiten ansehen — <a href=\"#review\">zu den Hinweisen</a>.",
+    next_recheck: "Als Nächstes: die ungeprüften Seiten prüfen lassen — <a href=\"#review\">zu den Hinweisen</a>.",
+    next_export_stale: "Als Nächstes: neu exportieren, der Text ist neuer als die Dateien — <a href=\"#export\">zum Export</a>.",
+    next_all_drawn: "Alles gezeichnet. Als Nächstes: anhören („Vorlesen“) oder <a href=\"#export\">exportieren</a>.",
+    next_done: "Fertig — Dateien sind exportiert und aktuell.",
+    ref_hero_changed: "die Figur hat inzwischen ein anderes Charakterblatt",
+    ref_style_changed: "der Stil wurde inzwischen neu gezeichnet",
+    ref_style_missing: "der Stil dieses Buches wurde gelöscht — das Buch behält seine eigene Kopie",
+    ref_frozen: "Dieses Buch zeichnet mit seiner <b>eingefrorenen</b> Referenz weiter, denn {reasons}. Bestehende Seiten ändern sich dadurch nie von selbst.",
+    ref_adopt: "Auf die neue Referenz umstellen",
+    ref_adopt_hint: "— wirkt erst beim nächsten Zeichnen; schon gezeichnete Seiten bleiben, bis du sie neu zeichnest.",
+    ref_adopted: "Referenz übernommen — neue Zeichnungen folgen jetzt dem aktuellen Stand.",
+    cost_pages: "Seitenbilder", cost_cover: "Titelbild", cost_narration: "Ton",
+    cost_scout: "Bilddienst-Vergleich", cost_cast: "Nebenfiguren-Blätter",
+    cost_title: "Kosten dieses Buchs — ~{amount} €",
+    cost_nothing: "Noch nichts ausgegeben.", cost_recent: "Letzte Einzelposten",
+    cost_note: "Alles Schätzwerte auf Basis der Listenpreise (BFL meldet exakt). Text-Aufrufe — Geschichte, Überarbeitung, Prüfungen — kosten Centbeträge und sind hier nicht mitgezählt.",
+    cast_edit_title: "{name} bearbeiten",
+    cast_desc_label: "Beschreibung (englisch, fürs Zeichnen)",
+    cast_pages_label: "Kommt vor auf den Seiten",
+    cast_note: "Nach einer geänderten Beschreibung das Blatt neu zeichnen lassen — sonst zeigt die Referenz weiter die alte Fassung.",
+    cast_remove_q: "{name} aus dem Buch entfernen?",
+    cast_remove_detail: "Die Figur verschwindet von allen Seitenlisten; schon gezeichnete Bilder bleiben, bis sie neu gezeichnet werden.",
+    job_cast_sheet: "Referenzblatt wird gezeichnet",
+    review_trouble_one: "Auf einer Seite stimmt etwas nicht (Figur, Szene oder der Zeichenversuch selbst): Seite {pages}. Jede geprüfte davon wurde schon einmal automatisch nachgezeichnet — das hier blieb übrig.",
+    review_trouble_many: "Auf {count} Seiten stimmt etwas nicht (Figur, Szene oder der Zeichenversuch selbst): Seite {pages}. Jede geprüfte davon wurde schon einmal automatisch nachgezeichnet — das hier blieb übrig.",
+    review_redraw_all: "Alle {count} neu zeichnen",
+    review_unknown_one: "Eine Seite ist <b>ungeprüft</b> — die Ähnlichkeitsprüfung brach ab, bevor sie urteilen konnte: Seite {pages}. Die Bilder können völlig in Ordnung sein; verifiziert hat sie nur niemand.",
+    review_unknown_many: "{count} Seiten sind <b>ungeprüft</b> — die Ähnlichkeitsprüfung brach ab, bevor sie urteilen konnte: Seite {pages}. Die Bilder können völlig in Ordnung sein; verifiziert hat sie nur niemand.",
+    review_recheck: "Jetzt prüfen — kostet keine Bilder, nur einen Blick",
+    job_check_pages: "Seiten werden geprüft",
+    quality_changed: "Bildqualität umgestellt — sie gilt für alles, was ab jetzt gezeichnet wird.",
+    bigrun_retry_note: "Wird eine Seite von der Prüfung beanstandet, kostet die automatische Wiederholung je ein weiteres Bild.",
+    bigrun_batch: "<b>Batch-Modus: {price} statt des vollen Preises.</b> Google zeichnet alles in einem Rutsch, wann es Kapazität hat — Minuten bis Stunden statt sofort. Keine automatische Wiederholung; beanstandete Seiten bleiben markiert.",
+    bigrun_cap_label: "Kostendeckel in € (leer = keiner)",
+    bigrun_cap_placeholder: "z. B. 3", job_batch_suffix: "{title} (Batch)",
+    redraw_all_q: "Wirklich alle Seiten neu zeichnen?",
+    redraw_all_detail: "{count} Seiten und das Titelbild, in der eingestellten Qualität — zusammen {price}. Die bisherigen Fassungen bleiben als Versionen erhalten.",
+    redraw_all_verb: "Alles neu zeichnen",
+    job_draw_pictures: "Bilder werden gezeichnet",
+    job_draw_cover: "Titelbild wird gezeichnet",
+    job_draw_page: "Seite {pages} wird gezeichnet",
+    print_ready: "Reif für die Druckerei",
+    print_ready_note: "Alle gezeichneten Seiten liegen bei etwa <b>{dpi} dpi</b> und mehr — genug für die 300 dpi, die eine Druckerei will.",
+    print_not_ready: "Noch nicht reif für die Druckerei",
+    print_not_ready_note: "Eine Druckerei will 300 dpi („dots per inch“ — Druckpunkte pro Zoll). {weak} von {total} gezeichneten Seiten liegen darunter, die schwächste bei etwa <b>{dpi} dpi</b>. Am Bildschirm fällt das nicht auf, im Druck wird es weich. Zum Vorlesen am Bildschirm reicht es so.",
+    print_redraw: "Alles in Druckqualität neu zeichnen",
+    print_redraw_q: "Alles in Druckqualität neu zeichnen?",
+    print_redraw_detail: "{count} Seiten und das Titelbild bei 2624 px — das dauert deutlich länger und kostet {price}. Die bisherigen Fassungen bleiben als Versionen erhalten.",
+    print_redraw_verb: "In Druckqualität zeichnen",
+    job_draw_print: "Druckqualität wird gezeichnet",
+    meta_title: "Titel, Widmung, Titelbild",
+    meta_title_label: "Titel ({code})", meta_dedication_label: "Widmung ({code})",
+    meta_cover_label: "Was das Titelbild zeigt (englisch — wirkt beim nächsten Zeichnen)",
+    book_delete_q: "„{title}“ löschen?",
+    book_delete_detail: "Alle Bilder, Tonspuren und PDFs dieses Buches werden vom Rechner gelöscht. Das lässt sich nicht rückgängig machen.",
+    book_deleted: "Buch gelöscht.",
+    page_illustration_alt: "Illustration Seite {n}",
+    page_not_drawn: "noch nicht gezeichnet", page_being_drawn: "wird gezeichnet …",
+    page_unknown_title: "Die Prüfung brach ab — niemand hat diese Seite verifiziert",
+    page_unchecked_title: "Diese Seite wurde nie geprüft",
+    page_stale_title: "Die Bildanweisung wurde seit dem Zeichnen geändert — das Bild zeigt noch die alte Fassung",
+    page_audio_stale_title: "Der Text wurde nach der Aufnahme geändert ({langs}) — der Ton liest noch den alten",
+    page_edit_title: "Text, Bildanweisung und Layout dieser Seite ändern",
+    page_redraw_title: "Kostet etwa {price}", page_versions: "Versionen ({n})",
+    page_edit_heading: "Seite {n} bearbeiten", page_text_label: "Text ({lang})",
+    page_brief_label: "Was das Bild zeigt (englisch — wirkt beim nächsten Zeichnen)",
+    page_ai_title: "Die KI schreibt die Seite neu, statt dass du selbst tippst",
+    page_ai_rewrite: "KI: neu schreiben lassen",
+    page_typeset_title: "Diese Seite fertig gesetzt ansehen",
+    versions_title: "Seite {n} — Versionen", versions_current: "aktuell",
+    versions_previous: "davor", versions_n_before: "{n} Fassungen davor",
+    versions_note: "„Zurück“ stellt jeweils die letzte vorherige Fassung wieder her — mehrmals drücken geht weiter zurück.",
+    versions_undo: "Zurück zur vorherigen",
+    draw_missing_q: "Alle fehlenden Bilder zeichnen?",
+    draw_missing_detail: "{n} Bild(er) werden gezeichnet.",
+    draw_verb: "Zeichnen", job_page_undo: "Seite {n} zurück",
   },
   en: {
     tagline: "Make your own picture books",
@@ -659,6 +772,119 @@ const LOCALES = {
     rewrite_label: "What should be different? (leave empty = just make it better)",
     rewrite_placeholder: "Less text. And let it rain.",
     rewrite_verb: "Write it again", job_page_rewrite: "Rewriting page {n}",
+    /* book */
+    edit: "edit", redraw: "redraw",
+    remove: "Remove", removed: "Removed.",
+    typeset: "Typeset proof", book_per_image: "{price}/picture",
+    book_drawn_of: "{drawn} of {total} pages drawn",
+    book_to_review: "{n} to look at", book_cost_title: "See the breakdown",
+    book_spend_so_far: "<b>~{amount} €</b> estimated so far",
+    book_export_stale_title: "The book has changed since the last export",
+    book_export_stale: "Export out of date",
+    book_read_aloud: "Read aloud", book_edit_text: "Change the text",
+    book_draw_missing: "Draw the missing pictures", book_from_price: "from {price}",
+    book_redraw_all: "Redraw every page",
+    book_cast_summary: "Supporting characters and places ({n}) — can be edited",
+    book_cast_sheet_alt: "Reference sheet {name}",
+    book_kind_place: "Place", book_kind_character: "Character",
+    book_no_sheet: "no sheet yet",
+    book_new_sheet_title: "A new reference sheet", book_sheet_redraw: "Redraw sheet",
+    book_pages_heading: "Pages",
+    book_cover_alt: "Cover picture", book_cover_caps: "COVER PICTURE",
+    book_cover_only_title: "The cover picture only", book_cover_change: "Change the subject",
+    book_more_tools: "More tools",
+    book_more_tools_hint: "— read aloud, photo page",
+    book_sound_later: "Sound is available once pages have been drawn.",
+    book_delete: "Delete book",
+    sb_title: "Storyboard — check it before the first drawing",
+    sb_lede: "This is how the illustrator is briefed. If a line reads wrong, changing it now is free — once it is drawn, every correction costs a picture. In total: <b>{images} pictures, {price}</b>.",
+    sb_col_no: "No", sb_col_text: "Text", sb_col_brief: "Illustration brief",
+    sb_col_layout: "Layout · characters",
+    sb_change: "Change something first", sb_go: "Looks right — draw it",
+    mark_error: "Error", mark_check: "check", mark_unchecked: "unchecked",
+    mark_no_check: "never checked", mark_image_stale: "Picture out of date",
+    mark_audio_stale: "Sound out of date",
+    proof_title: "Print sheet — {name}", proof_missing: "missing",
+    proof_note: "Pages framed in yellow want a look before anything is printed.",
+    next_draw_one: "Next: draw {n} missing picture.",
+    next_draw_many: "Next: draw {n} missing pictures.",
+    next_review: "Next: look at the pages that were flagged — <a href=\"#review\">go to the notes</a>.",
+    next_recheck: "Next: have the unchecked pages checked — <a href=\"#review\">go to the notes</a>.",
+    next_export_stale: "Next: export again, the text is newer than the files — <a href=\"#export\">go to the export</a>.",
+    next_all_drawn: "Everything is drawn. Next: listen to it (“Read aloud”) or <a href=\"#export\">export it</a>.",
+    next_done: "Done — the files are exported and up to date.",
+    ref_hero_changed: "the character now has a different character sheet",
+    ref_style_changed: "the style has been redrawn since",
+    ref_style_missing: "this book's style was deleted — the book keeps its own copy",
+    ref_frozen: "This book keeps drawing with its <b>frozen</b> reference, because {reasons}. Pages that already exist never change by themselves because of it.",
+    ref_adopt: "Switch to the new reference",
+    ref_adopt_hint: "— takes effect the next time something is drawn; pages already drawn stay as they are until you redraw them.",
+    ref_adopted: "Reference adopted — new drawings now follow the current state.",
+    cost_pages: "Page pictures", cost_cover: "Cover picture", cost_narration: "Sound",
+    cost_scout: "Image service comparison", cost_cast: "Supporting character sheets",
+    cost_title: "What this book cost — ~{amount} €",
+    cost_nothing: "Nothing spent yet.", cost_recent: "Most recent single items",
+    cost_note: "All estimates based on list prices (BFL reports exact figures). Text calls — story, revision, checks — cost cents and are not counted here.",
+    cast_edit_title: "Edit {name}",
+    cast_desc_label: "Description (in English, for the drawing)",
+    cast_pages_label: "Appears on these pages",
+    cast_note: "After changing a description, have the sheet redrawn — otherwise the reference keeps showing the old version.",
+    cast_remove_q: "Remove {name} from the book?",
+    cast_remove_detail: "The character disappears from every page list; pictures already drawn stay until they are redrawn.",
+    job_cast_sheet: "Drawing the reference sheet",
+    review_trouble_one: "Something is wrong on one page (character, scene, or the drawing attempt itself): page {pages}. Every checked one of them was already redrawn once automatically — this is what was left.",
+    review_trouble_many: "Something is wrong on {count} pages (character, scene, or the drawing attempt itself): page {pages}. Every checked one of them was already redrawn once automatically — this is what was left.",
+    review_redraw_all: "Redraw all {count}",
+    review_unknown_one: "One page is <b>unchecked</b> — the likeness check broke off before it could judge: page {pages}. The pictures may be perfectly fine; nobody verified them, that is all.",
+    review_unknown_many: "{count} pages are <b>unchecked</b> — the likeness check broke off before it could judge: page {pages}. The pictures may be perfectly fine; nobody verified them, that is all.",
+    review_recheck: "Check them now — costs no pictures, just a look",
+    job_check_pages: "Checking the pages",
+    quality_changed: "Image quality changed — it applies to everything drawn from now on.",
+    bigrun_retry_note: "If the check flags a page, the automatic second attempt costs one more picture each time.",
+    bigrun_batch: "<b>Batch mode: {price} instead of the full price.</b> Google draws everything in one go, whenever it has capacity — minutes to hours rather than straight away. No automatic second attempt; flagged pages stay marked.",
+    bigrun_cap_label: "Spending cap in € (empty = none)",
+    bigrun_cap_placeholder: "e.g. 3", job_batch_suffix: "{title} (batch)",
+    redraw_all_q: "Really redraw every page?",
+    redraw_all_detail: "{count} pages and the cover picture, at the quality that is set — {price} in total. The versions so far are kept.",
+    redraw_all_verb: "Redraw everything",
+    job_draw_pictures: "Drawing the pictures",
+    job_draw_cover: "Drawing the cover picture",
+    job_draw_page: "Drawing page {pages}",
+    print_ready: "Ready for the print shop",
+    print_ready_note: "Every drawn page sits at roughly <b>{dpi} dpi</b> or better — enough for the 300 dpi a print shop wants.",
+    print_not_ready: "Not ready for the print shop yet",
+    print_not_ready_note: "A print shop wants 300 dpi (“dots per inch” — printed dots per inch). {weak} of {total} drawn pages are below that, the weakest at roughly <b>{dpi} dpi</b>. On screen you do not notice; in print it goes soft. For reading aloud on screen it is fine as it is.",
+    print_redraw: "Redraw everything at print quality",
+    print_redraw_q: "Redraw everything at print quality?",
+    print_redraw_detail: "{count} pages and the cover picture at 2624 px — that takes considerably longer and costs {price}. The versions so far are kept.",
+    print_redraw_verb: "Draw at print quality",
+    job_draw_print: "Drawing at print quality",
+    meta_title: "Title, dedication, cover picture",
+    meta_title_label: "Title ({code})", meta_dedication_label: "Dedication ({code})",
+    meta_cover_label: "What the cover picture shows (in English — takes effect the next time it is drawn)",
+    book_delete_q: "Delete “{title}”?",
+    book_delete_detail: "Every picture, sound track and PDF of this book is deleted from this computer. This cannot be undone.",
+    book_deleted: "Book deleted.",
+    page_illustration_alt: "Illustration page {n}",
+    page_not_drawn: "not drawn yet", page_being_drawn: "being drawn …",
+    page_unknown_title: "The check broke off — nobody verified this page",
+    page_unchecked_title: "This page was never checked",
+    page_stale_title: "The illustration brief has changed since the drawing — the picture still shows the old version",
+    page_audio_stale_title: "The text changed after the recording ({langs}) — the sound still reads the old one",
+    page_edit_title: "Change the text, illustration brief and layout of this page",
+    page_redraw_title: "Costs roughly {price}", page_versions: "Versions ({n})",
+    page_edit_heading: "Edit page {n}", page_text_label: "Text ({lang})",
+    page_brief_label: "What the picture shows (in English — takes effect the next time it is drawn)",
+    page_ai_title: "The AI writes the page again instead of you typing it",
+    page_ai_rewrite: "AI: have it written again",
+    page_typeset_title: "See this page fully typeset",
+    versions_title: "Page {n} — versions", versions_current: "current",
+    versions_previous: "the one before", versions_n_before: "{n} versions back",
+    versions_note: "“Back” restores the last previous version each time — press it repeatedly to go further back.",
+    versions_undo: "Back to the previous one",
+    draw_missing_q: "Draw all the missing pictures?",
+    draw_missing_detail: "{n} picture(s) will be drawn.",
+    draw_verb: "Draw", job_page_undo: "Page {n} back",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -1051,11 +1277,11 @@ async function patchDrawnPages() {
     if (page.image_url && !card.querySelector("img")) {
       const img = document.createElement("img");
       img.src = page.image_url;
-      img.alt = `Illustration Seite ${page.index}`;
+      img.alt = ti("page_illustration_alt", { n: page.index });
       img.onclick = () => zoom(page.image_url);
       placeholder?.replaceWith(img);
     } else if (!page.image_url && placeholder) {
-      placeholder.textContent = "wird gezeichnet …";
+      placeholder.textContent = t("page_being_drawn");
     }
   }
 }
@@ -1902,10 +2128,10 @@ async function renderBook() {
   const perImage = perImageUsd(book.render_quality);
   const redrawAllUsd = (book.pages.length + 1) * perImage;
 
-  const qualityPicker = `<select id="b-quality" style="width:auto" title="Bildqualität"
+  const qualityPicker = `<select id="b-quality" style="width:auto" title="${t("quality")}"
     onchange="setQuality(this.value)">${(S.status.render_profiles || []).map((p) => `
       <option value="${p.key}" ${book.render_quality === p.key ? "selected" : ""}>
-        ${esc(p.label)} — ${eur(perImageUsd(p.key))}/Bild</option>`).join("")}</select>`;
+        ${esc(p.label)} — ${ti("book_per_image", { price: eur(perImageUsd(p.key)) })}</option>`).join("")}</select>`;
 
 
   view().innerHTML = stepsBar("book") + `
@@ -1913,43 +2139,45 @@ async function renderBook() {
       <div class="spread"><div>
         <h2>${esc(book.title[language] || book.display_title)}
           <button class="btn ghost tiny" style="vertical-align:middle"
-            onclick="editBookMeta()">bearbeiten</button></h2>
-        <p class="lede" style="margin-bottom:0">${drawn} von ${book.pages.length} Seiten gezeichnet
-          ${book.flagged.length ? `· <span style="color:var(--warn)">${book.flagged.length} zum Anschauen</span>` : ""}
+            onclick="editBookMeta()">${t("edit")}</button></h2>
+        <p class="lede" style="margin-bottom:0">${
+          ti("book_drawn_of", { drawn, total: book.pages.length })}
+          ${book.flagged.length ? `· <span style="color:var(--warn)">${
+            ti("book_to_review", { n: book.flagged.length })}</span>` : ""}
           ${spend.calls ? ` · <button class="meter" style="cursor:pointer"
-            title="Aufschlüsselung ansehen" onclick="costDialog()">bisher
-            <b>~${spend.eur.toFixed(2)} €</b> geschätzt</button>` : ""}
+            title="${t("book_cost_title")}" onclick="costDialog()">${
+            ti("book_spend_so_far", { amount: spend.eur.toFixed(2) })}</button>` : ""}
           ${book.export_stale && (book.exports || []).length ? ` · <span class="flag warn"
-            title="Seit dem letzten Export wurde am Buch geändert">Export veraltet</span>` : ""}</p>
+            title="${t("book_export_stale_title")}">${t("book_export_stale")}</span>` : ""}</p>
         <p class="small" style="margin:.5rem 0 0">${nextStep(book, missing)}</p>
       </div>
       <div class="row">
-        ${drawn ? `<button class="btn ghost" onclick="openReader()">Vorlesen</button>` : ""}
-        <button class="btn ghost" onclick="go('story')">Text ändern</button>
+        ${drawn ? `<button class="btn ghost" onclick="openReader()">${t("book_read_aloud")}</button>` : ""}
+        <button class="btn ghost" onclick="go('story')">${t("book_edit_text")}</button>
         ${pickerHtml()}${qualityPicker}
         ${missing.images
           ? `<button class="btn" onclick="illustrateAll()">
-              ${drawn ? "Fehlende Bilder zeichnen" : "Bilder zeichnen"}
-              (${missing.images}) · ab ${eur(missing.usd)}</button>`
-          : `<button class="btn" onclick="redrawAll()">Alle Seiten neu zeichnen
+              ${drawn ? t("book_draw_missing") : t("book_draw_pictures")}
+              (${missing.images}) · ${ti("book_from_price", { price: eur(missing.usd) })}</button>`
+          : `<button class="btn" onclick="redrawAll()">${t("book_redraw_all")}
               · ${eur(redrawAllUsd)}</button>`}
       </div></div>
 
       <div id="review">${referencesBanner(book)}${reviewBanners(book, perImage)}</div>
 
       ${book.cast.length ? `<details style="margin-top:1rem">
-        <summary class="small muted">Nebenfiguren und Orte (${book.cast.length}) — bearbeiten möglich</summary>
+        <summary class="small muted">${ti("book_cast_summary", { n: book.cast.length })}</summary>
         <div class="grid g4" style="margin-top:.7rem">` + book.cast.map((c, i) => `
           <div class="pick" style="cursor:default">
-            ${c.sheet_url ? `<img src="${esc(tn(c.sheet_url))}" loading="lazy" decoding="async" alt="Referenzblatt ${esc(c.name)}"
+            ${c.sheet_url ? `<img src="${esc(tn(c.sheet_url))}" loading="lazy" decoding="async" alt="${esc(ti("book_cast_sheet_alt", { name: c.name }))}"
                 onclick="zoom('${esc(c.sheet_url)}')" style="cursor:zoom-in">`
                           : `<div style="aspect-ratio:3/2;background:var(--sunk)"></div>`}
-            <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? "Ort" : "Figur"}
-              ${c.sheet_url ? "" : " · noch kein Blatt"}</small>
+            <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? t("book_kind_place") : t("book_kind_character")}
+              ${c.sheet_url ? "" : ` · ${t("book_no_sheet")}`}</small>
               <div class="acts" style="margin-top:.4rem">
-                <button class="btn ghost tiny" onclick="editCast(${i})">bearbeiten</button>
+                <button class="btn ghost tiny" onclick="editCast(${i})">${t("edit")}</button>
                 <button class="btn ghost tiny" onclick="redrawCast(${i})"
-                  title="Neues Referenzblatt · ${eur(perImageUsd('draft'))}">Blatt neu</button>
+                  title="${t("book_new_sheet_title")} · ${eur(perImageUsd('draft'))}">${t("book_sheet_redraw")}</button>
               </div></div></div>`).join("") + `</div></details>` : ""}
     </div>
 
@@ -1957,15 +2185,15 @@ async function renderBook() {
     ${printPanel(book)}
 
     <div class="card" id="seiten">
-      <h2>Seiten</h2>
+      <h2>${t("book_pages_heading")}</h2>
       <div class="grid g3" style="margin-top:1rem">
         ${book.cover_url ? `<div class="page">
-          <img src="${esc(tn(book.cover_url))}" loading="lazy" decoding="async" onclick="zoom('${esc(book.cover_url)}')" alt="Titelbild">
-          <div class="body"><div class="num">TITELBILD</div>
+          <img src="${esc(tn(book.cover_url))}" loading="lazy" decoding="async" onclick="zoom('${esc(book.cover_url)}')" alt="${t("book_cover_alt")}">
+          <div class="body"><div class="num">${t("book_cover_caps")}</div>
             <div class="acts">
               <button class="btn ghost tiny" onclick="redrawCover()"
-                title="Nur das Titelbild">neu zeichnen · ${eur(perImage)}</button>
-              <button class="btn ghost tiny" onclick="editBookMeta()">Motiv ändern</button>
+                title="${t("book_cover_only_title")}">${t("redraw")} · ${eur(perImage)}</button>
+              <button class="btn ghost tiny" onclick="editBookMeta()">${t("book_cover_change")}</button>
             </div></div></div>` : ""}
         ` + book.pages.map((p) => pageCard(p, language)).join("") + `
       </div>
@@ -1974,16 +2202,16 @@ async function renderBook() {
     ${drawn ? `<div id="export">${exportPanel(book)}</div>` : ""}
 
     <details class="card" id="tools" ${drawn && (book.pages.some((p) => (p.audio_stale || []).length)) ? "open" : ""}>
-      <summary style="cursor:pointer"><b>Weitere Werkzeuge</b>
-        <span class="muted small">— Vorlesen lassen, Fotoseite</span></summary>
+      <summary style="cursor:pointer"><b>${t("book_more_tools")}</b>
+        <span class="muted small">${t("book_more_tools_hint")}</span></summary>
       <div style="margin-top:1rem">
-        ${drawn ? soundPanel(book) : `<p class="lede">Ton gibt es, sobald Seiten gezeichnet sind.</p>`}
+        ${drawn ? soundPanel(book) : `<p class="lede">${t("book_sound_later")}</p>`}
         ${photoPanel(book, language)}
       </div>
     </details>
 
     <div class="row" style="margin-top:1.4rem;justify-content:flex-end">
-      <button class="btn ghost" style="color:var(--bad)" onclick="deleteBook()">Buch löschen</button>
+      <button class="btn ghost" style="color:var(--bad)" onclick="deleteBook()">${t("book_delete")}</button>
     </div>`;
 
   refreshPreflight();  // async; fills the readiness box once the answer is in
@@ -2002,18 +2230,17 @@ function storyboardCard(book, language, missing) {
         p.cast.length ? ` · ${p.cast.map(esc).join(", ")}` : ""}</td>
     </tr>`).join("");
   return `<div class="card">
-    <h2>Storyboard — vor dem ersten Zeichnen prüfen</h2>
-    <p class="lede">So wird der Illustrator gebrieft. Liest sich eine Zeile falsch,
-      ist Ändern jetzt kostenlos — nach dem Zeichnen kostet jede Korrektur ein Bild.
-      Insgesamt: <b>${missing.images} Bilder, ${eur(missing.usd)}</b>.</p>
+    <h2>${t("sb_title")}</h2>
+    <p class="lede">${ti("sb_lede",
+      { images: missing.images, price: eur(missing.usd) })}</p>
     <div style="overflow-x:auto"><table class="small" style="width:100%;border-collapse:collapse">
-      <tr class="muted"><th style="text-align:left;padding-right:.5rem">Nr</th>
-        <th style="text-align:left">Text</th><th style="text-align:left">Bildanweisung</th>
-        <th style="text-align:left">Layout · Figuren</th></tr>
+      <tr class="muted"><th style="text-align:left;padding-right:.5rem">${t("sb_col_no")}</th>
+        <th style="text-align:left">${t("sb_col_text")}</th><th style="text-align:left">${t("sb_col_brief")}</th>
+        <th style="text-align:left">${t("sb_col_layout")}</th></tr>
       ${rows}</table></div>
     <div class="row" style="margin-top:1rem">
-      <button class="btn ghost" onclick="go('story')">Noch etwas ändern</button>
-      <button class="btn" onclick="illustrateAll()">Passt — zeichnen (${missing.images} · ${eur(missing.usd)})</button>
+      <button class="btn ghost" onclick="go('story')">${t("sb_change")}</button>
+      <button class="btn" onclick="illustrateAll()">${t("sb_go")} (${missing.images} · ${eur(missing.usd)})</button>
     </div></div>`;
 }
 
@@ -2027,28 +2254,28 @@ function proofDialog() {
   const cells = book.pages.map((p) => {
     const d = dpiFor(p.image_px, preset);
     const marks = [
-      p.error ? "Fehler" : "",
-      p.check_status === "failed" ? "prüfen" : "",
-      (p.check_status === "unknown" || p.check_status === "unchecked") ? "ungeprüft" : "",
-      p.image_stale ? "Bild veraltet" : "",
+      p.error ? t("mark_error") : "",
+      p.check_status === "failed" ? t("mark_check") : "",
+      (p.check_status === "unknown" || p.check_status === "unchecked") ? t("mark_unchecked") : "",
+      p.image_stale ? t("mark_image_stale") : "",
       isPrint && d && d < DPI_FLOOR ? `${d} dpi` : "",
     ].filter(Boolean);
     return `<div style="border:1px solid ${marks.length ? "var(--warn)" : "var(--line)"};
         border-radius:8px;overflow:hidden">
-      ${p.image_url ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="Seite ${p.index}"
+      ${p.image_url ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="${ti("page_n", { n: p.index })}"
         style="aspect-ratio:1;object-fit:cover">`
         : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
-            class="small muted">fehlt</div>`}
+            class="small muted">${t("proof_missing")}</div>`}
       <div class="small" style="padding:.3rem .45rem">
         <b>${p.index}</b> ${esc((p.text[language] || "").slice(0, 40))}
         ${marks.length ? `<div style="color:var(--warn)">${marks.map(esc).join(" · ")}</div>` : ""}
       </div></div>`;
   }).join("");
-  openModal(`<h3>Druckbogen — ${esc(preset.name || presetKey)}</h3>
+  openModal(`<h3>${esc(ti("proof_title", { name: preset.name || presetKey }))}</h3>
     <div class="grid g4" style="margin-bottom:1rem">${cells}</div>
-    <p class="small muted">Gelb gerahmte Seiten brauchen einen Blick, bevor gedruckt wird.</p>
+    <p class="small muted">${t("proof_note")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
 // One plain sentence saying what to do next -- the antidote to a screen with
@@ -2056,21 +2283,22 @@ function proofDialog() {
 function nextStep(book, missing) {
   const review = book.review || { failed: [], unknown: [], errors: [] };
   if (missing.images) {
-    return `Als Nächstes: ${missing.images} fehlende${missing.images === 1 ? "s" : ""} Bild${missing.images === 1 ? "" : "er"} zeichnen.`;
+    return ti(missing.images === 1 ? "next_draw_one" : "next_draw_many",
+              { n: missing.images });
   }
   if (review.failed.length + review.errors.length) {
-    return `Als Nächstes: die beanstandeten Seiten ansehen — <a href="#review">zu den Hinweisen</a>.`;
+    return t("next_review");
   }
   if (review.unknown.length) {
-    return `Als Nächstes: die ungeprüften Seiten prüfen lassen — <a href="#review">zu den Hinweisen</a>.`;
+    return t("next_recheck");
   }
   if (book.export_stale && (book.exports || []).length) {
-    return `Als Nächstes: neu exportieren, der Text ist neuer als die Dateien — <a href="#export">zum Export</a>.`;
+    return t("next_export_stale");
   }
   if (!(book.exports || []).length) {
-    return `Alles gezeichnet. Als Nächstes: anhören („Vorlesen“) oder <a href="#export">exportieren</a>.`;
+    return t("next_all_drawn");
   }
-  return "Fertig — Dateien sind exportiert und aktuell.";
+  return t("next_done");
 }
 
 /* A book is frozen to the references it was made with. When the hero or the
@@ -2079,18 +2307,16 @@ function nextStep(book, missing) {
 function referencesBanner(book) {
   const refs = book.references || {};
   const reasons = [];
-  if (refs.hero_changed) reasons.push("die Figur hat inzwischen ein anderes Charakterblatt");
-  if (refs.style_changed) reasons.push("der Stil wurde inzwischen neu gezeichnet");
-  if (refs.style_missing) reasons.push("der Stil dieses Buches wurde gelöscht — das Buch behält seine eigene Kopie");
+  if (refs.hero_changed) reasons.push(t("ref_hero_changed"));
+  if (refs.style_changed) reasons.push(t("ref_style_changed"));
+  if (refs.style_missing) reasons.push(t("ref_style_missing"));
   if (!reasons.length) return "";
   const canAdopt = refs.hero_changed || refs.style_changed;
   return `<div class="banner" style="margin-top:1.1rem">
-    Dieses Buch zeichnet mit seiner <b>eingefrorenen</b> Referenz weiter,
-    denn ${reasons.join(", ")}. Bestehende Seiten ändern sich dadurch nie von selbst.
+    ${ti("ref_frozen", { reasons: reasons.join(", ") })}
     ${canAdopt ? `<div style="margin-top:.6rem"><button class="btn ghost tiny"
-      onclick="adoptReferences()">Auf die neue Referenz umstellen</button>
-      <span class="small muted">— wirkt erst beim nächsten Zeichnen; schon
-      gezeichnete Seiten bleiben, bis du sie neu zeichnest.</span></div>` : ""}
+      onclick="adoptReferences()">${t("ref_adopt")}</button>
+      <span class="small muted">${t("ref_adopt_hint")}</span></div>` : ""}
   </div>`;
 }
 
@@ -2100,8 +2326,8 @@ function referencesBanner(book) {
    noted rather than counted. */
 function costDialog() {
   const spend = currentBook?.spend || {};
-  const nice = { pages: "Seitenbilder", cover: "Titelbild", narration: "Ton",
-                 scout: "Bilddienst-Vergleich", cast: "Nebenfiguren-Blätter" };
+  const nice = { pages: t("cost_pages"), cover: t("cost_cover"), narration: t("cost_narration"),
+                 scout: t("cost_scout"), cast: t("cost_cast") };
   const rows = Object.entries(spend.by || {}).map(([what, b]) => `
     <tr><td>${esc(nice[what] || what)}</td>
       <td style="text-align:right">${b.calls}×</td>
@@ -2110,18 +2336,16 @@ function costDialog() {
     <tr><td class="muted">${esc(nice[e.what] || e.what)}</td>
       <td class="muted">${esc(e.model || "")}</td>
       <td style="text-align:right">${eur(e.usd)}</td></tr>`).join("");
-  openModal(`<h3>Kosten dieses Buchs — ~${(spend.eur ?? 0).toFixed(2)} €</h3>
+  openModal(`<h3>${ti("cost_title", { amount: (spend.eur ?? 0).toFixed(2) })}</h3>
     <table class="small" style="width:100%;border-collapse:collapse;margin-bottom:1rem">
-      ${rows || `<tr><td class="muted">Noch nichts ausgegeben.</td></tr>`}
+      ${rows || `<tr><td class="muted">${t("cost_nothing")}</td></tr>`}
     </table>
-    ${recent ? `<details><summary class="small muted">Letzte Einzelposten</summary>
+    ${recent ? `<details><summary class="small muted">${t("cost_recent")}</summary>
       <table class="small" style="width:100%;border-collapse:collapse;margin-top:.5rem">${recent}</table>
     </details>` : ""}
-    <p class="small muted" style="margin-top:.8rem">Alles Schätzwerte auf Basis der
-      Listenpreise (BFL meldet exakt). Text-Aufrufe — Geschichte, Überarbeitung,
-      Prüfungen — kosten Centbeträge und sind hier nicht mitgezählt.</p>
+    <p class="small muted" style="margin-top:.8rem">${t("cost_note")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
 /* Cast corrections: the story generator invents the recurring cast, and it
@@ -2135,46 +2359,44 @@ function editCast(index) {
       <input type="checkbox" value="${p.index}"
         ${(member.pages || []).includes(p.index) ? "checked" : ""}
         onchange="this.parentNode.classList.toggle('on',this.checked)">${p.index}</label>`).join("");
-  openModal(`<h3>${esc(member.name)} bearbeiten</h3>
-    <label class="f"><span>Name</span>
+  openModal(`<h3>${esc(ti("cast_edit_title", { name: member.name }))}</h3>
+    <label class="f"><span>${t("name")}</span>
       <input type="text" id="m-cname" value="${esc(member.name)}"></label>
-    <label class="f"><span>Beschreibung (englisch, fürs Zeichnen)</span>
+    <label class="f"><span>${t("cast_desc_label")}</span>
       <textarea id="m-cdesc" rows="3">${esc(member.description)}</textarea></label>
-    <label class="f"><span>Kommt vor auf den Seiten</span></label>
+    <label class="f"><span>${t("cast_pages_label")}</span></label>
     <div class="chips" id="m-cpages" style="margin-bottom:1rem">${pageChips}</div>
-    <p class="small muted">Nach einer geänderten Beschreibung das Blatt neu zeichnen
-      lassen — sonst zeigt die Referenz weiter die alte Fassung.</p>
+    <p class="small muted">${t("cast_note")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" style="color:var(--bad)" id="m-cremove">Entfernen</button>
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-      <button class="btn" id="m-csave">Speichern</button></div>`);
+      <button class="btn ghost" style="color:var(--bad)" id="m-cremove">${t("remove")}</button>
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-csave">${t("save")}</button></div>`);
   $("m-csave").onclick = async () => {
     const pages = [...$("m-cpages").querySelectorAll("input:checked")].map((i) => Number(i.value));
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
       cast: [{ index, name: $("m-cname").value, description: $("m-cdesc").value, pages }] }) });
-    closeModal(); toast("Gespeichert."); renderBook();
+    closeModal(); toast(t("saved")); renderBook();
   };
   $("m-cremove").onclick = () => {
     closeModal();
-    confirmModal(`${member.name} aus dem Buch entfernen?`,
-      "Die Figur verschwindet von allen Seitenlisten; schon gezeichnete Bilder bleiben, bis sie neu gezeichnet werden.",
-      "Entfernen", async () => {
+    confirmModal(ti("cast_remove_q", { name: member.name }), t("cast_remove_detail"),
+      t("remove"), async () => {
         await api(`/api/book/books/${S.bookId}`, { method: "PUT",
           body: JSON.stringify({ cast: [{ index, remove: true }] }) });
-        toast("Entfernt."); renderBook();
+        toast(t("removed")); renderBook();
       });
   };
 }
 
 function redrawCast(index) {
   runJob("cast_redraw", { book_id: S.bookId, cast_index: index, ...drawParams() },
-    "Referenzblatt wird gezeichnet", renderBook);
+    t("job_cast_sheet"), renderBook);
 }
 
 async function adoptReferences() {
   await api(`/api/book/books/${S.bookId}`,
     { method: "PUT", body: JSON.stringify({ adopt_references: true }) });
-  toast("Referenz übernommen — neue Zeichnungen folgen jetzt dem aktuellen Stand.");
+  toast(t("ref_adopted"));
   renderBook();
 }
 
@@ -2188,24 +2410,20 @@ function reviewBanners(book, perImage) {
   let html = "";
   if (trouble.length) {
     html += `<div class="banner" style="margin-top:1.1rem" role="alert">
-      Auf ${trouble.length === 1 ? "einer Seite" : `${trouble.length} Seiten`}
-      stimmt etwas nicht (Figur, Szene oder der Zeichenversuch selbst):
-      Seite ${pageLinks(trouble)}. Jede geprüfte davon wurde schon einmal
-      automatisch nachgezeichnet — das hier blieb übrig.
+      ${ti(trouble.length === 1 ? "review_trouble_one" : "review_trouble_many",
+           { count: trouble.length, pages: pageLinks(trouble) })}
       <div style="margin-top:.6rem"><button class="btn ghost tiny"
         onclick="illustrate(true, [${trouble.join(",")}])">
-        Alle ${trouble.length} neu zeichnen · ${eur(trouble.length * perImage)}</button></div>
+        ${ti("review_redraw_all", { count: trouble.length })} · ${eur(trouble.length * perImage)}</button></div>
     </div>`;
   }
   if (review.unknown.length) {
     html += `<div class="banner" style="margin-top:${trouble.length ? ".6rem" : "1.1rem"}">
-      ${review.unknown.length === 1 ? "Eine Seite ist" : `${review.unknown.length} Seiten sind`}
-      <b>ungeprüft</b> — die Ähnlichkeitsprüfung brach ab, bevor sie urteilen
-      konnte: Seite ${pageLinks(review.unknown)}. Die Bilder können völlig in
-      Ordnung sein; verifiziert hat sie nur niemand.
+      ${ti(review.unknown.length === 1 ? "review_unknown_one" : "review_unknown_many",
+           { count: review.unknown.length, pages: pageLinks(review.unknown) })}
       <div style="margin-top:.6rem"><button class="btn ghost tiny"
         onclick="recheck([${review.unknown.join(",")}])">
-        Jetzt prüfen — kostet keine Bilder, nur einen Blick</button></div>
+        ${t("review_recheck")}</button></div>
     </div>`;
   }
   return html;
@@ -2213,13 +2431,13 @@ function reviewBanners(book, perImage) {
 
 function recheck(only) {
   runJob("book_check", { book_id: S.bookId, only: only || [] },
-    "Seiten werden geprüft", renderBook);
+    t("job_check_pages"), renderBook);
 }
 
 async function setQuality(key) {
   await api(`/api/book/books/${S.bookId}`,
     { method: "PUT", body: JSON.stringify({ render_quality: key }) });
-  toast("Bildqualität umgestellt — sie gilt für alles, was ab jetzt gezeichnet wird.");
+  toast(t("quality_changed"));
   renderBook();
 }
 
@@ -2235,18 +2453,14 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
   const profile = params.render_quality || currentBook?.render_quality || "draft";
   const batchUsd = count * perImageUsd(profile) * 0.5;
   openModal(`<h3>${esc(title)}</h3>
-    <p class="lede">${esc(detail)} Wird eine Seite von der Prüfung beanstandet,
-      kostet die automatische Wiederholung je ein weiteres Bild.</p>
+    <p class="lede">${esc(detail)} ${t("bigrun_retry_note")}</p>
     ${gemini ? `<label class="check" style="margin-bottom:1rem">
       <input type="checkbox" id="m-batch">
-      <span><b>Batch-Modus: ${eur(batchUsd)} statt des vollen Preises.</b>
-      Google zeichnet alles in einem Rutsch, wann es Kapazität hat — Minuten
-      bis Stunden statt sofort. Keine automatische Wiederholung; beanstandete
-      Seiten bleiben markiert.</span></label>` : ""}
-    <label class="f" style="max-width:260px"><span>Kostendeckel in € (leer = keiner)</span>
-      <input type="number" id="m-budget" min="0" step="0.5" placeholder="z. B. 3"></label>
+      <span>${ti("bigrun_batch", { price: eur(batchUsd) })}</span></label>` : ""}
+    <label class="f" style="max-width:260px"><span>${t("bigrun_cap_label")}</span>
+      <input type="number" id="m-budget" min="0" step="0.5" placeholder="${esc(t("bigrun_cap_placeholder"))}"></label>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
       <button class="btn" id="m-go">${esc(verb)}</button></div>`);
   $("m-go").onclick = () => {
     const eurCap = parseFloat($("m-budget").value);
@@ -2257,21 +2471,21 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
     runJob("book_illustrate",
       { book_id: S.bookId, ...params, ...budget, ...(batch ? { batch: true } : {}),
         ...drawParams() },
-      batch ? `${jobTitle} (Batch)` : jobTitle, renderBook);
+      batch ? ti("job_batch_suffix", { title: jobTitle }) : jobTitle, renderBook);
   };
 }
 
 function redrawAll() {
   const book = currentBook;
   const usd = (book.pages.length + 1) * perImageUsd(book.render_quality);
-  bigRunModal("Wirklich alle Seiten neu zeichnen?",
-    `${book.pages.length} Seiten und das Titelbild, in der eingestellten Qualität — zusammen ${eur(usd)}. Die bisherigen Fassungen bleiben als Versionen erhalten.`,
-    "Alles neu zeichnen", { redraw: true }, "Bilder werden gezeichnet");
+  bigRunModal(t("redraw_all_q"),
+    ti("redraw_all_detail", { count: book.pages.length, price: eur(usd) }),
+    t("redraw_all_verb"), { redraw: true }, t("job_draw_pictures"));
 }
 
 function redrawCover() {
   runJob("book_illustrate", { book_id: S.bookId, cover_only: true, ...drawParams() },
-    "Titelbild wird gezeichnet", renderBook);
+    t("job_draw_cover"), renderBook);
 }
 
 // The print-readiness check: are the drawn pictures big enough for 300 dpi?
@@ -2282,43 +2496,40 @@ function printPanel(book) {
   const worst = Math.min(...drawnPages.map((p) => dpiFor(p.image_px, preset)));
   const weak = drawnPages.filter((p) => dpiFor(p.image_px, preset) < DPI_FLOOR).length;
   if (!weak) {
-    return `<div class="card"><h2>Reif für die Druckerei</h2>
-      <p class="lede" style="margin-bottom:0">Alle gezeichneten Seiten liegen bei etwa
-        <b>${worst} dpi</b> und mehr — genug für die 300 dpi, die eine Druckerei will.</p></div>`;
+    return `<div class="card"><h2>${t("print_ready")}</h2>
+      <p class="lede" style="margin-bottom:0">${ti("print_ready_note", { dpi: worst })}</p></div>`;
   }
   const usd = (book.pages.length + 1) * perImageUsd("print");
-  return `<div class="card"><h2>Noch nicht reif für die Druckerei</h2>
-    <p class="lede">Eine Druckerei will 300 dpi („dots per inch“ — Druckpunkte pro Zoll).
-      ${weak} von ${drawnPages.length} gezeichneten Seiten liegen darunter, die schwächste
-      bei etwa <b>${worst} dpi</b>. Am Bildschirm fällt das nicht auf, im Druck wird es weich.
-      Zum Vorlesen am Bildschirm reicht es so.</p>
+  return `<div class="card"><h2>${t("print_not_ready")}</h2>
+    <p class="lede">${ti("print_not_ready_note",
+      { weak, total: drawnPages.length, dpi: worst })}</p>
     <button class="btn ghost" onclick="rerenderPrint()">
-      Alles in Druckqualität neu zeichnen · ${eur(usd)}</button></div>`;
+      ${t("print_redraw")} · ${eur(usd)}</button></div>`;
 }
 
 function rerenderPrint() {
   const book = currentBook;
   const usd = (book.pages.length + 1) * perImageUsd("print");
-  bigRunModal("Alles in Druckqualität neu zeichnen?",
-    `${book.pages.length} Seiten und das Titelbild bei 2624 px — das dauert deutlich länger und kostet ${eur(usd)}. Die bisherigen Fassungen bleiben als Versionen erhalten.`,
-    "In Druckqualität zeichnen", { redraw: true, render_quality: "print" },
-    "Druckqualität wird gezeichnet");
+  bigRunModal(t("print_redraw_q"),
+    ti("print_redraw_detail", { count: book.pages.length, price: eur(usd) }),
+    t("print_redraw_verb"), { redraw: true, render_quality: "print" },
+    t("job_draw_print"));
 }
 
 async function editBookMeta() {
   const book = currentBook;
-  openModal(`<h3>Titel, Widmung, Titelbild</h3>
+  openModal(`<h3>${t("meta_title")}</h3>
     ${book.languages.map((code) => `
-      <label class="f"><span>Titel (${esc(code)})</span>
+      <label class="f"><span>${esc(ti("meta_title_label", { code }))}</span>
         <input type="text" id="m-title-${code}" value="${esc(book.title[code] || "")}"></label>`).join("")}
     ${book.languages.map((code) => `
-      <label class="f"><span>Widmung (${esc(code)})</span>
+      <label class="f"><span>${esc(ti("meta_dedication_label", { code }))}</span>
         <input type="text" id="m-ded-${code}" value="${esc(book.dedication[code] || "")}"></label>`).join("")}
-    <label class="f"><span>Was das Titelbild zeigt (englisch — wirkt beim nächsten Zeichnen)</span>
+    <label class="f"><span>${t("meta_cover_label")}</span>
       <textarea id="m-cover" rows="2">${esc(book.cover_illustration || "")}</textarea></label>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-      <button class="btn" id="m-save">Speichern</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-save">${t("save")}</button></div>`);
   $("m-save").onclick = async () => {
     const title = {}, dedication = {};
     for (const code of book.languages) {
@@ -2327,17 +2538,17 @@ async function editBookMeta() {
     }
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify(
       { title, dedication, cover_illustration: $("m-cover").value }) });
-    closeModal(); toast("Gespeichert."); renderBook();
+    closeModal(); toast(t("saved")); renderBook();
   };
 }
 
 function deleteBook() {
-  confirmModal(`„${currentBook.display_title}“ löschen?`,
-    "Alle Bilder, Tonspuren und PDFs dieses Buches werden vom Rechner gelöscht. Das lässt sich nicht rückgängig machen.",
-    "Löschen", async () => {
+  confirmModal(ti("book_delete_q", { title: currentBook.display_title }),
+    t("book_delete_detail"),
+    t("delete"), async () => {
       await api(`/api/book/books/${S.bookId}`, { method: "DELETE" });
       S.bookId = null; store.set("bookId", null);
-      toast("Buch gelöscht."); go("home");
+      toast(t("book_deleted")); go("home");
     });
 }
 
@@ -2348,27 +2559,27 @@ function pageCard(page, language) {
   return `<div class="page" id="page-${page.index}">
     ${page.image_url
       ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" onclick="zoom('${esc(page.image_url)}')"
-           alt="Illustration Seite ${page.index}">`
+           alt="${ti("page_illustration_alt", { n: page.index })}">`
       : `<div style="aspect-ratio:1;background:var(--sunk);display:grid;place-items:center"
-           class="small muted">noch nicht gezeichnet</div>`}
+           class="small muted">${t("page_not_drawn")}</div>`}
     <div class="body">
-      <div class="num">SEITE ${page.index}
-        ${status === "failed" ? `<span class="flag warn">prüfen</span>` : ""}
-        ${status === "unknown" ? `<span class="flag warn" title="Die Prüfung brach ab — niemand hat diese Seite verifiziert">ungeprüft</span>` : ""}
-        ${status === "unchecked" && page.image_url ? `<span class="flag calm" title="Diese Seite wurde nie geprüft">ohne Prüfung</span>` : ""}
-        ${page.image_stale ? `<span class="flag warn" title="Die Bildanweisung wurde seit dem Zeichnen geändert — das Bild zeigt noch die alte Fassung">Bild veraltet</span>` : ""}
-        ${(page.audio_stale || []).length ? `<span class="flag warn" title="Der Text wurde nach der Aufnahme geändert (${esc((page.audio_stale || []).join(", "))}) — der Ton liest noch den alten">Ton veraltet</span>` : ""}
-        ${page.error ? `<span class="flag bad">Fehler</span>` : ""}
+      <div class="num">${ti("page_n_caps", { n: page.index })}
+        ${status === "failed" ? `<span class="flag warn">${t("mark_check")}</span>` : ""}
+        ${status === "unknown" ? `<span class="flag warn" title="${t("page_unknown_title")}">${t("mark_unchecked")}</span>` : ""}
+        ${status === "unchecked" && page.image_url ? `<span class="flag calm" title="${t("page_unchecked_title")}">${t("mark_no_check")}</span>` : ""}
+        ${page.image_stale ? `<span class="flag warn" title="${t("page_stale_title")}">${t("mark_image_stale")}</span>` : ""}
+        ${(page.audio_stale || []).length ? `<span class="flag warn" title="${esc(ti("page_audio_stale_title", { langs: (page.audio_stale || []).join(", ") }))}">${t("mark_audio_stale")}</span>` : ""}
+        ${page.error ? `<span class="flag bad">${t("mark_error")}</span>` : ""}
         ${page.layout !== "full" ? `<span class="flag calm">${esc(page.layout)}</span>` : ""}</div>
       <div class="small" style="margin-top:.3rem">${esc((page.text[language] || "").slice(0, 120))}</div>
       ${notes ? `<ul class="notes">${notes}</ul>` : ""}
       <div class="acts">
         <button class="btn ghost tiny" onclick="editPage(${page.index})"
-          title="Text, Bildanweisung und Layout dieser Seite ändern">bearbeiten</button>
+          title="${t("page_edit_title")}">${t("edit")}</button>
         <button class="btn ghost tiny" onclick="illustrate(true,[${page.index}])"
-          title="Kostet etwa ${eur(perImageUsd(currentBook.render_quality))}">neu zeichnen</button>
+          title="${ti("page_redraw_title", { price: eur(perImageUsd(currentBook.render_quality)) })}">${t("redraw")}</button>
         ${(page.history_urls || []).length ? `<button class="btn ghost tiny"
-          onclick="showVersions(${page.index})">Versionen (${page.history_urls.length})</button>` : ""}
+          onclick="showVersions(${page.index})">${ti("page_versions", { n: page.history_urls.length })}</button>` : ""}
       </div>
     </div>
   </div>`;
@@ -2381,36 +2592,36 @@ function editPage(index) {
   if (!page) return;
   const layouts = (S.status.layouts || []).map((l) =>
     `<option value="${l.key}" ${l.key === page.layout ? "selected" : ""}>${esc(l.key)} — ${esc(l.hint)}</option>`).join("");
-  openModal(`<h3>Seite ${index} bearbeiten</h3>
+  openModal(`<h3>${ti("page_edit_heading", { n: index })}</h3>
     <div class="row" style="align-items:flex-start;gap:1rem">
-      ${page.image_url ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="Seite ${index}"
-        onclick="zoom('${esc(page.image_url)}')" title="Groß ansehen"
+      ${page.image_url ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="${ti("page_n", { n: index })}"
+        onclick="zoom('${esc(page.image_url)}')" title="${t("zoom_large")}"
         style="width:120px;border-radius:9px;cursor:zoom-in;flex:none">` : ""}
       <div style="flex:1;min-width:260px">
-        ${currentBook.languages.map((code) => `<label class="f"><span>Text (${esc(langName(code))})</span>
+        ${currentBook.languages.map((code) => `<label class="f"><span>${esc(ti("page_text_label", { lang: langName(code) }))}</span>
           <textarea id="m-pt-${code}" rows="2" lang="${esc(code)}">${esc(page.text[code] || "")}</textarea></label>`).join("")}
       </div>
     </div>
-    <label class="f"><span>Was das Bild zeigt (englisch — wirkt beim nächsten Zeichnen)</span>
+    <label class="f"><span>${t("page_brief_label")}</span>
       <textarea id="m-pb" rows="2">${esc(page.illustration)}</textarea></label>
-    <label class="f" style="max-width:320px"><span>Seitenlayout</span>
+    <label class="f" style="max-width:320px"><span>${t("layout_label")}</span>
       <select id="m-pl">${layouts}</select></label>
     <div class="row" style="justify-content:space-between">
       <span class="row">
         <button class="btn ghost" onclick="closeModal();rewrite(${index})"
-          title="Die KI schreibt die Seite neu, statt dass du selbst tippst">KI: neu schreiben lassen</button>
+          title="${t("page_ai_title")}">${t("page_ai_rewrite")}</button>
         <button class="btn ghost" onclick="closeModal();typesetPreview(${index})"
-          title="Diese Seite fertig gesetzt ansehen">Setzprobe</button></span>
+          title="${t("page_typeset_title")}">${t("typeset")}</button></span>
       <span class="row">
-        <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-        <button class="btn" id="m-psave">Speichern</button></span>
+        <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+        <button class="btn" id="m-psave">${t("save")}</button></span>
     </div>`);
   $("m-psave").onclick = async () => {
     const text = {};
     for (const code of currentBook.languages) text[code] = $(`m-pt-${code}`).value;
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
       pages: [{ index, text, illustration: $("m-pb").value, layout: $("m-pl").value }] }) });
-    closeModal(); toast(`Seite ${index} gespeichert.`); renderBook();
+    closeModal(); toast(ti("page_saved", { n: index })); renderBook();
   };
 }
 
@@ -2418,26 +2629,27 @@ function showVersions(index) {
   const page = currentBook.pages.find((p) => p.index === index);
   if (!page) return;
   const older = (page.history_urls || []).slice().reverse();  // newest first
-  openModal(`<h3>Seite ${index} — Versionen</h3>
+  openModal(`<h3>${ti("versions_title", { n: index })}</h3>
     <div class="grid g3" style="margin-bottom:1rem">
       <div><img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="" onclick="zoom('${esc(page.image_url)}')">
-        <span class="vlabel"><b>aktuell</b></span></div>
+        <span class="vlabel"><b>${t("versions_current")}</b></span></div>
       ${older.map((url, i) => `
         <div><img src="${esc(tn(url))}" loading="lazy" decoding="async" alt="" onclick="zoom('${esc(url)}')">
-          <span class="vlabel">${i === 0 ? "davor" : `${i + 1} Fassungen davor`}</span></div>`).join("")}
+          <span class="vlabel">${i === 0 ? t("versions_previous")
+            : ti("versions_n_before", { n: i + 1 })}</span></div>`).join("")}
     </div>
-    <p class="small muted">„Zurück“ stellt jeweils die letzte vorherige Fassung wieder
-      her — mehrmals drücken geht weiter zurück.</p>
+    <p class="small muted">${t("versions_note")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button>
-      <button class="btn" onclick="closeModal();undoPage(${index})">Zurück zur vorherigen</button>
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button>
+      <button class="btn" onclick="closeModal();undoPage(${index})">${t("versions_undo")}</button>
     </div>`);
 }
 
 function illustrate(redraw, only) {
   runJob("book_illustrate",
     { book_id: S.bookId, redraw: !!redraw, only: only || [], ...drawParams() },
-    only ? `Seite ${only.join(", ")} wird gezeichnet` : "Bilder werden gezeichnet", renderBook);
+    only ? ti("job_draw_page", { pages: only.join(", ") }) : t("job_draw_pictures"),
+    renderBook);
 }
 // The first full render is the longest and, at print quality, by far the most
 // expensive thing this app does -- and it was the one paid action with no
@@ -2445,13 +2657,14 @@ function illustrate(redraw, only) {
 // actions had all three.
 function illustrateAll() {
   const missing = currentBook?.missing || {};
-  bigRunModal("Alle fehlenden Bilder zeichnen?",
-    `${missing.images || 0} Bild(er) werden gezeichnet.`,
-    "Zeichnen", { book_id: S.bookId, redraw: false, only: [] },
-    "Bilder werden gezeichnet");
+  bigRunModal(t("draw_missing_q"),
+    ti("draw_missing_detail", { n: missing.images || 0 }),
+    t("draw_verb"), { book_id: S.bookId, redraw: false, only: [] },
+    t("job_draw_pictures"));
 }
 function undoPage(index) {
-  runJob("book_undo", { book_id: S.bookId, index }, `Seite ${index} zurück`, renderBook);
+  runJob("book_undo", { book_id: S.bookId, index },
+    ti("job_page_undo", { n: index }), renderBook);
 }
 
 /* ---------------------------------------------------------- sound */

@@ -110,7 +110,7 @@ def test_low_dpi_blocks_a_print_export(library):
     book, resolve = _book(library, check=PASSED, px=512)  # ~59 dpi at 21.6 cm
     report = validate_export_readiness(book, PRESETS["print_square"], ["de"], resolve)
     assert report["ok"] is False
-    assert any("dpi" in e for e in report["errors"])
+    assert any(e["code"] == "pages_low_dpi" for e in report["errors"])
 
 
 def test_dpi_is_judged_against_the_selected_format(library):
@@ -125,7 +125,7 @@ def test_missing_language_text_blocks(library):
     book.pages[1].text["en"] = ""
     report = validate_export_readiness(book, PRESETS["print_square"], ["de", "en"], resolve)
     assert report["ok"] is False
-    assert any("English" in e for e in report["errors"])
+    assert any(e["params"].get("language") == "English" for e in report["errors"])
 
 
 def test_wordless_pages_need_no_text(library):
@@ -150,7 +150,8 @@ def test_a_corrupt_image_blocks(library):
     (library.book_dir(book.id) / "pages/page_01.png").write_bytes(b"not a png")
     report = validate_export_readiness(book, PRESETS["print_square"], ["de"], resolve)
     assert report["ok"] is False
-    assert any("beschädigt" in e for e in report["errors"])
+    assert any(e["code"] in ("page_image_broken", "cover_broken")
+               for e in report["errors"])
 
 
 # ------------------------------------------------------------- export wiring
@@ -238,11 +239,11 @@ def test_a_beanstandetes_titelbild_blocks_the_export(library):
     # there everything is downgraded to a warning by design.)
     report = validate_export_readiness(book, PRESETS["print_square"], ["de"], resolve)
     assert report["ok"] is False
-    assert any("Titelbild wurde beanstandet" in e for e in report["errors"])
+    assert any(e["code"] == "cover_flagged" for e in report["errors"])
 
     screen = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
     assert screen["ok"] is True
-    assert any("Titelbild wurde beanstandet" in w for w in screen["warnings"])
+    assert any(w["code"] == "cover_flagged" for w in screen["warnings"])
 
 
 def test_a_book_with_no_cover_verdict_is_not_nagged(library):
@@ -254,4 +255,4 @@ def test_a_book_with_no_cover_verdict_is_not_nagged(library):
     book.cover_check = {}
     assert cover_flagged(book) is False
     report = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
-    assert not any("Titelbild wurde beanstandet" in e for e in report["errors"])
+    assert not any(e["code"] == "cover_flagged" for e in report["errors"])

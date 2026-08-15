@@ -33,7 +33,7 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from .models import closing_word
+from .models import closing_word, single_scene
 
 MM_PER_INCH = 25.4
 
@@ -1061,16 +1061,27 @@ def export_pdf(
                 "zeichnen lassen."
             )
 
+    # What each page says, and what its picture shows, collected as the pages
+    # are composed. The words are typeset into the artwork, so without this
+    # the finished PDF is a stack of photographs with no text in it at all --
+    # nothing to select, search, or read out.
+    texts: list[str] = []
+    alts: list[str] = []
+
     if include_cover:
         log("  Titelseite")
         pages.append(
             render_title_page(cover_art, joined(book.title, " · ") or book.display_title(),
                               "", preset, family)
         )
+        texts.append(joined(book.title, " · ") or book.display_title())
+        alts.append(book.cover_illustration or "")
 
     dedication = joined(book.dedication)
     if dedication:
         pages.append(render_plain_page(dedication, preset, family))
+        texts.append(dedication)
+        alts.append("")
 
     ordered = sorted(book.pages, key=lambda p: p.index)
     # One type size and one text position for the whole book, decided before
@@ -1088,6 +1099,10 @@ def export_pdf(
                               family, layout=page.layout, age=book.age,
                               body_px=body_px, zone=zone)
         )
+        texts.append(joined(page.text))
+        # The illustration brief describes the picture in a sentence. It has
+        # been sitting in book.json all along as the alt text nobody used.
+        alts.append(single_scene(page.illustration or ""))
 
     photo = (book.photo_page or {}).get("image")
     if photo and art(photo):
@@ -1095,9 +1110,13 @@ def export_pdf(
         caption = (book.photo_page or {}).get("caption", {})
         caption = joined(caption) if isinstance(caption, dict) else str(caption)
         pages.append(render_photo_page(art(photo), caption, preset, family))
+        texts.append(caption)
+        alts.append("")
 
     closing = joined({code: closing_word(code) for code in langs}, " · ")
     pages.append(render_plain_page(closing, preset, family))
+    texts.append(closing)
+    alts.append("")
 
     interior = len(pages)
     if preset.pad_to_multiple > 1:
@@ -1119,6 +1138,15 @@ def export_pdf(
 
     if embed_srgb(target, language=langs[0] if langs else ""):
         log("  sRGB-Profil eingebettet")
+        tagged = tag_pdf(target, texts, alts)
+        if tagged:
+            log(f"  Textebene gesetzt ({tagged} von {len(texts)} Seiten)")
+        if tagged < len([t for t in texts if t.strip()]):
+            warnings.append(
+                "Auf einigen Seiten steht Text, den die eingebaute PDF-Schrift "
+                "nicht abbilden kann (etwa Kyrillisch) — diese Seiten haben "
+                "keine auswählbare Textebene. Das Bild ist davon unberührt."
+            )
     elif preset.bleed_mm > 0:
         # Only print presets care; a screen PDF without a profile is fine.
         warnings.append('Kein Farbprofil im PDF — für farbverbindlichen Druck '
@@ -1166,6 +1194,148 @@ def embed_srgb(pdf_path: Path, language: str = "") -> bool:
             pdf.Root.Lang = pikepdf.String(language)
         pdf.save(pdf_path)
     return True
+
+
+def _pdf_string(text: str) -> bytes | None:
+    """Text as a PDF literal string, or None if the built-in font cannot say it.
+
+    The text layer uses Helvetica, which every reader already has, so nothing
+    has to be embedded. Its encoding covers Latin script; Cyrillic and Greek
+    would need a real embedded font, and writing them as mangled Latin-1 would
+    put nonsense where a screen reader looks. Better to leave those pages
+    without a text layer and say so.
+    """
+    try:
+        raw = text.encode("cp1252")
+    except UnicodeEncodeError:
+        return None
+    out = bytearray(b"(")
+    for byte in raw:
+        if byte in b"()\\":
+            out += b"\\" + bytes([byte])
+        elif byte < 32:
+            out += b" "
+        else:
+            out.append(byte)
+    out += b")"
+    return bytes(out)
+
+
+def tag_pdf(pdf_path: Path, texts: list[str], alts: list[str] | None = None) -> int:
+    """Give a picture-book PDF a real text layer and a structure tree.
+
+    The words are typeset into the artwork, so the exported file was a stack
+    of pictures: nothing to select, nothing to search, and nothing for a
+    screen reader to say. This lays each page's own words over it as
+    invisible text, marks the artwork as a figure with the illustration brief
+    as its alternate description, and links both into a structure tree so the
+    reading order is stated rather than guessed.
+
+    Returns how many pages got a text layer. Needs the optional `print`
+    extra; without it the PDF is left exactly as it was.
+    """
+    try:
+        import pikepdf
+    except ImportError:
+        return 0
+
+    alts = alts or []
+    with pikepdf.open(pdf_path, allow_overwriting_input=True) as pdf:
+        font = pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name.Font, Subtype=pikepdf.Name.Type1,
+            BaseFont=pikepdf.Name.Helvetica, Encoding=pikepdf.Name.WinAnsiEncoding,
+        ))
+        struct_root = pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name.StructTreeRoot))
+        document = pdf.make_indirect(pikepdf.Dictionary(
+            Type=pikepdf.Name.StructElem, S=pikepdf.Name.Document, P=struct_root))
+
+        kids, parent_pairs, written = [], [], 0
+        for index, page in enumerate(pdf.pages):
+            text = (texts[index] if index < len(texts) else "").strip()
+            alt = (alts[index] if index < len(alts) else "").strip()
+            encoded = _pdf_string(text) if text else None
+
+            elements = []
+            # The whole existing content is the artwork, so it is wrapped as
+            # one figure rather than picked apart.
+            figure_mcid = 0
+            page.contents_add(pikepdf.Stream(
+                pdf, b"/Figure <</MCID 0>> BDC\n"), prepend=True)
+            page.contents_add(pikepdf.Stream(pdf, b"\nEMC\n"))
+            figure = pdf.make_indirect(pikepdf.Dictionary(
+                Type=pikepdf.Name.StructElem, S=pikepdf.Name.Figure,
+                P=document, Pg=page.obj, K=figure_mcid,
+                Alt=pikepdf.String(alt or text or " "),
+            ))
+            elements.append(figure)
+
+            if encoded:
+                height = float(page.mediabox[3]) - float(page.mediabox[1])
+                width = float(page.mediabox[2]) - float(page.mediabox[0])
+                size = max(9.0, min(16.0, height / 45))
+                lines = _wrap_pdf_text(text, width, size)
+                body = bytearray(b"/P <</MCID 1>> BDC\nBT\n/HbF1 %f Tf\n3 Tr\n"
+                                 % size)
+                top = height - size * 3
+                for offset, line in enumerate(lines):
+                    literal = _pdf_string(line)
+                    if literal is None:
+                        continue
+                    body += b"1 0 0 1 %f %f Tm\n%s Tj\n" % (
+                        size, top - offset * size * 1.25, literal)
+                body += b"ET\nEMC\n"
+                page.contents_add(pikepdf.Stream(pdf, bytes(body)))
+
+                page.Resources = page.get("/Resources", pikepdf.Dictionary())
+                fonts = page.Resources.get("/Font", pikepdf.Dictionary())
+                fonts["/HbF1"] = font
+                page.Resources["/Font"] = fonts
+
+                paragraph = pdf.make_indirect(pikepdf.Dictionary(
+                    Type=pikepdf.Name.StructElem, S=pikepdf.Name.P,
+                    P=document, Pg=page.obj, K=1,
+                    ActualText=pikepdf.String(text),
+                ))
+                elements.append(paragraph)
+                written += 1
+
+            page.StructParents = index
+            parent_pairs += [index, pdf.make_indirect(pikepdf.Array(elements))]
+            kids.extend(elements)
+
+        document.K = pikepdf.Array(kids)
+        struct_root.K = pikepdf.Array([document])
+        struct_root.ParentTree = pdf.make_indirect(pikepdf.Dictionary(
+            Nums=pikepdf.Array(parent_pairs)))
+        struct_root.ParentTreeNextKey = len(pdf.pages)
+        pdf.Root.StructTreeRoot = struct_root
+        pdf.Root.MarkInfo = pikepdf.Dictionary(Marked=True)
+        pdf.save(pdf_path)
+    return written
+
+
+def _wrap_pdf_text(text: str, page_width: float, size: float) -> list[str]:
+    """Break the text into lines that fit the page, for the invisible layer.
+
+    Helvetica averages about half its point size per character; the layer is
+    invisible, so this only has to be close enough that selecting a page
+    yields its words in reading order.
+    """
+    per_line = max(20, int(page_width / (size * 0.5)))
+    lines: list[str] = []
+    for paragraph in text.split("\n"):
+        words, current = paragraph.split(), ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if len(candidate) <= per_line or not current:
+                current = candidate
+            else:
+                lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+    return lines
 
 
 def export_cover_image(book, language: str, preset: PrintPreset, resolve, target: Path,

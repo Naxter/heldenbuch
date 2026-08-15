@@ -478,6 +478,38 @@ const LOCALES = {
     hero_delete_detail: "Charakterblätter und Fotos werden vom Rechner gelöscht. Fertige Bücher behalten ihre Bilder, verlieren aber die Verbindung zur Figur.",
     hero_deleted: "Figur gelöscht.",
     job_hero_draw: "Figur wird gezeichnet", job_hero_more: "Weitere Varianten",
+    /* look */
+    look_how: "Wie soll das Buch aussehen?",
+    look_lede: "Ich zeichne {name} sofort im gewählten Stil, damit du die echte Kombination siehst und nicht nur eine Beschreibung.",
+    look_the_figure: "die Figur", look_this_figure: "diese Figur",
+    look_to_story: "Weiter zur Geschichte",
+    look_try_hint: "Ein Klick probiert den Stil sofort aus — zwei Vorschauen und ein Charakterblatt, zusammen {price}.",
+    look_wish_placeholder: "Oder beschreib es selbst: „wie ein alter Scherenschnitt“",
+    look_try: "Ausprobieren",
+    look_drop_aria: "Stil-Vorlage auswählen oder hierher ziehen",
+    look_drop_hint: "<b>Oder ein Bild als Vorlage</b> — eine Zeichnung deines Sohnes, ein Foto von etwas Gebasteltem. Worte kommen an manche Looks nicht heran. ({price})",
+    look_ref_privacy: "Das Bild wird hier im Stil-Ordner gespeichert und einmal an den Text-Dienst geschickt, um den Look zu beschreiben — danach begleitet es jede Zeichnung mit diesem Stil als Referenz. Stil löschen entfernt es wieder.",
+    look_tried: "Ausprobiert",
+    look_tried_lede: "Ein Klick wählt den Stil für das nächste Buch; „ansehen“ zeigt alle Vorschauen.",
+    look_scout: "Welcher Bilddienst kann das am besten?",
+    look_style_aria: "Stil {name}", look_delete: "Stil löschen",
+    look_other_figure: "für eine andere Figur angelegt",
+    look_recommended: "empfohlen: {backend}", view: "ansehen",
+    look_setup_for: "Für {name} einrichten",
+    look_setup_this_figure: "Für diese Figur einrichten",
+    look_preview_n: "Vorschau {n}",
+    look_sheet_in_style: "Charakterblatt in diesem Stil", look_reference: "Vorlage",
+    look_choose_style: "Diesen Stil wählen",
+    look_delete_q: "Diesen Stil löschen?",
+    look_delete_detail: "Vorschauen und Charakterblätter dieses Stils werden gelöscht. Bücher, die damit gezeichnet wurden, behalten ihre Bilder.",
+    look_deleted: "Stil gelöscht.",
+    look_scout_q: "Bilddienste vergleichen?",
+    look_scout_detail: "Zwei Testszenen mit jedem der {count} verfügbaren Bilddienste — {images} Bilder, {price}.",
+    look_scout_verb: "Vergleichen",
+    job_style_try: "Stil wird ausprobiert",
+    job_style_from_image: "Stil wird aus dem Bild abgeleitet",
+    job_style_adopt: "Stil wird eingerichtet",
+    job_style_scout: "Bilddienste werden verglichen",
   },
   en: {
     tagline: "Make your own picture books",
@@ -529,6 +561,38 @@ const LOCALES = {
     hero_delete_detail: "Character sheets and photos are deleted from this computer. Finished books keep their pictures but lose the link to the character.",
     hero_deleted: "Character deleted.",
     job_hero_draw: "Drawing the character", job_hero_more: "More variants",
+    /* look */
+    look_how: "What should the book look like?",
+    look_lede: "I draw {name} in the chosen style right away, so you see the real combination and not just a description.",
+    look_the_figure: "the character", look_this_figure: "this character",
+    look_to_story: "On to the story",
+    look_try_hint: "One click tries the style out right away — two previews and a character sheet, {price} together.",
+    look_wish_placeholder: "Or describe it yourself: “like an old paper cut-out”",
+    look_try: "Try it out",
+    look_drop_aria: "Choose a style reference or drag it here",
+    look_drop_hint: "<b>Or an image as a reference</b> — a drawing by your son, a photo of something he made. Words do not get close to some looks. ({price})",
+    look_ref_privacy: "The image is kept here in the style folder and sent once to the text service to describe the look — after that it travels with every drawing in this style as a reference. Deleting the style removes it again.",
+    look_tried: "Tried out",
+    look_tried_lede: "One click picks the style for the next book; “view” shows every preview.",
+    look_scout: "Which image service does this best?",
+    look_style_aria: "Style {name}", look_delete: "Delete style",
+    look_other_figure: "set up for a different character",
+    look_recommended: "recommended: {backend}", view: "view",
+    look_setup_for: "Set up for {name}",
+    look_setup_this_figure: "Set up for this character",
+    look_preview_n: "Preview {n}",
+    look_sheet_in_style: "Character sheet in this style", look_reference: "Reference",
+    look_choose_style: "Choose this style",
+    look_delete_q: "Delete this style?",
+    look_delete_detail: "Previews and character sheets of this style are deleted. Books drawn with it keep their pictures.",
+    look_deleted: "Style deleted.",
+    look_scout_q: "Compare image services?",
+    look_scout_detail: "Two test scenes with each of the {count} available image services — {images} pictures, {price}.",
+    look_scout_verb: "Compare",
+    job_style_try: "Trying the style out",
+    job_style_from_image: "Deriving the style from the image",
+    job_style_adopt: "Setting the style up",
+    job_style_scout: "Comparing image services",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -1434,70 +1498,63 @@ async function renderLook() {
   view().innerHTML = stepsBar("look") + `
     <div class="card">
       <div class="spread"><div>
-        <h2>Wie soll das Buch aussehen?</h2>
-        <p class="lede">Ich zeichne ${esc(hero.name || "die Figur")} sofort im gewählten Stil,
-          damit du die echte Kombination siehst und nicht nur eine Beschreibung.</p></div>
-        ${chosen ? `<button class="btn" onclick="go('story')">Weiter zur Geschichte</button>` : ""}
+        <h2>${t("look_how")}</h2>
+        <p class="lede">${esc(ti("look_lede", { name: hero.name || t("look_the_figure") }))}</p></div>
+        ${chosen ? `<button class="btn" onclick="go('story')">${t("look_to_story")}</button>` : ""}
       </div>
 
       <div class="chips" id="preset-list" style="margin-bottom:.5rem"></div>
       <div class="row" style="margin:0 0 1.1rem">
-        <p class="small muted" style="margin:0;flex:1;min-width:240px">Ein Klick probiert den
-          Stil sofort aus — zwei Vorschauen und ein Charakterblatt, zusammen
-          ${eur(styleTryUsd())}.</p>
+        <p class="small muted" style="margin:0;flex:1;min-width:240px">${
+          ti("look_try_hint", { price: eur(styleTryUsd()) })}</p>
         ${pickerHtml()}
       </div>
 
       <div class="row" style="margin-bottom:.8rem">
-        <input type="text" id="style-wish" placeholder="Oder beschreib es selbst: „wie ein alter Scherenschnitt“"
+        <input type="text" id="style-wish" placeholder="${esc(t("look_wish_placeholder"))}"
           style="flex:1;min-width:260px" value="${esc(keptWish)}">
-        <button class="btn ghost" id="style-wish-go">Ausprobieren · ${eur(styleTryUsd())}</button>
+        <button class="btn ghost" id="style-wish-go">${t("look_try")} · ${eur(styleTryUsd())}</button>
       </div>
 
       <div class="drop" id="style-drop" style="padding:1rem" role="button" tabindex="0"
-        aria-label="Stil-Vorlage auswählen oder hierher ziehen">
-        <div class="small"><b>Oder ein Bild als Vorlage</b> — eine Zeichnung deines Sohnes,
-          ein Foto von etwas Gebasteltem. Worte kommen an manche Looks nicht heran.
-          (${eur(styleTryUsd())})
+        aria-label="${t("look_drop_aria")}">
+        <div class="small">${ti("look_drop_hint", { price: eur(styleTryUsd()) })}
           <input type="file" id="style-file" accept="image/*" class="hide"></div>
-        <p class="small muted" style="margin:.5rem 0 0">Das Bild wird hier im Stil-Ordner
-          gespeichert und einmal an den Text-Dienst geschickt, um den Look zu beschreiben —
-          danach begleitet es jede Zeichnung mit diesem Stil als Referenz.
-          Stil löschen entfernt es wieder.</p>
+        <p class="small muted" style="margin:.5rem 0 0">${t("look_ref_privacy")}</p>
       </div>
     </div>
 
     ${styles.length ? `<div class="card">
       <div class="spread"><div>
-        <h2>Ausprobiert</h2>
-        <p class="lede" style="margin-bottom:0">Ein Klick wählt den Stil für das nächste Buch;
-          „ansehen“ zeigt alle Vorschauen.</p>
+        <h2>${t("look_tried")}</h2>
+        <p class="lede" style="margin-bottom:0">${t("look_tried_lede")}</p>
       </div>${chosen && S.status.can_scout ? `
-        <button class="btn ghost" onclick="runScout()">Welcher Bilddienst kann das am besten?</button>` : ""}
+        <button class="btn ghost" onclick="runScout()">${t("look_scout")}</button>` : ""}
       </div>
       <div class="grid g2" style="margin-top:1.1rem">` + styles.map((s) => {
         const isReady = ready(s);
         const thumb = s.preview_urls[0] || (s.sheets || {})[S.heroId] && s.sheet_urls[S.heroId];
         return `
         <div class="pick ${s.id === S.styleId && isReady ? "on" : ""}"
-          role="button" tabindex="0" aria-label="Stil ${esc(s.name)}"
+          role="button" tabindex="0" aria-label="${esc(ti("look_style_aria", { name: s.name }))}"
           onclick="${isReady ? `pickStyle('${s.id}')` : `styleDetail('${s.id}')`}">
-          <button class="xdel" title="Stil löschen"
+          <button class="xdel" title="${t("look_delete")}"
             onclick="event.stopPropagation();deleteStyle('${s.id}')">×</button>
-          ${thumb ? `<button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
+          ${thumb ? `<button class="xzoom" title="${t("zoom_large")}" aria-label="${t("zoom_large")}"
             onclick="event.stopPropagation();zoom('${esc(thumb)}')">🔍</button>` : ""}
           ${thumb ? `<img src="${esc(tn(thumb))}" loading="lazy" decoding="async" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
           <div class="cap"><b>${esc(s.name)}</b>
             <small>${isReady
-              ? (s.id === S.styleId ? "ausgewählt" : "auswählen")
-              : "für eine andere Figur angelegt"}${
-              s.recommended_backend ? ` · empfohlen: ${esc(s.recommended_backend)}` : ""}</small>
+              ? (s.id === S.styleId ? t("chosen") : t("choose"))
+              : t("look_other_figure")}${
+              s.recommended_backend
+                ? ` · ${esc(ti("look_recommended", { backend: s.recommended_backend }))}` : ""}</small>
             <div class="acts" style="margin-top:.4rem">
               <button class="btn ghost tiny"
-                onclick="event.stopPropagation();styleDetail('${s.id}')">ansehen</button>
+                onclick="event.stopPropagation();styleDetail('${s.id}')">${t("view")}</button>
               ${isReady ? "" : `<button class="btn ghost tiny"
                 onclick="event.stopPropagation();adoptStyle('${s.id}')">
-                Für ${esc(hero.name || "diese Figur")} einrichten · ${eur(sheetUsd())}</button>`}
+                ${esc(ti("look_setup_for", { name: hero.name || t("look_this_figure") }))} · ${eur(sheetUsd())}</button>`}
             </div></div>
         </div>`;
       }).join("") + `</div></div>` : ""}`;
@@ -1510,7 +1567,7 @@ async function renderLook() {
     const wish = $("style-wish").value.trim();
     if (!wish) return;
     runJob("style_try", { hero_id: S.heroId, wish, previews: 2, ...drawParams() },
-      "Stil wird ausprobiert", afterStyle);
+      t("job_style_try"), afterStyle);
   };
 
   const drop = $("style-drop"), file = $("style-file");
@@ -1526,12 +1583,12 @@ async function styleFromImage(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reference = await readFile(file);
   runJob("style_try", { hero_id: S.heroId, reference, previews: 2, ...drawParams() },
-    "Stil wird aus dem Bild abgeleitet", afterStyle);
+    t("job_style_from_image"), afterStyle);
 }
 
 function tryPreset(key) {
   runJob("style_try", { hero_id: S.heroId, preset: key, previews: 2, ...drawParams() },
-    "Stil wird ausprobiert", afterStyle);
+    t("job_style_try"), afterStyle);
 }
 function afterStyle(job) {
   if (job.result.style_id) { S.styleId = job.result.style_id; store.set("styleId", S.styleId); }
@@ -1545,9 +1602,9 @@ async function styleDetail(id) {
   if (!s) return;
   const sheet = (s.sheet_urls || {})[S.heroId];
   const blocks = [
-    ...s.preview_urls.map((u, i) => [u, `Vorschau ${i + 1}`]),
-    ...(sheet ? [[sheet, "Charakterblatt in diesem Stil"]] : []),
-    ...(s.reference_url ? [[s.reference_url, "Vorlage"]] : []),
+    ...s.preview_urls.map((u, i) => [u, ti("look_preview_n", { n: i + 1 })]),
+    ...(sheet ? [[sheet, t("look_sheet_in_style")]] : []),
+    ...(s.reference_url ? [[s.reference_url, t("look_reference")]] : []),
   ];
   openModal(`<h3>${esc(s.name)}</h3>
     <p class="small muted" style="margin-bottom:1rem">${esc(s.description)}</p>
@@ -1556,37 +1613,37 @@ async function styleDetail(id) {
         <span class="vlabel">${esc(label)}</span></div>`).join("") + `</div>` : ""}
     <div class="row" style="justify-content:flex-end">
       <button class="btn ghost" style="color:var(--bad)"
-        onclick="closeModal();deleteStyle('${s.id}')">Löschen</button>
-      <button class="btn ghost" onclick="closeModal()">Schließen</button>
-      ${sheet ? `<button class="btn" onclick="closeModal();pickStyle('${s.id}')">Diesen Stil wählen</button>`
+        onclick="closeModal();deleteStyle('${s.id}')">${t("delete")}</button>
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button>
+      ${sheet ? `<button class="btn" onclick="closeModal();pickStyle('${s.id}')">${t("look_choose_style")}</button>`
               : `<button class="btn" onclick="closeModal();adoptStyle('${s.id}')">
-                  Für diese Figur einrichten · ${eur(sheetUsd())}</button>`}
+                  ${t("look_setup_this_figure")} · ${eur(sheetUsd())}</button>`}
     </div>`);
 }
 
 function adoptStyle(id) {
   runJob("style_adopt", { hero_id: S.heroId, style_id: id, ...drawParams() },
-    "Stil wird eingerichtet", afterStyle);
+    t("job_style_adopt"), afterStyle);
 }
 
 function deleteStyle(id) {
-  confirmModal("Diesen Stil löschen?",
-    "Vorschauen und Charakterblätter dieses Stils werden gelöscht. Bücher, die damit gezeichnet wurden, behalten ihre Bilder.",
-    "Löschen", async () => {
+  confirmModal(t("look_delete_q"), t("look_delete_detail"),
+    t("delete"), async () => {
       await api(`/api/book/styles/${id}`, { method: "DELETE" });
       if (S.styleId === id) { S.styleId = null; store.set("styleId", null); }
-      toast("Stil gelöscht."); renderLook();
+      toast(t("look_deleted")); renderLook();
     });
 }
 
 function runScout() {
   const backends = (S.status.image_backends || []).filter((b) => b.ready).length;
   const usd = 2 * backends * (est().preview_usd || 0.06);
-  confirmModal("Bilddienste vergleichen?",
-    `Zwei Testszenen mit jedem der ${backends} verfügbaren Bilddienste — ${2 * backends} Bilder, ${eur(usd)}.`,
-    "Vergleichen", () =>
+  confirmModal(t("look_scout_q"),
+    ti("look_scout_detail",
+       { count: backends, images: 2 * backends, price: eur(usd) }),
+    t("look_scout_verb"), () =>
       runJob("style_scout", { hero_id: S.heroId, style_id: S.styleId },
-        "Bilddienste werden verglichen", renderLook));
+        t("job_style_scout"), renderLook));
 }
 
 /* =========================================================== 3. story */

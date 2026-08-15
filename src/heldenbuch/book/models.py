@@ -155,6 +155,17 @@ class Style:
 # it duly wrote "A split composition: on one side..." into the illustration
 # brief. The illustrator obeyed, and three pages printed with a seam down the
 # middle. See `single_scene()` for the net that catches it if it happens again.
+#: The last page's word, per language. Printed on the closing page and read
+#: out by the narration, so it lives here rather than inside either one.
+CLOSERS = {"de": "Ende", "en": "The End", "ru": "Конец", "fr": "Fin",
+           "es": "Fin", "it": "Fine", "tr": "Son", "pl": "Koniec",
+           "nl": "Einde"}
+
+
+def closing_word(language: str) -> str:
+    return CLOSERS.get(language, CLOSERS["de"])
+
+
 LAYOUTS = {
     "full": "picture fills the page, text sits in a quiet corner of it",
     "split": "picture on the upper part of the page, text on plain paper below it",
@@ -356,6 +367,13 @@ class Book:
     export_rev: int = 0
     #: the voice the existing narration was spoken with
     narration_voice: str | None = None
+    #: Narration for the parts of the book that are not numbered pages --
+    #: the title, the dedication and the closing word. Printed books have
+    #: them, so a reading of the book should have them too.
+    #: part -> language -> path, and the text each recording actually says,
+    #: so an edited dedication shows as stale the way a page does.
+    matter_audio: dict[str, dict[str, str]] = field(default_factory=dict)
+    matter_audio_text: dict[str, dict[str, str]] = field(default_factory=dict)
 
     created: float = field(default_factory=time.time)
     updated: float = field(default_factory=time.time)

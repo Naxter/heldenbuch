@@ -196,6 +196,9 @@ td.num { font-variant-numeric: tabular-nums; }
 .notes { margin:.4rem 0 0; padding-left:1rem; color:var(--bad); font-size:12px; }
 .err { color:var(--bad); padding:.7rem; font-size:12.5px; }
 .sheet { max-width:420px; border:1px solid var(--line); border-radius:10px; }
+.synthetic { border:1px solid var(--bad); border-left-width:4px; border-radius:8px;
+             padding:.7rem .9rem; margin:0 0 1.4rem; font-size:13.5px; }
+.synthetic code { font-size:12.5px; }
 footer { margin-top:3rem; color:var(--muted); font-size:12.5px; }
 """
 
@@ -273,15 +276,43 @@ def build_html(layout: RunLayout, records: list[PageRecord], spec_name: str) -> 
     rows = aggregate(records)
     hardest = hardest_scenes(records)
 
+    backends = {r.backend for r in records}
+    models = sorted({r.model for r in records if r.model})
+    spent = sum(r.usd for r in records)
+    stamps = sorted(r.created for r in records if r.created)
+
     parts = [
         f"<div class='wrap'><h1>Character consistency &mdash; {html.escape(spec_name)}</h1>",
         f"<p class='sub'>{len(records)} pages &middot; "
-        f"{len({r.backend for r in records})} backends &middot; "
+        f"{len(backends)} backends &middot; "
         f"{len({r.strategy for r in records})} strategies. "
         f"Judge scores are 1&ndash;5, higher is better.</p>",
-        "<h2>Summary</h2>",
-        _summary_table(rows),
     ]
+
+    # A stub run renders identically to a paid one, and its ranking is a
+    # constant in the backend rather than a measurement. Say so at the top,
+    # where nobody can quote a number from this page without the caveat.
+    if "stub" in backends:
+        which = ("Every page here was" if backends == {"stub"}
+                 else "Some pages here were")
+        parts.append(
+            "<div class='synthetic'><b>Synthetic run.</b> "
+            f"{which} drawn by the offline <code>stub</code> backend, which "
+            "produces placeholder images and a fixed ranking. These numbers "
+            "measure the harness, not any image model.</div>"
+        )
+
+    provenance = []
+    if models:
+        provenance.append("models: " + html.escape(", ".join(models)))
+    if stamps:
+        provenance.append(f"drawn {html.escape(stamps[0])} to {html.escape(stamps[-1])}")
+    if spent:
+        provenance.append(f"metered cost ${spent:.2f}")
+    if provenance:
+        parts.append("<p class='sub'>" + " &middot; ".join(provenance) + "</p>")
+
+    parts += ["<h2>Summary</h2>", _summary_table(rows)]
 
     if hardest:
         items = "".join(
@@ -328,10 +359,22 @@ def build_all(layout: RunLayout, records: list[PageRecord], spec_name: str, log=
             if path:
                 log(f"  wrote {path.name}")
 
+    synthetic = "stub" in {r.backend for r in records}
     write_json(
         layout.root / "summary.json",
-        {"summary": aggregate(records), "hardest_scenes": hardest_scenes(records)},
+        {
+            "summary": aggregate(records),
+            "hardest_scenes": hardest_scenes(records),
+            # Travels with the numbers, so anything reading summary.json
+            # instead of the report still knows what it is looking at.
+            "synthetic": synthetic,
+            "models": sorted({r.model for r in records if r.model}),
+            "usd": round(sum(r.usd for r in records), 4),
+            "generated": max((r.created for r in records if r.created), default=""),
+        },
     )
+    if synthetic:
+        log("  note: this run includes stub pages -- its ranking is synthetic")
     path = build_html(layout, records, spec_name)
     log(f"  wrote {path.name}")
     return path
@@ -342,6 +385,9 @@ def print_summary(records: list[PageRecord], log=print) -> None:
     if not rows:
         log("no results to summarise")
         return
+    if "stub" in {r.backend for r in records}:
+        log("SYNTHETIC: stub pages are placeholders with a fixed ranking -- "
+            "this table measures the harness, not a model.")
     header = f"{'backend':<10} {'strategy':<17} {'ident':>6} {'attr':>6} {'style':>6} {'palette':>8} {'fail':>5}"
     log(header)
     log("-" * len(header))

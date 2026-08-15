@@ -115,6 +115,7 @@ def _read_reference(path: Path) -> tuple[tuple[int, int, int], ...]:
 class StubBackend(Backend):
     name = "stub"
     max_references = 8
+    honours_seed = True  # deterministic by construction
 
     @property
     def default_model(self) -> str:

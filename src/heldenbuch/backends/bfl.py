@@ -85,6 +85,7 @@ class BflBackend(Backend):
                 f"unknown FLUX model {self.model!r}; valid: {', '.join(sorted(MODELS))}"
             )
         self.max_references = MODELS[self.model]
+        self.honours_seed = True
 
     def _generate(self, req: GenRequest) -> tuple[bytes, str]:
         key = require_key("BFL_API_KEY", "bfl")

@@ -177,6 +177,7 @@ class ComfyBackend(Backend):
     # Refined from the workflow's {IMAGE_n} slots when it loads; a generous
     # default so pre-flight checks pass before the file exists.
     max_references = 8
+    honours_seed = True
 
     @property
     def default_model(self) -> str:

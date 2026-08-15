@@ -1184,7 +1184,10 @@ function can(name) { return S.status?.capabilities?.[name] !== false; }
 
 function eur(usd) {
   const rate = S.status?.estimates?.usd_per_eur || 1.08;
-  return `~${(usd / rate).toFixed(2).replace(".", ",")} €`;
+  // The decimal separator follows the interface language, not the currency:
+  // "0,60 €" is right in German and wrong in English.
+  return `~${(usd / rate).toLocaleString(uiLang, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 }
 function est() { return S.status?.estimates || {}; }
 function profileEst(key) {
@@ -2447,7 +2450,7 @@ function proofDialog() {
         ${marks.length ? `<div style="color:var(--warn)">${marks.map(esc).join(" · ")}</div>` : ""}
       </div></div>`;
   }).join("");
-  openModal(`<h3>${esc(ti("proof_title", { name: preset.name || presetKey }))}</h3>
+  openModal(`<h3>${esc(ti("proof_title", { name: preset.name || preset.key }))}</h3>
     <div class="grid g4" style="margin-bottom:1rem">${cells}</div>
     <p class="small muted">${t("proof_note")}</p>
     <div class="row" style="justify-content:flex-end">

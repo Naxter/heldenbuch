@@ -763,6 +763,7 @@ const LOCALES = {
     page_ai_title: "Die KI schreibt die Seite neu, statt dass du selbst tippst",
     page_ai_rewrite: "KI: neu schreiben lassen",
     page_typeset_title: "Diese Seite fertig gesetzt ansehen",
+    page_seed: "Zufallszahl dieses Bildes: {seed} — damit lässt es sich beim selben Bilddienst wieder erzeugen.",
     versions_title: "Seite {n} — Versionen", versions_current: "aktuell",
     versions_previous: "davor", versions_n_before: "{n} Fassungen davor",
     versions_note: "„Zurück“ stellt jeweils die letzte vorherige Fassung wieder her — mehrmals drücken geht weiter zurück.",
@@ -1174,6 +1175,7 @@ const LOCALES = {
     page_ai_title: "The AI writes the page again instead of you typing it",
     page_ai_rewrite: "AI: have it written again",
     page_typeset_title: "See this page fully typeset",
+    page_seed: "Seed for this picture: {seed} — it can be drawn again from this on the same image service.",
     versions_title: "Page {n} — versions", versions_current: "current",
     versions_previous: "the one before", versions_n_before: "{n} versions back",
     versions_note: "“Back” restores the last previous version each time — press it repeatedly to go further back.",
@@ -3021,6 +3023,8 @@ function editPage(index) {
       <textarea id="m-pb" rows="2">${esc(page.illustration)}</textarea></label>
     <label class="f" style="max-width:320px"><span>${t("layout_label")}</span>
       <select id="m-pl">${layouts}</select></label>
+    ${page.seed ? `<p class="small muted" style="margin:-.4rem 0 1rem">${
+      esc(ti("page_seed", { seed: page.seed }))}</p>` : ""}
     <div class="row" style="justify-content:space-between">
       <span class="row">
         <button class="btn ghost" onclick="closeModal();rewrite(${index})"

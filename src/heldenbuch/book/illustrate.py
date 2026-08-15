@@ -19,10 +19,12 @@ little and costs the whole render being sequential.
 from __future__ import annotations
 
 import os
+import random
 import re
 import shutil
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -579,15 +581,19 @@ def draw_page(
     output: OutputSpec | None = None,
     insist: bool = False,
     resolve=None,
+    seed: int | None = None,
 ):
     backend = get_backend(backend_name, model)
     references, named = _attach(sheet, list(members), resolve,
                                 backend.max_references, solo=True)
+    spec = output or output_for(book.render_quality)
+    if seed is not None:
+        spec = replace(spec, seed=seed)
     return backend.generate(
         GenRequest(
             prompt=page_prompt(book, hero, style, page, named, insist=insist),
             reference_images=references,
-            output=output or output_for(book.render_quality),
+            output=spec,
         ),
         target,
     )
@@ -739,6 +745,10 @@ def illustrate_book(
     pages_dir.mkdir(parents=True, exist_ok=True)
     wanted = set(only) if only else None
     lock = threading.Lock()
+    # Only some services take a seed. Where one does, the number that drew a
+    # page is worth keeping; where it does not, recording one would claim a
+    # reproducibility the page has not got.
+    records_seed = get_backend(backend_name, model).honours_seed
     # `in_flight` reserves the estimated price of each image while it draws, so
     # the cap counts work already started and not only work already billed.
     _profile = RENDER_PROFILES.get(book.render_quality, RENDER_PROFILES["draft"])
@@ -859,14 +869,18 @@ def illustrate_book(
 
         for attempt in (1, 2):
             try:
+                # A fresh seed per attempt: reusing the page's own seed would
+                # make a redraw return the picture the person just rejected.
+                seed = random.randrange(1, 2**31)
                 result = draw_page(
                     book, hero, style, page, sheet, target, members=members,
                     backend_name=backend_name, model=model,
-                    insist=attempt == 2, resolve=resolve,
+                    insist=attempt == 2, resolve=resolve, seed=seed,
                 )
                 with lock:
                     page.image = f"pages/{target.name}"
                     page.image_from_rev = page.illustration_rev  # picture matches the brief again
+                    page.seed = seed if records_seed else None
                 spend(result.usage, "pages")
             except Exception as exc:
                 with lock:

@@ -289,6 +289,12 @@ class Page:
     image_from_rev: int = 0
     #: language code -> the text_rev that language's narration read
     audio_from_rev: dict[str, int] = field(default_factory=dict)
+    #: The seed this picture was drawn with, on a service that takes one.
+    #: Without it a page that came out well could not be reproduced: the next
+    #: attempt at the same prompt is simply a different picture, and the good
+    #: one is gone. Left None where the service ignores seeds, rather than
+    #: recording a number that had no effect.
+    seed: int | None = None
 
     def image_stale(self) -> bool:
         return bool(self.image) and self.illustration_rev > self.image_from_rev

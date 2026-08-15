@@ -495,6 +495,50 @@ const LOCALES = {
     tile_unstarted: "in Arbeit — noch ungezeichnet",
     style_taken: "Stil „{name}“ übernommen — ändern jederzeit unter „Stil“.",
     server_unreachable: "Server nicht erreichbar: {message}",
+    /* Labels the server sends for built-in things. It sends a stable key
+       beside each one, so the interface language decides the wording and the
+       server's own string is only the fallback (a style someone invented
+       keeps its own name -- those never appear here). */
+    sp_aquarell: "Aquarell", sph_aquarell: "weich, warm, klassisch",
+    sp_buntstift: "Buntstift", sph_buntstift: "wie selbst gemalt",
+    sp_papercut: "Papercollage", sph_papercut: "grafisch, kräftig",
+    sp_gouache: "Gouache", sph_gouache: "satt, mid-century",
+    sp_knuffig3d: "Knuffig 3D", sph_knuffig3d: "modern, wie ein Animationsfilm",
+    sp_tusche: "Tusche & Aquarell", sph_tusche: "klassisch europäisch",
+    sp_filz: "Filz & Wolle", sph_filz: "warm, taktil, ungewöhnlich",
+    sp_nachtblau: "Nachtblau", sph_nachtblau: "ruhig, für Gute-Nacht-Geschichten",
+    "age_2-3": "2–3 Jahre", "age_4-5": "4–5 Jahre",
+    "age_6-7": "6–7 Jahre", "age_8+": "8+ Jahre",
+    rp_draft: "Entwurf — schnell und günstig",
+    rp_print: "Druckqualität — 300 dpi, dauert länger",
+    pp_print_square: "Druckerei — quadratisch 21,6 cm",
+    pph_print_square: "Standardformat für Kinderbücher (Lulu, Gelato). Mit Beschnitt, 300 dpi.",
+    pp_print_kinderbuch: "Druckerei — Kinderbuch 15,6 × 14,8 cm",
+    pph_print_kinderbuch: "epubli-Kinderbuchformat, kleiner und günstiger. Mit Beschnitt, 300 dpi.",
+    pp_home_a4: "Zuhause drucken — A4 quer",
+    pph_home_a4: "Auf jedem normalen Drucker. Bild links, Text rechts, kein Beschnitt.",
+    pp_screen: "Zum Vorlesen am Bildschirm",
+    pph_screen: "Querformat für Tablet oder Laptop, kleine Datei.",
+    voice_coral: "warm, freundlich", voice_sage: "ruhig, gelassen",
+    voice_nova: "hell, lebendig", voice_alloy: "neutral",
+    voice_fable: "erzählerisch", voice_onyx: "tief, ruhig",
+    shop_lulu: "weltweit, druckt in Europa",
+    shop_epubli: "Berlin, druckt in Deutschland, ab 1 Exemplar",
+    shop_gelato: "druckt lokal in 32 Ländern",
+    "im_gpt-image-2": "gpt-image-2 — Standard",
+    "im_gpt-image-1-mini": "gpt-image-1-mini — deutlich günstiger, einfachere Bilder",
+    "im_gemini-3-pro-image": "Nano Banana Pro — referenztreu, bis 4K",
+    "im_gemini-3.1-flash-image": "Nano Banana Flash — schnell, günstig",
+    "im_flux-2-pro": "FLUX.2 pro — Flatpreis je Bild",
+    "im_flux-2-klein": "FLUX.2 klein — lokal auf deiner GPU, kostenlos",
+    /* A hint about what to type, not content: the story's own language is
+       chosen with the language chips below the field, and a placeholder is
+       never sent anywhere. */
+    story_idea_placeholder: "Eine Geschichte über Angst im Dunkeln, mit einem Leuchtturm.",
+    lay_full: "Bild füllt die Seite, Text sitzt in einer ruhigen Ecke",
+    lay_split: "Bild oben, Text darunter auf hellem Papier",
+    lay_vignette: "Bild kleiner gedruckt, für einen ruhigen Moment",
+    lay_wordless: "Bild füllt die Seite, gar kein Text",
     /* hero */
     hero_who: "Wer ist der Held?",
     hero_lede: "Lade ein paar Fotos von deinem Sohn hoch — daraus mache ich eine gezeichnete Figur. Oder beschreib die Figur einfach, wenn es kein Foto sein soll. Das machst du <b>einmal</b>; danach kommt er in jedes Buch.",
@@ -850,6 +894,43 @@ const LOCALES = {
     tile_unstarted: "in progress — nothing drawn yet",
     style_taken: "Style “{name}” taken over — change it any time under “Style”.",
     server_unreachable: "Server not reachable: {message}",
+    sp_aquarell: "Watercolour", sph_aquarell: "soft, warm, classic",
+    sp_buntstift: "Coloured pencil", sph_buntstift: "like hand-drawn",
+    sp_papercut: "Paper collage", sph_papercut: "graphic, bold",
+    sp_gouache: "Gouache", sph_gouache: "rich, mid-century",
+    sp_knuffig3d: "Cuddly 3D", sph_knuffig3d: "modern, like an animated film",
+    sp_tusche: "Ink & watercolour", sph_tusche: "classic European",
+    sp_filz: "Felt & wool", sph_filz: "warm, tactile, unusual",
+    sp_nachtblau: "Midnight blue", sph_nachtblau: "calm, for bedtime stories",
+    "age_2-3": "2–3 years", "age_4-5": "4–5 years",
+    "age_6-7": "6–7 years", "age_8+": "8+ years",
+    rp_draft: "Draft — fast and cheap",
+    rp_print: "Print quality — 300 dpi, takes longer",
+    pp_print_square: "Print shop — square, 21.6 cm",
+    pph_print_square: "The standard children's book format (Lulu, Gelato). With bleed, 300 dpi.",
+    pp_print_kinderbuch: "Print shop — children's book, 15.6 × 14.8 cm",
+    pph_print_kinderbuch: "epubli's children's format, smaller and cheaper. With bleed, 300 dpi.",
+    pp_home_a4: "Home printing — A4 landscape",
+    pph_home_a4: "On any normal printer. Picture left, text right, no bleed.",
+    pp_screen: "Reading on screen",
+    pph_screen: "Landscape for tablet or laptop, small file.",
+    voice_coral: "warm, friendly", voice_sage: "calm, composed",
+    voice_nova: "bright, lively", voice_alloy: "neutral",
+    voice_fable: "storytelling", voice_onyx: "deep, calm",
+    shop_lulu: "worldwide, prints in Europe",
+    shop_epubli: "Berlin, prints in Germany, from a single copy",
+    shop_gelato: "prints locally in 32 countries",
+    "im_gpt-image-2": "gpt-image-2 — standard",
+    "im_gpt-image-1-mini": "gpt-image-1-mini — much cheaper, simpler pictures",
+    "im_gemini-3-pro-image": "Nano Banana Pro — faithful to references, up to 4K",
+    "im_gemini-3.1-flash-image": "Nano Banana Flash — fast, cheap",
+    "im_flux-2-pro": "FLUX.2 pro — flat price per image",
+    "im_flux-2-klein": "FLUX.2 klein — local on your GPU, free",
+    story_idea_placeholder: "A story about being afraid of the dark, with a lighthouse in it.",
+    lay_full: "picture fills the page, text sits in a quiet corner",
+    lay_split: "picture on top, text below on plain paper",
+    lay_vignette: "picture printed smaller, for a quiet beat",
+    lay_wordless: "picture fills the page, no text at all",
     /* hero */
     hero_who: "Who is the hero?",
     hero_lede: "Upload a few photos of your son — I turn them into a drawn character. Or simply describe the character if you would rather not use a photo. You do this <b>once</b>; after that he is in every book.",
@@ -1150,6 +1231,15 @@ const t = (key) => LOCALES[uiLang]?.[key] ?? LOCALES.de[key] ?? key;
 const ti = (key, values) => t(key).replace(/\{(\w+)\}/g,
   (slot, name) => (name in values ? values[name] : slot));
 
+/* A label for something the server described. The server sends a stable key
+   beside its own German wording; if the locale table knows that key the
+   interface language wins, otherwise the server's string stands. That keeps
+   user-invented names (a custom style) exactly as they were typed. */
+function srv(prefix, key, fallback) {
+  const full = `${prefix}_${key}`;
+  return LOCALES.de[full] ? t(full) : (fallback ?? key);
+}
+
 function applyChrome() {
   document.documentElement.lang = uiLang;
   $("tagline").textContent = t("tagline");
@@ -1345,7 +1435,7 @@ function pickerHtml() {
         ${b.name === currentBackend() ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>` : ""}
     ${models.length > 1 ? `<select style="width:auto" title="Bildmodell"
       onchange="setModel(this.value)">${models.map((m) => `<option value="${m.key}"
-        ${m.key === currentModelInfo()?.key ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select>` : ""}
+        ${m.key === currentModelInfo()?.key ? "selected" : ""}>${esc(srv("im", m.key, m.label))}</option>`).join("")}</select>` : ""}
   </span>`;
 }
 
@@ -2127,7 +2217,7 @@ async function renderLook() {
       }).join("") + `</div></div>` : ""}`;
 
   $("preset-list").innerHTML = (S.status.style_presets || []).map((p) => `
-    <button type="button" class="chip" onclick="tryPreset('${p.key}')" title="${esc(p.hint)} — ${eur(styleTryUsd())}">${esc(p.name)}</button>
+    <button type="button" class="chip" onclick="tryPreset('${p.key}')" title="${esc(srv("sph", p.key, p.hint))} — ${eur(styleTryUsd())}">${esc(srv("sp", p.key, p.name))}</button>
   `).join("");
 
   $("style-wish-go").onclick = () => {
@@ -2230,17 +2320,17 @@ async function renderStory() {
 
       <label class="f"><span>${t("story_idea_label")}</span>
         <textarea id="s-idea" rows="3"
-          placeholder="Eine Geschichte über Angst im Dunkeln, mit einem Leuchtturm.">${esc(book?.idea || "")}</textarea></label>
+          placeholder="${esc(t("story_idea_placeholder"))}">${esc(book?.idea || "")}</textarea></label>
 
       <div class="grid g2">
         <label class="f"><span>${t("story_age_label")}</span>
           <select id="s-age">${(S.status.ages || []).map((a) => `
             <option value="${a.key}" ${(book?.age || "4-5") === a.key ? "selected" : ""}>
-              ${esc(a.label)} — ${ti("story_pages_n", { n: a.pages })}</option>`).join("")}</select></label>
+              ${esc(srv("age", a.key, a.label))} — ${ti("story_pages_n", { n: a.pages })}</option>`).join("")}</select></label>
         <label class="f"><span>${t("quality")}</span>
           <select id="s-quality">${(S.status.render_profiles || []).map((p) => `
             <option value="${p.key}" ${(book?.render_quality || "draft") === p.key ? "selected" : ""}>
-              ${esc(p.label)}</option>`).join("")}</select></label>
+              ${esc(srv("rp", p.key, p.label))}</option>`).join("")}</select></label>
       </div>
 
       <label class="f"><span>${t("story_langs_label")}</span></label>
@@ -2406,7 +2496,7 @@ async function renderBook() {
   const qualityPicker = `<select id="b-quality" style="width:auto" title="${t("quality")}"
     onchange="setQuality(this.value)">${(S.status.render_profiles || []).map((p) => `
       <option value="${p.key}" ${book.render_quality === p.key ? "selected" : ""}>
-        ${esc(p.label)} — ${ti("book_per_image", { price: eur(perImageUsd(p.key)) })}</option>`).join("")}</select>`;
+        ${esc(srv("rp", p.key, p.label))} — ${ti("book_per_image", { price: eur(perImageUsd(p.key)) })}</option>`).join("")}</select>`;
 
 
   view().innerHTML = stepsBar("book") + `
@@ -2546,7 +2636,7 @@ function proofDialog() {
         ${marks.length ? `<div style="color:var(--warn)">${marks.map(esc).join(" · ")}</div>` : ""}
       </div></div>`;
   }).join("");
-  openModal(`<h3>${esc(ti("proof_title", { name: preset.name || preset.key }))}</h3>
+  openModal(`<h3>${esc(ti("proof_title", { name: srv("pp", preset.key, preset.name || preset.key) }))}</h3>
     <div class="grid g4" style="margin-bottom:1rem">${cells}</div>
     <p class="small muted">${t("proof_note")}</p>
     <div class="row" style="justify-content:flex-end">
@@ -2866,7 +2956,7 @@ function editPage(index) {
   const page = currentBook.pages.find((p) => p.index === index);
   if (!page) return;
   const layouts = (S.status.layouts || []).map((l) =>
-    `<option value="${l.key}" ${l.key === page.layout ? "selected" : ""}>${esc(l.key)} — ${esc(l.hint)}</option>`).join("");
+    `<option value="${l.key}" ${l.key === page.layout ? "selected" : ""}>${esc(l.key)} — ${esc(srv("lay", l.key, l.hint))}</option>`).join("");
   openModal(`<h3>${ti("page_edit_heading", { n: index })}</h3>
     <div class="row" style="align-items:flex-start;gap:1rem">
       ${page.image_url ? `<img src="${esc(tn(page.image_url))}" loading="lazy" decoding="async" alt="${ti("page_n", { n: index })}"
@@ -2960,7 +3050,7 @@ function soundPanel(book) {
           esc(ti("sound_voice", { voice: book.narration_voice }))}</span>` : ""}</p></div>
       <div class="row">
         <select id="n-voice" style="width:auto">${(S.status.voices || []).map((v) =>
-          `<option value="${v.key}">${esc(v.key)} — ${esc(v.hint)}</option>`).join("")}</select>
+          `<option value="${v.key}">${esc(v.key)} — ${esc(srv("voice", v.key, v.hint))}</option>`).join("")}</select>
         <button class="btn ghost tiny" onclick="previewVoice()" ${can("narration") ? "" : `disabled title="${t("needs_openai_key")}"`}
           title="${t("sound_preview_title")}">${t("sound_preview")}</button>
         <button class="btn ghost" onclick="narrate()" ${can("narration") ? "" : `disabled title="${t("needs_openai_key")}"`}>${t("sound_make")} · ${eur(usd)}</button>
@@ -3045,7 +3135,7 @@ function exportPanel(book) {
     <div class="grid g2">
       <label class="f"><span>${t("export_format")}</span>
         <select id="e-preset" onchange="refreshPreflight()">${(S.status.print_presets || []).map((p) => `
-          <option value="${p.key}">${esc(p.name)}</option>`).join("")}</select></label>
+          <option value="${p.key}">${esc(srv("pp", p.key, p.name))}</option>`).join("")}</select></label>
       <label class="f"><span>${t("export_font")}</span>
         <select id="e-font" onchange="refreshPreflight()">${(S.status.fonts || []).map((f) => `
           <option value="${f.key}">${esc(f.name)}</option>`).join("")}</select></label>
@@ -3053,7 +3143,7 @@ function exportPanel(book) {
     <div class="grid g2">
       <label class="f"><span>${t("export_shop")}</span>
         <select id="e-shop">${(S.status.print_shops || []).map((s) => `
-          <option value="${s.key}">${esc(s.name)} — ${esc(s.where)}</option>`).join("")}</select></label>
+          <option value="${s.key}">${esc(s.name)} — ${esc(srv("shop", s.key, s.where))}</option>`).join("")}</select></label>
       <div><label class="f"><span>${t("export_languages")}</span></label>
         <div class="chips" id="e-langs">${book.languages.map((code) => {
           const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;

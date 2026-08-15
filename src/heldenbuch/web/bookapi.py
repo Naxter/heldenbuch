@@ -275,6 +275,7 @@ class BookApi:
             raw["history_urls"] = [f"{prefix}/{path}" for path in page.history]
             raw["check_status"] = check_status(page)
             raw["image_stale"] = page.image_stale()
+            raw["seed"] = page.seed
             raw["audio_stale"] = page.audio_stale()
             raw["audio_urls"] = {
                 code: f"{prefix}/{path}" for code, path in page.audio.items()

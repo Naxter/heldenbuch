@@ -139,6 +139,21 @@ class JobManager:
         job.lines.append("— wird abgebrochen, das aktuelle Bild wird noch fertig —")
         return True
 
+    def retry(self, job_id: str) -> Job:
+        """Run a finished job again with the parameters it actually had.
+
+        The browser cannot do this itself: `public()` redacts uploads, so a
+        client-side resubmit sent `"<upload>"` where the photos belonged and
+        a retried hero was drawn from no photos at all. Here the originals
+        are still in hand.
+        """
+        job = self._jobs.get(job_id)
+        if job is None:
+            raise ValueError(f"no job {job_id}")
+        if job.status in ("running", "queued"):
+            raise ValueError("dieser Auftrag läuft noch")
+        return self.start(job.action, dict(job.params))
+
     # ---------------------------------------------------------------- launch
 
     def start(self, action: str, params: dict[str, Any]) -> Job:

@@ -127,6 +127,40 @@ class TestJobQueue:
         assert job.public()["params"]["artwork"] == "<upload>"
         assert job.public()["params"]["name"] == "Claudio"
 
+    def test_a_retry_keeps_the_uploads_the_browser_never_saw(self):
+        """Retrying used to resubmit `public()` params -- with the photos
+        replaced by the string "<upload>", so a retried hero was drawn from
+        no photos at all. The manager still holds the originals."""
+        seen = []
+        manager = JobManager({"w": lambda job, log: seen.append(job.params)})
+        photos = [{"name": "p.jpg", "data": "data:image/png;base64,AAA"}]
+        first = manager.start("w", {"photos": photos, "name": "Claudio"})
+        assert _wait(lambda: manager.pending() == 0)
+
+        again = manager.retry(first.id)
+        assert _wait(lambda: manager.pending() == 0)
+
+        assert again.id != first.id
+        assert seen[-1]["photos"] == photos
+        assert seen[-1]["name"] == "Claudio"
+
+    def test_a_running_job_cannot_be_retried(self):
+        started, release = threading.Event(), threading.Event()
+
+        def worker(job, log):
+            started.set()
+            release.wait(2)
+
+        manager = JobManager({"w": worker})
+        job = manager.start("w", {})
+        started.wait(2)
+        try:
+            with pytest.raises(ValueError):
+                manager.retry(job.id)
+        finally:
+            release.set()
+            assert _wait(lambda: manager.pending() == 0)
+
 
 class TestColourMetrics:
     """The consistency metric has to survive a small hue shift."""

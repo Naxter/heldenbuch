@@ -638,6 +638,32 @@ function pickerHtml() {
   </span>`;
 }
 
+/* Resolution, in one place. This lived in three, and the copies that
+   mattered assumed the square preset's geometry no matter which format was
+   selected -- so the smaller epubli format was judged against the wrong
+   page width. The server sends each preset's real page size. */
+function printPresets() { return S.status?.print_presets || []; }
+
+function presetFor(key) {
+  const all = printPresets();
+  return all.find((p) => p.key === key)
+      || all.find((p) => p.key === "print_square")
+      || { key: "print_square", page_mm: 215.9 + 2 * 3.175, dpi: 300, bleed: true };
+}
+
+//: the format the export panel is currently set to, or the print default
+function selectedPreset() {
+  return presetFor($("e-preset")?.value || "print_square");
+}
+
+function dpiFor(px, preset) {
+  const mm = preset?.page_mm || (215.9 + 2 * 3.175);
+  return px ? Math.round(px / (mm / 25.4)) : null;
+}
+
+//: below this a print shop's 300 dpi is not honestly reachable
+const DPI_FLOOR = 280;
+
 // What "draw the missing pictures" would cost for this book right now.
 function missingEst(book) {
   const perImage = perImageUsd(book.render_quality);
@@ -686,11 +712,10 @@ $("dcancel").onclick = async () => {
 // their button. A second click while the POST was in flight drew -- and
 // paid for -- the same images twice.
 let jobStarting = false;
-async function runJob(action, params, title, onDone) {
-  if (jobStarting) return;
-  jobStarting = true;
-  const trigger = window.event?.currentTarget;
-  if (trigger) trigger.disabled = true;
+/* The drawer, made ready for a job that is about to be watched. Split out
+   because a retry is started by the server, not by this browser, and still
+   has to land in the same drawer with the same bookkeeping. */
+function prepareDrawer(title, onDone) {
   $("dlog").textContent = "";
   $("dtitle").textContent = title;
   $("dtitle").dataset.job = title;
@@ -707,6 +732,22 @@ async function runJob(action, params, title, onDone) {
   if (S.job) S.watch.push({ id: S.job, onDone: S.onDone });
   S.seen = 0;
   S.onDone = onDone;
+}
+
+function attachJob(job, title, onDone) {
+  prepareDrawer(title, onDone);
+  S.job = job.id;
+  clearInterval(S.poll);
+  S.poll = setInterval(pollJob, 900);
+  pollJob();
+}
+
+async function runJob(action, params, title, onDone) {
+  if (jobStarting) return;
+  jobStarting = true;
+  const trigger = window.event?.currentTarget;
+  if (trigger) trigger.disabled = true;
+  prepareDrawer(title, onDone);
 
   try {
     const job = await api("/api/jobs", {
@@ -924,10 +965,12 @@ async function cancelJob(id) {
 }
 
 async function retryJob(id) {
-  const job = await api(`/api/jobs/${id}`);
+  // The server re-submits: it still has the uploads, which the status
+  // endpoint redacts. Resubmitting from here retried a hero with no photos.
+  const job = await api(`/api/jobs/${id}/retry`, { method: "POST" });
   closeModal();
-  runJob(job.action, job.params || {},
-    `${JOB_NAMES[job.action] || job.action} — neuer Versuch`, () => render());
+  attachJob(job, `${JOB_NAMES[job.action] || job.action} — neuer Versuch`,
+            () => render());
 }
 
 /* =========================================================== navigation */
@@ -1590,7 +1633,7 @@ function storyEditor(book) {
           ${p.image_url ? `<div class="num">SEITE ${p.index}
             ${p.image_stale ? `<span class="flag warn"
               title="Seit dem Zeichnen geändert — das Bild zeigt noch die alte Anweisung">Bild noch alt</span>` : ""}</div>` : ""}
-          <textarea rows="2" data-page="${p.index}" data-lang="${language}"
+          <textarea rows="2" data-page="${p.index}" data-lang="${language}" lang="${language}"
             aria-label="Text Seite ${p.index}" onchange="savePage(this)">${esc(p.text[language] || "")}</textarea>
           <label class="small muted" style="display:flex;gap:.4rem;align-items:baseline;margin-top:.3rem">
             Bild:
@@ -1787,20 +1830,17 @@ function storyboardCard(book, language, missing) {
    print decision needs -- faster than scrolling a wall of cards. */
 function proofDialog() {
   const book = currentBook;
-  const presetKey = $("e-preset")?.value || "print_square";
-  const preset = (S.status.print_presets || []).find((p) => p.key === presetKey) || {};
+  const preset = selectedPreset();
   const language = book.primary_language || book.languages[0];
-  const pageMm = presetKey === "print_kinderbuch" ? 162 : 222.25;  // incl. bleed
   const isPrint = !!preset.bleed;
-  const dpi = (px) => Math.round(px / (pageMm / 25.4));
   const cells = book.pages.map((p) => {
-    const d = p.image_px ? dpi(p.image_px) : null;
+    const d = dpiFor(p.image_px, preset);
     const marks = [
       p.error ? "Fehler" : "",
       p.check_status === "failed" ? "prüfen" : "",
       (p.check_status === "unknown" || p.check_status === "unchecked") ? "ungeprüft" : "",
       p.image_stale ? "Bild veraltet" : "",
-      isPrint && d && d < 280 ? `${d} dpi` : "",
+      isPrint && d && d < DPI_FLOOR ? `${d} dpi` : "",
     ].filter(Boolean);
     return `<div style="border:1px solid ${marks.length ? "var(--warn)" : "var(--line)"};
         border-radius:8px;overflow:hidden">
@@ -2047,11 +2087,9 @@ function redrawCover() {
 function printPanel(book) {
   const drawnPages = book.pages.filter((p) => p.image_px);
   if (!drawnPages.length) return "";
-  // The square print preset: 21.6 cm trim plus 3.175 mm bleed on both sides.
-  const pageMm = 215.9 + 2 * 3.175;
-  const dpi = (px) => Math.round(px / (pageMm / 25.4));
-  const worst = Math.min(...drawnPages.map((p) => dpi(p.image_px)));
-  const weak = drawnPages.filter((p) => dpi(p.image_px) < 280).length;
+  const preset = selectedPreset();
+  const worst = Math.min(...drawnPages.map((p) => dpiFor(p.image_px, preset)));
+  const weak = drawnPages.filter((p) => dpiFor(p.image_px, preset) < DPI_FLOOR).length;
   if (!weak) {
     return `<div class="card"><h2>Reif für die Druckerei</h2>
       <p class="lede" style="margin-bottom:0">Alle gezeichneten Seiten liegen bei etwa
@@ -2159,7 +2197,7 @@ function editPage(index) {
         style="width:120px;border-radius:9px;cursor:zoom-in;flex:none">` : ""}
       <div style="flex:1;min-width:260px">
         ${currentBook.languages.map((code) => `<label class="f"><span>Text (${esc(langName(code))})</span>
-          <textarea id="m-pt-${code}" rows="2">${esc(page.text[code] || "")}</textarea></label>`).join("")}
+          <textarea id="m-pt-${code}" rows="2" lang="${esc(code)}">${esc(page.text[code] || "")}</textarea></label>`).join("")}
       </div>
     </div>
     <label class="f"><span>Was das Bild zeigt (englisch — wirkt beim nächsten Zeichnen)</span>

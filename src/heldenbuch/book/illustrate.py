@@ -18,6 +18,7 @@ little and costs the whole render being sequential.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import threading
@@ -592,6 +593,55 @@ def draw_page(
     )
 
 
+def _adopt_finished(book: Book, pages_dir: Path, drawing: list[Page]) -> None:
+    """Point pages at art already on disk that this run is not redrawing."""
+    for page in book.pages:
+        target = pages_dir / f"page_{page.index:02d}.png"
+        if page not in drawing and _usable_image(target):
+            page.image = f"pages/{target.name}"
+
+
+def _keep_previous(page: Page | None, pages_dir: Path, target: Path) -> None:
+    """Set the outgoing picture aside so a redraw stays undoable."""
+    if page is None or not target.is_file():
+        return
+    keep = pages_dir / f"page_{page.index:02d}_v{len(page.history) + 1}.png"
+    shutil.copy2(target, keep)
+    page.history.append(f"pages/{keep.name}")
+
+
+def _write_image(target: Path, data: bytes) -> None:
+    """Write page art the way the backends do: temp file, then rename.
+
+    A file that exists counts as finished work and is never redrawn, so a
+    write interrupted halfway would leave wreckage that the next run adopts.
+    """
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, target)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
+def _judge(book: Book, hero: Hero, sheet: Path, target: Path, scene: str,
+           members: list[CastMember], resolve, provider: str) -> dict[str, Any]:
+    """One page (or the cover) graded against the whole reference bundle.
+
+    The judge gets more views than the illustrator did -- the full sheets
+    rather than the solo crops -- because more views make a better yardstick
+    for a picture that already exists.
+    """
+    judge_refs, judge_named = _attach(sheet, members, resolve, 6)
+    return check_page(
+        target, sheet, hero, provider=provider,
+        scene=single_scene(scene), spend=book.spend,
+        cast_sheets=judge_refs[1:], cast_names=[m.name for m in judge_named],
+    )
+
+
 def _attach(
     sheet: Path, members: list[CastMember], resolve, limit: int,
     solo: bool = False,
@@ -770,11 +820,7 @@ def illustrate_book(
         if (wanted is None or page.index in wanted)
         and (redraw or not _usable_image(pages_dir / f"page_{page.index:02d}.png"))
     ]
-    # Anything already on disk and not being redrawn is simply adopted.
-    for page in book.pages:
-        target = pages_dir / f"page_{page.index:02d}.png"
-        if target.is_file() and page not in todo:
-            page.image = f"pages/{target.name}"
+    _adopt_finished(book, pages_dir, todo)
 
     if not todo:
         log("Nichts zu zeichnen — alle Seiten sind schon da.")
@@ -806,15 +852,9 @@ def illustrate_book(
             page.error = None
 
         # Keep the outgoing version so a redraw can be undone.
-        if target.is_file():
-            keep = pages_dir / f"page_{page.index:02d}_v{len(page.history) + 1}.png"
-            shutil.copy2(target, keep)
-            with lock:
-                page.history.append(f"pages/{keep.name}")
+        with lock:
+            _keep_previous(page, pages_dir, target)
 
-        # The brief the illustrator is actually given, so the checker grades
-        # against the same words rather than the raw stored text.
-        scene_text = single_scene(page.illustration)
         best: tuple[Path, dict[str, Any]] | None = None
 
         for attempt in (1, 2):
@@ -839,14 +879,10 @@ def illustrate_book(
 
             # The judge gets the same reference bundle the illustrator did, so
             # it can grade the cast as well as the hero.
-            judge_refs, judge_named = _attach(sheet, members, resolve, 6)
+            verdict = _judge(book, hero, sheet, target, page.illustration,
+                             members, resolve, check_provider)
             with lock:
-                page.check = check_page(
-                    target, sheet, hero, provider=check_provider,
-                    scene=scene_text, spend=book.spend,
-                    cast_sheets=judge_refs[1:],
-                    cast_names=[m.name for m in judge_named],
-                )
+                page.check = verdict
             with lock:
                 page.check["attempts"] = attempt
             if best is None or _better(page.check, best[1]):
@@ -966,7 +1002,9 @@ def illustrate_book_batch(
         target = pages_dir / f"page_{page.index:02d}.png"
         if wanted is not None and page.index not in wanted:
             continue
-        if not redraw and target.is_file():
+        # `_usable_image`, not `is_file`: wreckage from an interrupted render
+        # must be redrawn rather than adopted as a finished page.
+        if not redraw and _usable_image(target):
             page.image = f"pages/{target.name}"
             continue
         references, named = _attach(sheet, book.cast_for(page), resolve, 5, solo=True)
@@ -1023,12 +1061,8 @@ def illustrate_book_batch(
                 page.error = result["error"]
             log(f"  {label}: fehlgeschlagen — {result['error']}")
             continue
-        if target.is_file():  # keep the outgoing version, redraws stay undoable
-            if page is not None:
-                keep = pages_dir / f"page_{page.index:02d}_v{len(page.history) + 1}.png"
-                shutil.copy2(target, keep)
-                page.history.append(f"pages/{keep.name}")
-        target.write_bytes(result["data"])
+        _keep_previous(page, pages_dir, target)  # redraws stay undoable
+        _write_image(target, result["data"])
         add_spend(book.spend, result["usage"], "cover" if page is None else "pages")
         if page is None:
             book.cover = f"pages/{target.name}"
@@ -1043,11 +1077,20 @@ def illustrate_book_batch(
         log("")
         log(f"Jetzt die Prüfung, Seite für Seite — von {check_provider}.")
         for page, target in todo:
-            if stop() or page is None or not target.is_file():
+            if stop() or not target.is_file():
                 continue
-            page.check = check_page(target, sheet, hero, provider=check_provider,
-                                    scene=single_scene(page.illustration),
-                                    spend=book.spend)
+            if page is None:
+                # The cover is held to the same standard here as on the
+                # interactive path; it was the one image nothing looked at.
+                book.cover_check = _judge(book, hero, sheet, target,
+                                          book.cover_illustration or "",
+                                          list(book.cast), resolve, check_provider)
+                if verdict_from(book.cover_check) == "failed":
+                    log("  Titelbild: bitte ansehen — "
+                        f"{(book.cover_check.get('notes') or ['abgedriftet'])[0]}")
+                continue
+            page.check = _judge(book, hero, sheet, target, page.illustration,
+                                book.cast_for(page), resolve, check_provider)
             status = check_status(page)
             word = {"passed": "in Ordnung", "failed": "beanstandet",
                     "unknown": "Prüfung fehlgeschlagen"}.get(status, status)

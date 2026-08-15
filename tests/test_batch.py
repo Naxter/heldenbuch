@@ -167,6 +167,64 @@ def test_batch_redraw_keeps_the_old_version_undoable(library, monkeypatch):
     assert (pages_dir / "page_01_v1.png").is_file()
 
 
+# The batch path is a second implementation of the same render, and it has
+# drifted from the interactive one before -- losing the budget cap once
+# already. These pin the guarantees both paths are supposed to share.
+
+
+def test_batch_redraws_truncated_art_instead_of_adopting_it(library, monkeypatch):
+    hero, style, book = _book(library)
+    pages_dir = library.book_dir(book.id) / "pages"
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    _png(pages_dir / "page_01.png")
+    (pages_dir / "page_02.png").write_bytes(b"\x89PNG\r\n\x1a\n truncated")
+
+    asked = {}
+
+    def fake_run_batch(model, requests, targets, **kwargs):
+        asked["targets"] = [t.name for t in targets]
+        import io
+        pixel = io.BytesIO()
+        Image.new("RGB", (8, 8), "green").save(pixel, "PNG")
+        return [{"data": pixel.getvalue(), "usage": {"images": 1, "usd": 0.067}}
+                for _ in requests]
+
+    monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
+    illustrate.illustrate_book_batch(
+        book, hero, style, library.resolve(hero.sheet),
+        pages_dir=pages_dir, check=False, log=lambda *a: None,
+    )
+    # page 1 is intact and adopted; the wreckage of page 2 is drawn again
+    assert "page_02.png" in asked["targets"]
+    assert "page_01.png" not in asked["targets"]
+
+
+def test_batch_checks_the_cover_and_shows_the_judge_the_cast(library, monkeypatch):
+    hero, style, book = _book(library)
+    seen = []
+
+    def fake_run_batch(model, requests, targets, **kwargs):
+        import io
+        pixel = io.BytesIO()
+        Image.new("RGB", (8, 8), "blue").save(pixel, "PNG")
+        return [{"data": pixel.getvalue(), "usage": {"images": 1, "usd": 0.067}}
+                for _ in requests]
+
+    def fake_check_page(page_image, sheet, hero_, **kwargs):
+        seen.append({"image": page_image.name, "cast": list(kwargs.get("cast_names") or [])})
+        return {"identity": 5, "attributes": 5, "style": 5, "scene": 5, "ok": True}
+
+    monkeypatch.setattr("heldenbuch.backends.gemini.run_batch", fake_run_batch)
+    monkeypatch.setattr(illustrate, "check_page", fake_check_page)
+    illustrate.illustrate_book_batch(
+        book, hero, style, library.resolve(hero.sheet),
+        pages_dir=library.book_dir(book.id) / "pages",
+        check=True, log=lambda *a: None,
+    )
+    assert "cover.png" in [s["image"] for s in seen]  # the cover is judged too
+    assert book.cover_check
+
+
 class TestOneBadImageCannotSinkTheBatch:
     """A filtered candidate took down the collection of a finished batch.
 

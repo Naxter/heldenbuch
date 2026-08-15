@@ -10,8 +10,8 @@ python -m pytest
 The tests call no APIs, need no keys and touch no network. If they pass, your
 environment works.
 
-To run the app without spending anything, pick **Stub (kostenlos)** as the
-Bilddienst in the UI, or on the CLI:
+To run the app without spending anything, pick the free **stub** image service
+in the UI, or on the CLI:
 
 ```bash
 python -m heldenbuch run --backends stub --no-judge
@@ -138,8 +138,8 @@ error in `preflight.py`.
   A crash must never tear a file that a resume would then trust.
 - Anything that costs money shows an estimate before it runs and writes its
   actual usage to the ledger afterwards.
-- User-facing strings in the app are German; code, comments and commit
-  messages are English.
+- User-facing strings belong in the `LOCALES` table in `app.html`, which
+  carries German and English; code, comments and commit messages are English.
 - Comments state constraints and reasons, not what the next line does.
 - Errors shown in the UI are written for a parent whose page just failed,
   not for the developer — see `explain_provider_error` in `backends/base.py`

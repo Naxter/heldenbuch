@@ -36,7 +36,8 @@ backend, a style preset, a print format.
 
 - Python 3.11+, type hints on public functions.
 - Comments state constraints and reasons, not what the next line does.
-- UI strings are German; code, comments and commits are English.
+- UI strings go through the locale table in `app.html` (German and English);
+  code, comments and commits are English.
 - Commit messages: a short subject line, at most a couple of lines of body.
 - No emoji in code, commits or logs.
 

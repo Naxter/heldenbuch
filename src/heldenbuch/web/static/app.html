@@ -344,22 +344,22 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
 <dialog id="viewer" aria-label="Großansicht">
   <img id="viewer-img" alt="Großansicht">
   <div class="vbar">
-    <button onclick="event.stopPropagation();toggleViewerFullscreen()"
+    <button id="v-full" onclick="event.stopPropagation();toggleViewerFullscreen()"
       title="Echtes Vollbild ohne Browserleiste">⛶ Vollbild</button>
-    <button onclick="event.stopPropagation();$('viewer').close()">✕ Schließen (Esc)</button>
+    <button id="v-close" onclick="event.stopPropagation();$('viewer').close()">✕ Schließen (Esc)</button>
   </div>
 </dialog>
 <dialog id="modal" class="modal"></dialog>
 <div id="toast" class="hide" role="status" aria-live="polite"></div>
 
 <div id="reader" role="dialog" aria-modal="true" aria-label="Vorlese-Ansicht">
-  <button class="btn ghost tiny close" onclick="closeReader()">Schließen</button>
+  <button class="btn ghost tiny close" id="r-close" onclick="closeReader()">Schließen</button>
   <div class="sheet">
     <img id="r-img" alt="">
     <div class="words" id="r-text"></div>
   </div>
   <div class="bar">
-    <button onclick="turn(-1)" aria-label="Zurückblättern"
+    <button id="r-prev" onclick="turn(-1)" aria-label="Zurückblättern"
       title="Zurückblättern (Pfeil links)">◀</button>
     <button id="r-play" onclick="toggleAudio()">▶ Vorlesen</button>
     <button id="r-auto" onclick="toggleAuto()"
@@ -368,7 +368,7 @@ dialog.modal .vlabel{font-size:.75rem;color:var(--muted);margin-top:.3rem;displa
       title="Blättern: Pfeiltasten oder Leertaste · Schließen: Esc"></span>
     <select id="r-lang" onchange="readerLangChanged()" aria-label="Sprache"
       style="width:auto;background:rgba(255,255,255,.12);color:#f6efe2;border-color:rgba(255,255,255,.2)"></select>
-    <button onclick="turn(1)" aria-label="Weiterblättern"
+    <button id="r-next" onclick="turn(1)" aria-label="Weiterblättern"
       title="Weiterblättern (Pfeil rechts, Leertaste)">▶</button>
   </div>
   <audio id="r-audio" hidden></audio>
@@ -721,6 +721,20 @@ const LOCALES = {
     restored: "„{title}“ wiederhergestellt — {files} Dateien geprüft.",
     restore_failed: "Wiederherstellen abgelehnt: {message}",
     backup_done: "Gesichert — {kb} KB. Der Download startet.",
+    /* zoom view and reader */
+    viewer_large: "Großansicht",
+    viewer_fullscreen: "⛶ Vollbild",
+    viewer_fullscreen_title: "Echtes Vollbild ohne Browserleiste",
+    viewer_close: "✕ Schließen (Esc)",
+    reader_view: "Vorlese-Ansicht",
+    reader_prev: "Zurückblättern", reader_prev_title: "Zurückblättern (Pfeil links)",
+    reader_next: "Weiterblättern",
+    reader_next_title: "Weiterblättern (Pfeil rechts, Leertaste)",
+    reader_play: "▶ Vorlesen", reader_pause: "❚❚ Pause", reader_auto: "▶▶ Auto",
+    reader_auto_title: "Liest jede Seite vor und blättert von selbst weiter",
+    reader_count_title: "Blättern: Pfeiltasten oder Leertaste · Schließen: Esc",
+    reader_all_langs: "alle zusammen",
+    reader_no_pages: "Es gibt noch keine gezeichneten Seiten.",
   },
   en: {
     tagline: "Make your own picture books",
@@ -1015,6 +1029,20 @@ const LOCALES = {
     restored: "“{title}” restored — {files} files verified.",
     restore_failed: "Restore refused: {message}",
     backup_done: "Backed up — {kb} KB. The download is starting.",
+    /* zoom view and reader */
+    viewer_large: "Full view",
+    viewer_fullscreen: "⛶ Fullscreen",
+    viewer_fullscreen_title: "Real fullscreen, without the browser bar",
+    viewer_close: "✕ Close (Esc)",
+    reader_view: "Read-aloud view",
+    reader_prev: "Page back", reader_prev_title: "Page back (left arrow)",
+    reader_next: "Page forward",
+    reader_next_title: "Page forward (right arrow, space)",
+    reader_play: "▶ Read aloud", reader_pause: "❚❚ Pause", reader_auto: "▶▶ Auto",
+    reader_auto_title: "Reads every page aloud and turns the pages by itself",
+    reader_count_title: "Turning pages: arrow keys or space · Closing: Esc",
+    reader_all_langs: "all together",
+    reader_no_pages: "There are no drawn pages yet.",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -1037,6 +1065,24 @@ function applyChrome() {
   $("dclose").textContent = t("close");
   if ($("dtitle").textContent === "Bereit" || $("dtitle").textContent === "Ready")
     $("dtitle").textContent = t("ready");
+  // The zoom view and the reader are static markup, so they are re-labelled
+  // here rather than by a re-render.
+  $("viewer").setAttribute("aria-label", t("viewer_large"));
+  $("viewer-img").alt = t("viewer_large");
+  $("v-full").textContent = t("viewer_fullscreen");
+  $("v-full").title = t("viewer_fullscreen_title");
+  $("v-close").textContent = t("viewer_close");
+  $("reader").setAttribute("aria-label", t("reader_view"));
+  $("r-close").textContent = t("close");
+  $("r-prev").setAttribute("aria-label", t("reader_prev"));
+  $("r-prev").title = t("reader_prev_title");
+  $("r-next").setAttribute("aria-label", t("reader_next"));
+  $("r-next").title = t("reader_next_title");
+  $("r-play").textContent = reader.playing ? t("reader_pause") : t("reader_play");
+  $("r-auto").textContent = t("reader_auto");
+  $("r-auto").title = t("reader_auto_title");
+  $("r-count").title = t("reader_count_title");
+  $("r-lang").setAttribute("aria-label", t("language"));
   document.title = pageTitle(S.screen);
 }
 
@@ -3211,12 +3257,12 @@ function openReader() {
   const book = currentBook;
   if (!book) return;
   reader.pages = book.pages.filter((p) => p.image_url);
-  if (!reader.pages.length) return toast("Es gibt noch keine gezeichneten Seiten.");
+  if (!reader.pages.length) return toast(t("reader_no_pages"));
   $("r-lang").innerHTML = book.languages.map((code) => {
     const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
     return `<option value="${code}">${esc(name)}</option>`;
   }).join("") + (book.languages.length > 1
-    ? `<option value="__all">alle zusammen</option>` : "");
+    ? `<option value="__all">${t("reader_all_langs")}</option>` : "");
   const saved = store.get("readerLang");
   if (saved && (book.languages.includes(saved)
       || (saved === "__all" && book.languages.length > 1))) $("r-lang").value = saved;
@@ -3277,7 +3323,7 @@ function showPage(index) {
   const page = reader.pages[reader.index];
   const language = $("r-lang").value;
   $("r-img").src = page.image_url;
-  $("r-img").alt = `Illustration Seite ${page.index}`;
+  $("r-img").alt = ti("page_illustration_alt", { n: page.index });
   // So a screen reader pronounces Russian as Russian, not as broken German.
   if (language === "__all") $("r-text").removeAttribute("lang");
   else $("r-text").setAttribute("lang", language);
@@ -3296,7 +3342,7 @@ function showPage(index) {
   $("r-play").disabled = !track;
   audio.pause();
   reader.playing = false;
-  $("r-play").textContent = "▶ Vorlesen";
+  $("r-play").textContent = t("reader_play");
   if (track) audio.src = track;
   if (reader.auto) playCurrent();
 }
@@ -3310,8 +3356,8 @@ function turn(step) {
 function toggleAudio() {
   const audio = $("r-audio");
   if (!audio.src) return;
-  if (reader.playing) { audio.pause(); reader.playing = false; $("r-play").textContent = "▶ Vorlesen"; }
-  else { audio.play(); reader.playing = true; $("r-play").textContent = "❚❚ Pause"; }
+  if (reader.playing) { audio.pause(); reader.playing = false; $("r-play").textContent = t("reader_play"); }
+  else { audio.play(); reader.playing = true; $("r-play").textContent = t("reader_pause"); }
 }
 
 /* Autoplay: read the page, turn it, read the next. Pages without audio (for
@@ -3321,14 +3367,14 @@ function toggleAuto() {
   $("r-auto").classList.toggle("on", reader.auto);
   if (reader.auto) playCurrent();
   else { clearTimeout(reader.timer); $("r-audio").pause();
-         reader.playing = false; $("r-play").textContent = "▶ Vorlesen"; }
+         reader.playing = false; $("r-play").textContent = t("reader_play"); }
 }
 
 function playCurrent() {
   clearTimeout(reader.timer);
   const audio = $("r-audio");
   if (audio.src && !$("r-play").disabled) {
-    audio.play(); reader.playing = true; $("r-play").textContent = "❚❚ Pause";
+    audio.play(); reader.playing = true; $("r-play").textContent = t("reader_pause");
   } else {
     reader.timer = setTimeout(advanceAuto, 4000);
   }
@@ -3341,7 +3387,7 @@ function advanceAuto() {
 }
 
 $("r-audio").onended = () => {
-  reader.playing = false; $("r-play").textContent = "▶ Vorlesen";
+  reader.playing = false; $("r-play").textContent = t("reader_play");
   if (reader.auto) advanceAuto();
 };
 

@@ -33,6 +33,8 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+from .models import closing_word
+
 MM_PER_INCH = 25.4
 
 # Font families available on a normal Windows install, all with Cyrillic
@@ -1094,9 +1096,7 @@ def export_pdf(
         caption = joined(caption) if isinstance(caption, dict) else str(caption)
         pages.append(render_photo_page(art(photo), caption, preset, family))
 
-    closers = {"de": "Ende", "en": "The End", "ru": "Конец", "fr": "Fin", "es": "Fin",
-               "it": "Fine", "tr": "Son", "pl": "Koniec", "nl": "Einde"}
-    closing = joined({code: closers.get(code, "Ende") for code in langs}, " · ")
+    closing = joined({code: closing_word(code) for code in langs}, " · ")
     pages.append(render_plain_page(closing, preset, family))
 
     interior = len(pages)

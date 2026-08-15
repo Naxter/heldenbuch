@@ -292,6 +292,12 @@ class BookApi:
             raw["sheet_url"] = f"{prefix}/{member.sheet}" if member.sheet else None
         if (book.photo_page or {}).get("image"):
             data["photo_page"]["image_url"] = f"{prefix}/{book.photo_page['image']}"
+        # Title, dedication and closing narration: the parts of the book that
+        # are not numbered pages but are still read out.
+        data["matter_audio_urls"] = {
+            part: {code: f"{prefix}/{path}" for code, path in by_language.items()}
+            for part, by_language in (book.matter_audio or {}).items()
+        }
         data["spend"] = spend_summary(book.spend)
         data["flagged"] = flagged_pages(book)
         data["review"] = review_split(book)

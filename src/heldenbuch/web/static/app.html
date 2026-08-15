@@ -829,6 +829,7 @@ const LOCALES = {
     reader_count_title: "Blättern: Pfeiltasten oder Leertaste · Schließen: Esc",
     reader_all_langs: "alle zusammen",
     reader_no_pages: "Es gibt noch keine gezeichneten Seiten.",
+    reader_title_alt: "Titelbild",
   },
   en: {
     tagline: "Make your own picture books",
@@ -1221,6 +1222,7 @@ const LOCALES = {
     reader_count_title: "Turning pages: arrow keys or space · Closing: Esc",
     reader_all_langs: "all together",
     reader_no_pages: "There are no drawn pages yet.",
+    reader_title_alt: "Cover",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -3442,11 +3444,34 @@ async function backupBook() {
 
 const reader = { index: 0, pages: [], playing: false, auto: false, timer: null };
 
+/* The last word of the book, per *book* language -- it is printed on the
+   closing page and spoken by the narration, so it follows the story's
+   language and not the interface's. Mirrors CLOSERS in book/models.py. */
+const READER_CLOSERS = {
+  de: "Ende", en: "The End", ru: "Конец", fr: "Fin", es: "Fin",
+  it: "Fine", tr: "Son", pl: "Koniec", nl: "Einde",
+};
+
 function openReader() {
   const book = currentBook;
   if (!book) return;
-  reader.pages = book.pages.filter((p) => p.image_url);
-  if (!reader.pages.length) return toast(t("reader_no_pages"));
+  // The reader follows the printed book: title page, then the story, then
+  // the closing word. Those three are not numbered pages, so they carry
+  // their own text and their own narration.
+  const matter = book.matter_audio_urls || {};
+  const spreads = book.pages.filter((p) => p.image_url);
+  if (!spreads.length) return toast(t("reader_no_pages"));
+  const hasDedication = Object.values(book.dedication || {}).some((v) => (v || "").trim());
+  reader.pages = [
+    { index: 0, matter: "title", text: book.title || {},
+      image_url: book.cover_url, audio_urls: matter.title || {} },
+    ...(hasDedication ? [{ index: 0, matter: "dedication", text: book.dedication,
+                           image_url: null, audio_urls: matter.dedication || {} }] : []),
+    ...spreads,
+    { index: spreads.length + 1, matter: "closing",
+      text: Object.fromEntries(book.languages.map((c) => [c, READER_CLOSERS[c] || READER_CLOSERS.de])),
+      image_url: null, audio_urls: matter.closing || {} },
+  ];
   $("r-lang").innerHTML = book.languages.map((code) => {
     const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
     return `<option value="${code}">${esc(name)}</option>`;
@@ -3511,8 +3536,14 @@ function showPage(index) {
   reader.index = Math.max(0, Math.min(reader.pages.length - 1, index));
   const page = reader.pages[reader.index];
   const language = $("r-lang").value;
-  $("r-img").src = page.image_url;
-  $("r-img").alt = ti("page_illustration_alt", { n: page.index });
+  // The closing spread has no picture of its own.
+  $("r-img").classList.toggle("hide", !page.image_url);
+  if (page.image_url) {
+    $("r-img").src = page.image_url;
+    $("r-img").alt = page.matter
+      ? t(`reader_${page.matter}_alt`)
+      : ti("page_illustration_alt", { n: page.index });
+  }
   // So a screen reader pronounces Russian as Russian, not as broken German.
   if (language === "__all") $("r-text").removeAttribute("lang");
   else $("r-text").setAttribute("lang", language);

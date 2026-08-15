@@ -19,7 +19,7 @@ from pathlib import Path
 
 from ..config import require_key
 from ..pricing import add as add_spend
-from .models import LANGUAGES
+from .models import LANGUAGES, closing_word
 
 API_URL = "https://api.openai.com/v1/audio/speech"
 MODEL = "gpt-4o-mini-tts"
@@ -44,6 +44,22 @@ INSTRUCTIONS = (
 
 class NarrationError(RuntimeError):
     pass
+
+
+#: The parts of a book that are not numbered pages, in reading order.
+MATTER_LABELS = {"title": "Titel", "dedication": "Widmung", "closing": "Schluss"}
+
+
+def _front_matter(book, language: str) -> list[tuple[str, str]]:
+    """(part, text) for what is read before page one."""
+    parts = []
+    title = (book.title or {}).get(language, "").strip()
+    if title:
+        parts.append(("title", title))
+    dedication = (book.dedication or {}).get(language, "").strip()
+    if dedication:
+        parts.append(("dedication", dedication))
+    return parts
 
 
 def speak(text: str, target: Path, voice: str = "coral", speed: float = 0.95,
@@ -98,7 +114,12 @@ def narrate_book(
     log=print,
     should_stop=None,
 ) -> None:
-    """Narrate the title and every page, in each requested language."""
+    """Narrate the whole book: title, dedication, every page, and the closing.
+
+    A printed book opens with a title page and ends with a closing word, and
+    many carry a dedication. Reading only the numbered pages left a listener
+    dropped into the middle of the story and abandoned before the end.
+    """
     stop = should_stop or (lambda: False)
     languages = [c for c in (languages or book.languages) if c in book.languages]
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -108,6 +129,30 @@ def narrate_book(
             break
         name = LANGUAGES.get(language, {}).get("name", language)
         log(f"{name} — Stimme {voice}")
+
+        def matter(part: str, text: str) -> bool:
+            """Record one non-page part. False when the caller should stop."""
+            if stop():
+                return False
+            target = audio_dir / f"{part}_{language}.mp3"
+            said = (book.matter_audio_text.get(part) or {}).get(language)
+            if target.is_file() and not redo and said == text:
+                book.matter_audio.setdefault(part, {})[language] = f"audio/{target.name}"
+                return True
+            try:
+                usage = speak(text, target, voice=voice, speed=speed, language=language)
+                book.matter_audio.setdefault(part, {})[language] = f"audio/{target.name}"
+                book.matter_audio_text.setdefault(part, {})[language] = text
+                add_spend(book.spend, usage, "narration")
+                log(f"  {MATTER_LABELS.get(part, part)}")
+            except Exception as exc:
+                log(f"  {MATTER_LABELS.get(part, part)}: fehlgeschlagen — {exc}")
+            return True
+
+        for part, text in _front_matter(book, language):
+            if not matter(part, text):
+                log("abgebrochen — die fertigen Dateien bleiben")
+                return
 
         for page in sorted(book.pages, key=lambda p: p.index):
             if stop():
@@ -133,5 +178,10 @@ def narrate_book(
                 log(f"  Seite {page.index}")
             except Exception as exc:
                 log(f"  Seite {page.index}: fehlgeschlagen — {exc}")
+
+        # Last, so the recording ends the way the book does.
+        if not matter("closing", closing_word(language)):
+            log("abgebrochen — die fertigen Dateien bleiben")
+            return
 
     book.narration_voice = voice

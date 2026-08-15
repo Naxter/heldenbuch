@@ -84,6 +84,11 @@ class Backend(abc.ABC):
     name: str = "base"
     #: how many reference images this backend accepts in one call
     max_references: int = 0
+    #: Does `output.seed` actually reach the model? Only bfl and comfy expose
+    #: one; the hosted OpenAI and Gemini image APIs do not take a seed at all.
+    #: Saying so lets a run warn instead of implying reproducibility it has not
+    #: got.
+    honours_seed: bool = False
 
     def __init__(self, model: str | None = None) -> None:
         self.model = model or self.default_model

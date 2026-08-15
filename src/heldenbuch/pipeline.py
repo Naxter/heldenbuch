@@ -151,6 +151,9 @@ def generate_pages(
                 ),
                 target,
             )
+            record.model = result.model
+            record.created = time.strftime("%Y-%m-%dT%H:%M:%S")
+            record.usd = float((result.usage or {}).get("usd") or 0.0)
             log(f"    page {scene.id}: {result.latency_s}s  {result.cost_note}")
         except (BackendError, Exception) as exc:  # keep going; one bad page is data too
             record.error = f"{type(exc).__name__}: {exc}"
@@ -202,6 +205,12 @@ def run_experiment(
         except BackendError as exc:
             log(f"  skipped: {exc}")
             continue
+
+        if spec.output.seed is not None and not backend.honours_seed:
+            # Otherwise a spec with a seed reads as reproducible across every
+            # arm, when in truth only some backends take one.
+            log(f"  note: {name} has no seed parameter -- the spec's seed "
+                f"{spec.output.seed} does not apply to its images")
 
         try:
             sheet = ensure_sheet(backend, spec, layout, shared_sheet, log=log)

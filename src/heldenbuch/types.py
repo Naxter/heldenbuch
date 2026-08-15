@@ -205,6 +205,13 @@ class PageRecord:
     error: str | None = None
     metrics: dict[str, float] = field(default_factory=dict)
     judge: dict[str, Any] = field(default_factory=dict)
+    #: Provenance. A run is resumable and a spec can change between sittings,
+    #: so a page has to say for itself which model drew it, when, and what it
+    #: cost -- otherwise a resumed run silently mixes model versions and the
+    #: table compares two different things.
+    model: str = ""
+    created: str = ""
+    usd: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

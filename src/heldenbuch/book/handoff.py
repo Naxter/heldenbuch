@@ -13,13 +13,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .layout import MM_PER_INCH, PrintPreset
+from .layout import MM_PER_INCH, PrintPreset, binding_for
 
 PROVIDERS: dict[str, dict[str, Any]] = {
     "lulu": {
         "name": "Lulu",
         "url": "https://www.lulu.com/create/print-books",
         "where": "weltweit, druckt in Europa",
+        #: Trim sizes this shop actually sells, in mm. A preset that is not
+        #: on the list gets cut to whatever the shop does offer, which is how
+        #: a book comes back with the artwork trimmed off one edge.
+        "trims_mm": [(215.9, 215.9), (203.2, 203.2), (152.4, 228.6)],
         "steps": [
             'Buchtyp "Photo Book" oder "Print Book" wählen, Bindung Hardcover '
             "oder Softcover.",
@@ -42,6 +46,9 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "name": "epubli",
         "url": "https://www.epubli.com/buch/drucken",
         "where": "Berlin, druckt in Deutschland, ab 1 Exemplar",
+        #: epubli's square is 205 mm, not the 215.9 mm (8.5 inch) the
+        #: `print_square` preset is built for.
+        "trims_mm": [(156.0, 148.0), (205.0, 205.0), (148.0, 210.0)],
         "steps": [
             'Produkt "Fotobuch" oder "Buch drucken" wählen.',
             "Format: Kinderbuch 15,6 × 14,8 cm oder Quadrat, je nachdem womit "
@@ -58,6 +65,7 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "name": "Gelato",
         "url": "https://www.gelato.com/products/childrens-books",
         "where": "druckt lokal in 32 Ländern",
+        "trims_mm": [(215.9, 215.9), (210.0, 210.0), (148.0, 210.0)],
         "steps": [
             "Children's Book wählen, Hardcover oder Softcover.",
             "Format an die exportierte Größe anpassen.",
@@ -66,6 +74,46 @@ PROVIDERS: dict[str, dict[str, Any]] = {
         "warnings": [],
     },
 }
+
+
+#: How far a trim may sit from a shop's own size and still be the same
+#: product. A millimetre is inside the cutting tolerance; five is a different
+#: book that will be trimmed to fit.
+_TRIM_TOLERANCE_MM = 1.0
+
+
+def trim_supported(preset: PrintPreset, provider: str) -> bool:
+    offered = PROVIDERS.get(provider, {}).get("trims_mm") or []
+    if not offered:
+        return True
+    width, height = preset.trim_mm
+    return any(abs(width - w) <= _TRIM_TOLERANCE_MM and abs(height - h) <= _TRIM_TOLERANCE_MM
+               for w, h in offered)
+
+
+def trim_warning(preset: PrintPreset, provider: str) -> str | None:
+    """Say so when the exported size is not a size this shop sells."""
+    if trim_supported(preset, provider):
+        return None
+    spec = PROVIDERS.get(provider, PROVIDERS["lulu"])
+    offered = ", ".join(f"{w:.0f} × {h:.0f} mm" for w, h in spec.get("trims_mm", []))
+    return (
+        f"{spec['name']} führt das Format {preset.trim_mm[0]:.1f} × "
+        f"{preset.trim_mm[1]:.1f} mm nicht. Dort gibt es: {offered}. Entweder "
+        "eine andere Druckerei wählen oder mit einem passenden Format neu "
+        "exportieren — sonst wird auf das nächstgelegene Maß beschnitten."
+    )
+
+
+def binding_note(pages: int) -> str:
+    """Which binding this page count gets, in words for the order form."""
+    if binding_for(pages) == "saddle_stitch":
+        return (
+            f"Bindung: geheftet (saddle stitch). Bei {pages} Seiten ist das die "
+            "einzige Bindung, die Druckereien anbieten — Klebebindung beginnt "
+            "erst bei etwa 32 Seiten. Ein geheftetes Buch hat keinen Rücken."
+        )
+    return f"Bindung: Klebebindung (perfect bound), {pages} Seiten."
 
 
 def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | None = None,
@@ -104,7 +152,8 @@ def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | Non
         f"| Sicherheitsabstand | {preset.safety_mm:.1f} mm — nichts Wichtiges dichter an den Rand |",
         f"| Auflösung | {resolution} |",
         f"| Seitenzahl Innenteil | {pages} |",
-        "| Farbraum | RGB, ohne eingebettetes Profil |",
+        f"| Bindung | {binding_note(pages).split(': ', 1)[1].split('.')[0]} |",
+        "| Farbraum | RGB, sRGB eingebettet (mit dem Extra `print`) |",
     ]
 
     if cover_info:
@@ -129,7 +178,10 @@ def sheet(book, preset: PrintPreset, exports: list[dict], cover_info: dict | Non
     lines += ["", "## Schritt für Schritt", ""]
     lines += [f"{i}. {step}" for i, step in enumerate(spec["steps"], start=1)]
 
-    warnings = list(spec["warnings"])
+    # The size and the binding come first: both decide whether this file can
+    # be ordered at all, which matters more than any tip further down.
+    leading = [w for w in (trim_warning(preset, provider), binding_note(pages)) if w]
+    warnings = leading + list(spec["warnings"])
     if cover_info and cover_info.get("note"):
         warnings.append(cover_info["note"])
     for item in exports:

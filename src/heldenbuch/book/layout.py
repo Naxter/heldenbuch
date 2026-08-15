@@ -128,6 +128,41 @@ INK = (38, 34, 30)
 LIGHT_INK = (252, 250, 245)
 
 
+# ----------------------------------------------------------------- binding
+
+#: Saddle stitch -- folded down the middle and stapled -- is what a 12 to 24
+#: page picture book actually gets. It has no spine at all: the fold is the
+#: spine. Perfect binding (a glued flat spine) needs enough paper to glue,
+#: and no print-on-demand shop offers it below this.
+PERFECT_BOUND_MIN_PAGES = 32
+
+#: Above this a saddle-stitched book will not close flat.
+SADDLE_STITCH_MAX_PAGES = 48
+
+#: Lulu prints spine text only from here up. Below it the spine is too narrow
+#: for the fold to land reliably, and the text creeps onto the front cover.
+#: The old rule started printing at a 6 mm spine, which is 79 pages -- one
+#: page inside the range the shop refuses.
+SPINE_TEXT_MIN_PAGES = 130
+
+
+def binding_for(pages: int) -> str:
+    """Which binding a book of this many pages is actually made with."""
+    if pages < PERFECT_BOUND_MIN_PAGES:
+        return "saddle_stitch"
+    return "perfect_bound"
+
+
+def has_spine(pages: int) -> bool:
+    """A saddle-stitched book is folded, not glued: there is no flat spine to
+    print on, and a cover built with one is wider than the press expects."""
+    return binding_for(pages) == "perfect_bound"
+
+
+def spine_text_allowed(pages: int) -> bool:
+    return has_spine(pages) and pages >= SPINE_TEXT_MIN_PAGES
+
+
 # --------------------------------------------------------------------------- fonts
 
 
@@ -793,7 +828,11 @@ def render_wrap_cover(
     onto the spine.
     """
     trim_w, trim_h = preset.trim_mm
-    spine_mm = preset.spine_mm(interior_pages)
+    # A saddle-stitched book is folded, not glued: there is no spine panel at
+    # all, and building the sheet with one made it wider than the trim the
+    # shop cuts to. Every book this app makes at 12-24 pages is in that band.
+    spined = has_spine(interior_pages)
+    spine_mm = preset.spine_mm(interior_pages) if spined else 0.0
     bleed = preset.bleed_mm
 
     total_w_mm = 2 * trim_w + spine_mm + 2 * bleed
@@ -847,9 +886,17 @@ def render_wrap_cover(
                (int(safety * 1.5), int(page_h * 0.34)), box[0],
                colour=(70, 62, 54), align="center")
 
-    # Spine, but only when it is wide enough to hold readable type.
+    # Spine text, only where a shop will actually print it. Printing it on a
+    # narrow spine pasted a cream strip over the artwork and put the title
+    # somewhere the fold does not reliably land.
     spine_note = None
-    if spine_mm >= 6.0:
+    if not spined:
+        spine_note = (
+            f"{interior_pages} Seiten werden geheftet, nicht geklebt — dieses "
+            "Buch hat keinen Rücken. Der Umschlag ist deshalb ohne Rückenbreite "
+            "angelegt: Rückseite, Falz, Vorderseite."
+        )
+    elif spine_text_allowed(interior_pages):
         spine = Image.new("RGB", (page_h - 2 * safety, spine_px), PAPER)
         sfont, slines, sstep = fit_text(title, family, "bold",
                                         (spine.width, spine_px - int(spine_px * 0.3)),
@@ -859,12 +906,15 @@ def render_wrap_cover(
         canvas.paste(spine.rotate(90, expand=True), (panel_w, safety))
     else:
         spine_note = (
-            f"Der Rücken ist nur {spine_mm:.1f} mm breit — dafür ist kein Text "
-            "aufgedruckt. Unter etwa 6 mm drucken die meisten Druckereien nichts."
+            f"Der Rücken ist {spine_mm:.1f} mm breit ({interior_pages} Seiten) — "
+            f"darauf ist kein Text gedruckt. Druckereien setzen Rückentext erst "
+            f"ab etwa {SPINE_TEXT_MIN_PAGES} Seiten, darunter wandert er beim "
+            "Falzen auf die Vorderseite."
         )
 
     info = {
         "spine_mm": round(spine_mm, 2),
+        "binding": binding_for(interior_pages),
         "interior_pages": interior_pages,
         "size_mm": (round(total_w_mm, 1), round(total_h_mm, 1)),
         "size_px": (page_w, page_h),

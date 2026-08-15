@@ -471,6 +471,30 @@ const LOCALES = {
     chosen: "ausgewählt", choose: "auswählen", zoom_large: "Groß ansehen",
     no_drawing_service: "Es fehlt ein Bilddienst — siehe Startseite",
     action_failed: "Das hat nicht geklappt: {message}",
+    /* home */
+    setup_incomplete: "Noch nicht alles ist einsatzbereit",
+    setup_but_works: " — was geht, geht trotzdem:",
+    setup_missing: "{name} — dafür fehlt: {fix}.",
+    setup_recheck: "Neu prüfen", setup_rechecked: "Geprüft.",
+    cap_writing: "Geschichten schreiben",
+    cap_writing_fix: "einen OPENAI_API_KEY (oder Anthropic/Gemini) in die Datei .env eintragen",
+    cap_drawing: "Bilder zeichnen",
+    cap_drawing_fix: "einen Bilddienst-Schlüssel in .env eintragen (OPENAI_API_KEY reicht) — oder lokal ComfyUI starten",
+    cap_style_analysis: "Stil aus einem Bild ableiten",
+    cap_style_analysis_fix: "denselben Text-Schlüssel wie fürs Schreiben",
+    cap_narration: "Vorlesen (Ton erzeugen)",
+    cap_narration_fix: "einen OPENAI_API_KEY — nur die Sprachausgabe braucht genau diesen",
+    empty_title: "Noch kein Buch da.",
+    empty_lede: "In vier Schritten: wer ist der Held, wie soll es aussehen, worum geht es — und dann drucke ich es dir zusammen.",
+    empty_start: "Erstes Buch anfangen",
+    new_book_with: "Neues Buch mit {name}",
+    from_backup_title: "Eine Buch-Sicherung (ZIP) aus library/backups zurückholen",
+    tile_open: "„{title}“ öffnen", tile_read: "„{title}“ vorlesen",
+    tile_read_title: "Sofort vorlesen", tile_cover_alt: "Titelbild von {title}",
+    tile_drawn: "{done}/{total} gezeichnet",
+    tile_unstarted: "in Arbeit — noch ungezeichnet",
+    style_taken: "Stil „{name}“ übernommen — ändern jederzeit unter „Stil“.",
+    server_unreachable: "Server nicht erreichbar: {message}",
     /* hero */
     hero_who: "Wer ist der Held?",
     hero_lede: "Lade ein paar Fotos von deinem Sohn hoch — daraus mache ich eine gezeichnete Figur. Oder beschreib die Figur einfach, wenn es kein Foto sein soll. Das machst du <b>einmal</b>; danach kommt er in jedes Buch.",
@@ -802,6 +826,30 @@ const LOCALES = {
     chosen: "chosen", choose: "choose", zoom_large: "View large",
     no_drawing_service: "No image service available — see the home screen",
     action_failed: "That did not work: {message}",
+    /* home */
+    setup_incomplete: "Not everything is ready yet",
+    setup_but_works: " — what works, works anyway:",
+    setup_missing: "{name} — missing for this: {fix}.",
+    setup_recheck: "Check again", setup_rechecked: "Checked.",
+    cap_writing: "Writing stories",
+    cap_writing_fix: "put an OPENAI_API_KEY (or Anthropic/Gemini) in the .env file",
+    cap_drawing: "Drawing pictures",
+    cap_drawing_fix: "put an image service key in .env (OPENAI_API_KEY is enough) — or start ComfyUI locally",
+    cap_style_analysis: "Deriving a style from an image",
+    cap_style_analysis_fix: "the same text key as for writing",
+    cap_narration: "Reading aloud (making audio)",
+    cap_narration_fix: "an OPENAI_API_KEY — only the narration needs this particular one",
+    empty_title: "No book yet.",
+    empty_lede: "Four steps: who the hero is, how it should look, what it is about — and then I put it together for printing.",
+    empty_start: "Start the first book",
+    new_book_with: "New book with {name}",
+    from_backup_title: "Fetch a book backup (ZIP) from library/backups",
+    tile_open: "Open “{title}”", tile_read: "Read “{title}” aloud",
+    tile_read_title: "Read aloud now", tile_cover_alt: "Cover of {title}",
+    tile_drawn: "{done}/{total} drawn",
+    tile_unstarted: "in progress — nothing drawn yet",
+    style_taken: "Style “{name}” taken over — change it any time under “Style”.",
+    server_unreachable: "Server not reachable: {message}",
     /* hero */
     hero_who: "Who is the hero?",
     hero_lede: "Upload a few photos of your son — I turn them into a drawn character. Or simply describe the character if you would rather not use a photo. You do this <b>once</b>; after that he is in every book.",
@@ -1687,32 +1735,29 @@ function render() {
 
 /* =========================================================== 0. home */
 
-// What each capability needs, in words a person can act on.
-const CAPABILITY_HELP = {
-  writing: ["Geschichten schreiben", "einen OPENAI_API_KEY (oder Anthropic/Gemini) in die Datei .env eintragen"],
-  drawing: ["Bilder zeichnen", "einen Bilddienst-Schlüssel in .env eintragen (OPENAI_API_KEY reicht) — oder lokal ComfyUI starten"],
-  style_analysis: ["Stil aus einem Bild ableiten", "denselben Text-Schlüssel wie fürs Schreiben"],
-  narration: ["Vorlesen (Ton erzeugen)", "einen OPENAI_API_KEY — nur die Sprachausgabe braucht genau diesen"],
-};
+// What each capability needs, in words a person can act on. The names and
+// remedies live in the locale table as `cap_<key>` and `cap_<key>_fix`.
+const CAPABILITIES = ["writing", "drawing", "style_analysis", "narration"];
 
 function capabilityChecklist() {
   const caps = S.status?.capabilities || {};
-  const missing = Object.entries(CAPABILITY_HELP).filter(([key]) => caps[key] === false);
+  const missing = CAPABILITIES.filter((key) => caps[key] === false);
   if (!missing.length) return "";
-  const working = Object.entries(CAPABILITY_HELP).filter(([key]) => caps[key]);
+  const working = CAPABILITIES.filter((key) => caps[key]);
   return `<div class="banner" role="alert">
-    <b>Noch nicht alles ist einsatzbereit</b> — was geht, geht trotzdem:
+    <b>${t("setup_incomplete")}</b>${t("setup_but_works")}
     <ul class="small" style="margin:.4rem 0 0;padding-left:1.2rem">
-      ${working.map(([, [name]]) => `<li>✓ ${esc(name)}</li>`).join("")}
-      ${missing.map(([, [name, fix]]) => `<li>✗ ${esc(name)} — dafür fehlt: ${esc(fix)}.</li>`).join("")}
+      ${working.map((key) => `<li>✓ ${esc(t("cap_" + key))}</li>`).join("")}
+      ${missing.map((key) => `<li>✗ ${esc(ti("setup_missing",
+        { name: t("cap_" + key), fix: t(`cap_${key}_fix`) }))}</li>`).join("")}
     </ul>
-    <button class="btn ghost tiny" style="margin-top:.5rem" onclick="recheckSetup()">Neu prüfen</button>
+    <button class="btn ghost tiny" style="margin-top:.5rem" onclick="recheckSetup()">${t("setup_recheck")}</button>
   </div>`;
 }
 
 async function recheckSetup() {
   try { S.status = await api("/api/book/status"); } catch {}
-  toast("Geprüft.");
+  toast(t("setup_rechecked"));
   render();
 }
 
@@ -1726,11 +1771,9 @@ async function renderHome() {
   if (!books.length && !heroes.length) {
     view().innerHTML = warn + `
       <div class="empty">
-        <h2>Noch kein Buch da.</h2>
-        <p class="lede" style="margin:0 auto 1.6rem">
-          In vier Schritten: wer ist der Held, wie soll es aussehen, worum geht es —
-          und dann drucke ich es dir zusammen.</p>
-        <button class="btn" onclick="startNew()">Erstes Buch anfangen</button>
+        <h2>${t("empty_title")}</h2>
+        <p class="lede" style="margin:0 auto 1.6rem">${t("empty_lede")}</p>
+        <button class="btn" onclick="startNew()">${t("empty_start")}</button>
       </div>`;
     return;
   }
@@ -1738,7 +1781,7 @@ async function renderHome() {
   // Making a second book with a hero who already exists skips the two slow,
   // expensive steps entirely.
   const shortcuts = heroes.filter((h) => h.sheet).map((h) => `
-    <button class="btn ghost tiny" onclick="newBookWith('${h.id}')">Neues Buch mit ${esc(h.name || "…")}</button>
+    <button class="btn ghost tiny" onclick="newBookWith('${h.id}')">${esc(ti("new_book_with", { name: h.name || "…" }))}</button>
   `).join("");
 
   const drawn = books.reduce((n, b) => n + (b.drawn || 0), 0);
@@ -1762,7 +1805,7 @@ async function renderHome() {
       <span class="small muted">${t("quick_start")}</span>
       ${shortcuts}
       <button class="btn ghost tiny" onclick="restoreDialog()"
-        title="Eine Buch-Sicherung (ZIP) aus library/backups zurückholen">${t("from_backup")}</button>
+        title="${esc(t("from_backup_title"))}">${t("from_backup")}</button>
     </div>`;
 }
 
@@ -1772,15 +1815,16 @@ function bookTile(b) {
   const langs = b.languages.map(langName).join(", ");
   const unfinished = b.drawn < b.pages;
   return `<div class="tome" role="button" tabindex="0"
-      aria-label="„${esc(b.title)}“ öffnen" onclick="openBook('${b.id}')">
+      aria-label="${esc(ti("tile_open", { title: b.title }))}" onclick="openBook('${b.id}')">
     <div class="tome-cover">
-      ${b.cover_url ? `<img src="${esc(tn(b.cover_url))}" loading="lazy" decoding="async" alt="Titelbild von ${esc(b.title)}">`
+      ${b.cover_url ? `<img src="${esc(tn(b.cover_url))}" loading="lazy" decoding="async" alt="${esc(ti("tile_cover_alt", { title: b.title }))}">`
                     : `<div class="tome-blank">${esc(b.title)}</div>`}
-      ${b.drawn ? `<button class="tome-read" title="Sofort vorlesen"
-        aria-label="„${esc(b.title)}“ vorlesen"
+      ${b.drawn ? `<button class="tome-read" title="${esc(t("tile_read_title"))}"
+        aria-label="${esc(ti("tile_read", { title: b.title }))}"
         onclick="event.stopPropagation();readBook('${b.id}')">▶</button>` : ""}
       ${unfinished ? `<span class="tome-chip">${b.drawn
-        ? `${b.drawn}/${b.pages} gezeichnet` : "in Arbeit — noch ungezeichnet"}</span>` : ""}
+        ? esc(ti("tile_drawn", { done: b.drawn, total: b.pages }))
+        : esc(t("tile_unstarted"))}</span>` : ""}
     </div>
     <div class="tome-cap"><b>${esc(b.title)}</b>
       <small class="muted">${esc(langs)}</small></div>
@@ -1801,7 +1845,7 @@ async function newBookWith(heroId) {
   if (styles.length === 1) {
     // One compatible style: take it, but say so out loud.
     S.styleId = styles[0].id; store.set("styleId", S.styleId);
-    toast(`Stil „${styles[0].name}“ übernommen — ändern jederzeit unter „Stil“.`);
+    toast(ti("style_taken", { name: styles[0].name }));
     go("story");
   } else if (styles.length > 1) {
     // Several: the choice is real, so it has to be made, not guessed.
@@ -3457,7 +3501,7 @@ observer.observe($("view"), { childList: true, subtree: false });
   applyChrome();
   try { S.status = await api("/api/book/status"); }
   catch (exc) {
-    view().innerHTML = `<div class="banner bad">Server nicht erreichbar: ${esc(exc.message)}</div>`;
+    view().innerHTML = `<div class="banner bad">${esc(ti("server_unreachable", { message: exc.message }))}</div>`;
     return;
   }
   if (S.status.active_job) {

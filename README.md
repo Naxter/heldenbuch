@@ -17,6 +17,10 @@ python -m heldenbuch serve
 That opens the app at `http://127.0.0.1:8765`. One OpenAI key in `.env` runs
 everything — see [Setup](#setup).
 
+The interface speaks German or English; switch it any time under the gear icon.
+Books themselves can be written in any of the supported languages, independent
+of the interface.
+
 ---
 
 ## How it works
@@ -25,30 +29,30 @@ Four steps. Steps 1 and 2 you do once per child; after that a new book is a
 sentence away. The full pipeline, including how consistency is actually
 achieved, is in **[docs/how-it-works.md](docs/how-it-works.md)**.
 
-**1. Der Held.** Upload two to four photos, or just describe the character.
+**1. The hero.** Upload two to four photos, or just describe the character.
 A vision model writes down what an illustrator needs — hair, eyes, skin tone,
 build, an outfit — and an image model draws that as a **character sheet**: the
 same character from four angles on a plain background. You get three versions
 and pick one.
 
-**2. Der Look.** Pick a style from the presets, or describe your own wish
-("wie ein alter Scherenschnitt") and it gets translated into something an image
+**2. The look.** Pick a style from the presets, or describe your own wish
+("like an old paper cut-out") and it gets translated into something an image
 model actually responds to. Either way it immediately renders *your character
 in that style*, so you judge the real combination. When you like it, the
 character sheet is redrawn in that style — identity and look locked into one
 reference image.
 
-**3. Die Geschichte.** One line is enough: *"Claudio verliert seinen Gummistiefel
-im Matsch."* Leave it blank and it invents the idea. It writes the whole story
+**3. The story.** One line is enough: *"Claudio loses his rubber boot in the
+mud."* Leave it blank and it invents the idea. It writes the whole story
 at the right reading level for the age you choose, splits it into pages, and
 writes both the text and the illustration instruction for each page. Every page
-is editable, and every page has a "neu" button.
+is editable, and every page can be redrawn on its own.
 
 Pick several languages and each is **written**, not translated — same story,
 same page breaks, same beat, but the rhythm works in each language. The
 pictures are shared, so a second language costs a few cents of text.
 
-**4. Das Buch.** It draws every page from the locked reference — each page is
+**4. The book.** It draws every page from the locked reference — each page is
 conditioned on a single cropped figure from the sheet, which is what keeps the
 character from drifting or duplicating — then checks every page against the
 reference and flags any that drifted. One click redraws just that page. Then
@@ -64,19 +68,23 @@ a real font (Georgia by default — it has Cyrillic, so Russian sets properly).
 
 | Format | For |
 |---|---|
-| **Druckerei — quadratisch 21,6 cm** | The standard children's book trim. 3,175 mm bleed on all sides, text inside the 12,7 mm safety margin, 300 dpi, no crop marks, one PDF — what Lulu, Gelato and most print-on-demand shops ask for. Cover exported separately as JPG. |
-| **Druckerei — Kinderbuch 15,6 × 14,8 cm** | epubli's children's format. Smaller and cheaper, prints single copies. |
-| **Zuhause drucken — A4 quer** | Picture left, text right, no bleed. Any normal printer. |
-| **Zum Vorlesen am Bildschirm** | Landscape, small file. |
+| **Print shop — square, 21.6 cm** | The standard children's book trim. 3.175 mm bleed on all sides, text inside the 12.7 mm safety margin, 300 dpi, no crop marks, one PDF — what Lulu, Gelato and most print-on-demand shops ask for. Cover exported separately as JPG. |
+| **Print shop — children's book, 15.6 × 14.8 cm** | epubli's children's format. Smaller and cheaper, prints single copies. |
+| **Home printing — A4 landscape** | Picture left, text right, no bleed. Any normal printer. |
+| **Reading on screen** | Landscape, small file. |
 
 One PDF per language. Print formats are padded to a multiple of four pages,
 which is how books are actually bound.
 
-**Render quality** matters for print. *Entwurf* draws at 1024 px — fast and
-cheap, right for while the story is still moving. *Druckqualität* draws at
-2624 px, which is exactly 300 dpi across a 21,6 cm page with its bleed. The
+**Render quality** matters for print. *Draft* draws at 1024 px — fast and
+cheap, right for while the story is still moving. *Print quality* draws at
+2624 px, which is exactly 300 dpi across a 21.6 cm page with its bleed. The
 export measures the real pixels of every page and refuses a print export whose
 effective resolution is too low, instead of letting the PDF claim 300 dpi.
+
+With the optional `print` extra installed (`pip install -e ".[print]"`),
+exports also carry an embedded sRGB profile, so a press knows what the colours
+are supposed to mean instead of guessing.
 
 ---
 
@@ -105,7 +113,7 @@ needs `pip install -e ".[gemini]"`.
 
 **Drawing locally, for free:** the `comfy` backend sends jobs to your own
 ComfyUI (FLUX.2 klein runs on a 12 GB card). No key, no per-image cost. It
-appears as a Bilddienst automatically whenever ComfyUI is running. One-time
+appears as an image service automatically whenever ComfyUI is running. One-time
 setup: export your working workflow in API format and drop in placeholders —
 instructions at the top of `src/heldenbuch/backends/comfy.py`.
 
@@ -145,7 +153,7 @@ the description yourself, and nothing personal leaves the house at all.
 
 ---
 
-## Das Labor
+## The lab
 
 The app has a second half at `/benchmark`: the harness this project was built
 on. It answers "which image model keeps a character most consistent, and which
@@ -177,7 +185,7 @@ The tests call no APIs and need no keys.
 
 ---
 
-## Rechtliches, falls das Haus verlässt
+## Legal, before anything leaves the house
 
 Purely AI-generated images get no copyright protection under German law —
 protection needs a genuine human creative contribution. The EU AI Act's

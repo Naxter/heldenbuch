@@ -768,15 +768,12 @@ class BookJobs:
             book, preset, languages, resolve,
             allow_unknown=bool(params.get("allow_unknown")),
         )
-        for line in report["errors"]:
-            log(f"✗ {line}")
-        for line in report["unknowns"]:
-            log(f"? {line}")
-        for line in report["warnings"]:
-            log(f"⚠ {line}")
+        for mark, group in (("✗", "errors"), ("?", "unknowns"), ("⚠", "warnings")):
+            for item in report[group]:
+                log(f"{mark} {item['text']}")
         font_note = preflight.check_font(family)
         if font_note:
-            log(f"⚠ {font_note}")
+            log(f"⚠ {font_note['text']}")
         if not report["ok"]:
             raise ValueError(
                 "Der Export ist blockiert — das Buch ist noch nicht druckreif. "

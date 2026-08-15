@@ -535,6 +535,26 @@ const LOCALES = {
        chosen with the language chips below the field, and a placeholder is
        never sent anywhere. */
     story_idea_placeholder: "Eine Geschichte über Angst im Dunkeln, mit einem Leuchtturm.",
+    /* Preflight findings. The server decides *what* is wrong and sends a code
+       with the numbers; the sentence is written here, once per language. */
+    pfx_cover_missing: "Es gibt kein Titelbild — die Titelseite und der Umschlag blieben leer.",
+    pfx_cover_broken: "Die Titelbild-Datei ist beschädigt und lässt sich nicht öffnen.",
+    pfx_cover_low_dpi: "Das Titelbild hat nur etwa {dpi} dpi — im Druck wird es weich.",
+    pfx_cover_flagged: "Das Titelbild wurde beanstandet: {note}. Es ist das Bild, das man zuerst sieht — erst ansehen, dann exportieren.",
+    pfx_page_image_broken: "Seite {n}: die Bilddatei ist beschädigt.",
+    pfx_page_draw_failed: "Seite {n}: der letzte Zeichenversuch schlug fehl.",
+    pfx_pages_missing: "{count} Seite(n) ohne Bild: {pages}.",
+    pfx_pages_flagged: "Die Ähnlichkeitsprüfung hat Seite(n) {pages} beanstandet — erst ansehen, dann exportieren.",
+    pfx_pages_unchecked: "{count} Seite(n) sind ungeprüft — die Prüfung lief nicht oder brach ab: {pages}.",
+    pfx_text_overfull: "Zu viel Text für {count} Seite(n) bei lesbarer Schriftgröße: {pages}. Kürzen oder auf zwei Seiten teilen.",
+    pfx_pages_low_dpi: "{count} Seite(n) liegen unter {dpi} dpi für dieses Format: {pages}. Die Druckerei merkt das nicht — im Buch sieht man es. Vor dem Bestellen in Druckqualität neu zeichnen.",
+    pfx_pages_image_stale: "Seite(n) {pages}: die Bildanweisung wurde seit dem Zeichnen geändert — das Bild zeigt noch die alte Fassung.",
+    pfx_title_missing: "Es fehlt der Titel auf {language}.",
+    pfx_dedication_missing: "Keine Widmung auf {language} — die Seite entfällt.",
+    pfx_pages_text_missing: "Seite(n) {pages} haben keinen Text auf {language}.",
+    pfx_no_language: "Keine Sprache ausgewählt.",
+    pfx_font_unknown: "Unbekannte Schrift „{family}“ — Georgia wird verwendet.",
+    pfx_font_missing: "{name} ist hier nicht installiert — Georgia wird verwendet.",
     lay_full: "Bild füllt die Seite, Text sitzt in einer ruhigen Ecke",
     lay_split: "Bild oben, Text darunter auf hellem Papier",
     lay_vignette: "Bild kleiner gedruckt, für einen ruhigen Moment",
@@ -928,6 +948,24 @@ const LOCALES = {
     "im_flux-2-pro": "FLUX.2 pro — flat price per image",
     "im_flux-2-klein": "FLUX.2 klein — local on your GPU, free",
     story_idea_placeholder: "A story about being afraid of the dark, with a lighthouse in it.",
+    pfx_cover_missing: "There is no cover picture — the title page and the jacket were left empty.",
+    pfx_cover_broken: "The cover file is damaged and cannot be opened.",
+    pfx_cover_low_dpi: "The cover is only about {dpi} dpi — it will look soft in print.",
+    pfx_cover_flagged: "The cover was flagged: {note}. It is the first picture anyone sees — look at it before exporting.",
+    pfx_page_image_broken: "Page {n}: the image file is damaged.",
+    pfx_page_draw_failed: "Page {n}: the last attempt to draw it failed.",
+    pfx_pages_missing: "{count} page(s) without a picture: {pages}.",
+    pfx_pages_flagged: "The consistency check flagged page(s) {pages} — look at them before exporting.",
+    pfx_pages_unchecked: "{count} page(s) are unchecked — the check did not run or broke off: {pages}.",
+    pfx_text_overfull: "Too much text for {count} page(s) at a readable size: {pages}. Shorten it or split it across two pages.",
+    pfx_pages_low_dpi: "{count} page(s) are below {dpi} dpi for this format: {pages}. The print shop will not notice — you will, in the book. Redraw at print quality before ordering.",
+    pfx_pages_image_stale: "Page(s) {pages}: the illustration brief changed after the picture was drawn — the picture still shows the old one.",
+    pfx_title_missing: "The title in {language} is missing.",
+    pfx_dedication_missing: "No dedication in {language} — that page is left out.",
+    pfx_pages_text_missing: "Page(s) {pages} have no text in {language}.",
+    pfx_no_language: "No language selected.",
+    pfx_font_unknown: "Unknown font “{family}” — Georgia will be used.",
+    pfx_font_missing: "{name} is not installed here — Georgia will be used.",
     lay_full: "picture fills the page, text sits in a quiet corner",
     lay_split: "picture on top, text below on plain paper",
     lay_vignette: "picture printed smaller, for a quiet beat",
@@ -1240,6 +1278,16 @@ const ti = (key, values) => t(key).replace(/\{(\w+)\}/g,
 function srv(prefix, key, fallback) {
   const full = `${prefix}_${key}`;
   return LOCALES.de[full] ? t(full) : (fallback ?? key);
+}
+
+/* A preflight finding, in the interface language. The server sends a code,
+   the values that belong in the sentence, and the same sentence in German.
+   Anything the locale table does not know yet still reads as German rather
+   than as a bare code. */
+function finding(item) {
+  if (typeof item === "string") return item;  // older server, plain sentence
+  const key = `pfx_${item.code}`;
+  return LOCALES.de[key] ? ti(key, item.params || {}) : (item.text || item.code);
 }
 
 function applyChrome() {
@@ -3341,11 +3389,11 @@ function renderPreflightBox(report) {
     "unvollständig": ["var(--bad)", t("pf_incomplete")],
   };
   const [colour, head] = heads[report.state] || heads["unvollständig"];
-  const line = (text, mark) => `<li>${mark} ${esc(text)}</li>`;
+  const line = (item, mark) => `<li>${mark} ${esc(finding(item))}</li>`;
   const items =
-    report.errors.map((t) => line(t, "✗")).join("")
-    + report.unknowns.map((t) => line(t, "?")).join("")
-    + report.warnings.map((t) => line(t, "⚠")).join("");
+    report.errors.map((f) => line(f, "✗")).join("")
+    + report.unknowns.map((f) => line(f, "?")).join("")
+    + report.warnings.map((f) => line(f, "⚠")).join("");
   const jump = [
     ...report.pages_missing, ...report.pages_failed_check, ...report.pages_unknown_check,
   ];

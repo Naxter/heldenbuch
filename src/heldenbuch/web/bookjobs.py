@@ -832,18 +832,23 @@ class BookJobs:
             job.result["cover"] = info["file"]
 
         provider = params.get("provider_hint") or "lulu"
-        # The weakest page decides what the sheet may claim. Every illustration
-        # is scaled up to fill the page, so the PDF always *reports* the
-        # preset's dpi regardless of what the artwork actually holds.
-        measured = [layout_mod.effective_dpi(p, preset)
-                    for p in (resolve(page.image) for page in book.pages if page.image)
-                    if p.is_file()]
-        note = handoff.sheet(book, preset, results, cover_info, provider=provider,
-                             measured_dpi=min(measured) if measured else None)
-        note_path = folder / f"{stem}_druckerei_{provider}.md"
-        note_path.write_text(note, encoding="utf-8")
-        log("")
-        log(f"Anleitung für {handoff.PROVIDERS[provider]['name']} geschrieben.")
+        # Only a file going to a print shop needs shop instructions. The
+        # screen and home-printer presets have no bleed, no spine and no
+        # provider, so the sheet was pure noise beside them.
+        note_path = None
+        if preset.bleed_mm > 0:
+            # The weakest page decides what the sheet may claim. Every
+            # illustration is scaled up to fill the page, so the PDF always
+            # *reports* the preset's dpi regardless of what the artwork holds.
+            measured = [layout_mod.effective_dpi(p, preset)
+                        for p in (resolve(page.image) for page in book.pages if page.image)
+                        if p.is_file()]
+            note = handoff.sheet(book, preset, results, cover_info, provider=provider,
+                                 measured_dpi=min(measured) if measured else None)
+            note_path = folder / f"{stem}_druckerei_{provider}.md"
+            note_path.write_text(note, encoding="utf-8")
+            log("")
+            log(f"Anleitung für {handoff.PROVIDERS[provider]['name']} geschrieben.")
 
         # The files on disk now match this content revision -- until the next
         # edit, which makes them visibly stale again.
@@ -852,7 +857,8 @@ class BookJobs:
 
         job.result["book_id"] = book.id
         job.result["exports"] = results
-        job.result["handoff"] = self.library.relative(note_path)
+        if note_path is not None:
+            job.result["handoff"] = self.library.relative(note_path)
         log("")
         log("Fertig.")
         self._report_spend(book, log)

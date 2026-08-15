@@ -86,6 +86,11 @@ class BookApi:
                     "name": preset.name,
                     "hint": preset.hint,
                     "bleed": preset.bleed_mm > 0,
+                    #: page width including bleed, so the client can work out
+                    #: the real dpi of a picture instead of assuming the
+                    #: square preset's geometry for every format
+                    "page_mm": round(preset.trim_mm[0] + 2 * preset.bleed_mm, 3),
+                    "dpi": preset.dpi,
                 }
                 for preset in PRINT_PRESETS.values()
             ],

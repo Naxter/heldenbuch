@@ -239,6 +239,12 @@ class Api:
     def job_cancel(self, job_id: str, _query, _body) -> dict[str, Any]:
         return {"cancelled": self.jobs.cancel(job_id)}
 
+    def job_retry(self, job_id: str, _query, _body) -> dict[str, Any]:
+        try:
+            return self.jobs.retry(job_id).public()
+        except ValueError as exc:
+            raise ApiError(str(exc), status=404) from exc
+
     # -- runs --------------------------------------------------------------
 
     def runs(self, _query, _body) -> dict[str, Any]:
@@ -326,6 +332,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         ("POST", r"^/api/jobs$", "job_start"),
         ("GET", r"^/api/jobs/([^/]+)$", "job_get"),
         ("POST", r"^/api/jobs/([^/]+)/cancel$", "job_cancel"),
+        ("POST", r"^/api/jobs/([^/]+)/retry$", "job_retry"),
         # the benchmark panel
         ("GET", r"^/api/status$", "status"),
         ("GET", r"^/api/spec$", "spec_get"),

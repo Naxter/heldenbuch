@@ -401,7 +401,7 @@ document.addEventListener("load", (event) => {
 // registered, and the edits vanished on Abbrechen.
 window.addEventListener("unhandledrejection", (event) => {
   const message = event.reason?.message || String(event.reason || "");
-  if (message) toast(`Das hat nicht geklappt: ${message}`);
+  if (message) toast(ti("action_failed", { message }));
   console.error(event.reason);
 });
 
@@ -441,6 +441,43 @@ const LOCALES = {
     books_on_shelf: "Bücher im Regal", pages_drawn: "Seiten gezeichnet",
     services: "Bilddienste",
     ready: "Bereit", jobs: "Aufträge", details: "Details", cancel: "Abbrechen",
+    name: "Name", save: "Speichern", saved: "Gespeichert.", delete: "Löschen",
+    chosen: "ausgewählt", choose: "auswählen", zoom_large: "Groß ansehen",
+    no_drawing_service: "Es fehlt ein Bilddienst — siehe Startseite",
+    action_failed: "Das hat nicht geklappt: {message}",
+    /* hero */
+    hero_who: "Wer ist der Held?",
+    hero_lede: "Lade ein paar Fotos von deinem Sohn hoch — daraus mache ich eine gezeichnete Figur. Oder beschreib die Figur einfach, wenn es kein Foto sein soll. Das machst du <b>einmal</b>; danach kommt er in jedes Buch.",
+    hero_existing: "Schon vorhanden", hero_new: "Neu anlegen",
+    hero_pick_aria: "Figur {name} wählen",
+    hero_unnamed: "Ohne Namen", hero_unnamed_low: "ohne Namen",
+    hero_delete: "Figur löschen", hero_delete_aria: "Figur {name} löschen",
+    hero_sheet_alt: "Charakterblatt von {name}", hero_the_figure: "der Figur",
+    hero_from_photo: "nach Foto", hero_described: "beschrieben",
+    hero_photos_label: "Fotos (optional, bis zu vier)",
+    hero_drop_aria: "Fotos auswählen oder hierher ziehen",
+    hero_drop_title: "Fotos hierher ziehen", hero_drop_hint: "oder klicken zum Auswählen",
+    hero_photo_privacy: "Die Fotos bleiben auf diesem Rechner und werden automatisch aufrecht gedreht. Sie gehen nur für diesen Schritt an Text- und Bilddienst — einmal je gezeichneter Variante — danach arbeite ich nur mit der Zeichnung.",
+    hero_photo_remove: "Klicken zum Entfernen",
+    hero_desc_label: "Beschreibung (nur nötig, wenn du keine Fotos nimmst)",
+    hero_desc_example: "Ein fünfjähriger Junge mit dunkelblonden Locken, blauen Augen und einer roten Latzhose.",
+    hero_age_label: "Ungefähres Alter (hilft beim Zeichnen)",
+    hero_draw: "Figur zeichnen",
+    hero_three_variants: "Ich zeichne drei Varianten, du suchst aus.",
+    hero_need_input: "Entweder Fotos hochladen oder die Figur kurz beschreiben.",
+    hero_your_figure: "Deine Figur",
+    hero_which_fits: "Welche passt am besten? Die ausgewählte wird die Vorlage für jedes Bild.",
+    hero_name_and_desc: "Name &amp; Beschreibung", hero_more_variants: "Noch welche zeichnen",
+    hero_to_look: "Weiter zum Look",
+    hero_pick_variant: "Diese Variante wählen", hero_variant_alt: "Charakterblatt-Variante",
+    hero_how_described: "So habe ich ihn beschrieben",
+    hero_edit: "Figur bearbeiten",
+    hero_edit_desc: "Beschreibung — sie ist der Maßstab, an dem jede Seite auf Ähnlichkeit geprüft wird",
+    hero_edit_note: "Wirkt auf alles, was ab jetzt gezeichnet wird; schon vorhandene Blätter bleiben unverändert.",
+    hero_delete_q: "Diese Figur löschen?",
+    hero_delete_detail: "Charakterblätter und Fotos werden vom Rechner gelöscht. Fertige Bücher behalten ihre Bilder, verlieren aber die Verbindung zur Figur.",
+    hero_deleted: "Figur gelöscht.",
+    job_hero_draw: "Figur wird gezeichnet", job_hero_more: "Weitere Varianten",
   },
   en: {
     tagline: "Make your own picture books",
@@ -455,10 +492,52 @@ const LOCALES = {
     books_on_shelf: "Books on the shelf", pages_drawn: "Pages drawn",
     services: "Image services",
     ready: "Ready", jobs: "Jobs", details: "Details", cancel: "Cancel",
+    name: "Name", save: "Save", saved: "Saved.", delete: "Delete",
+    chosen: "chosen", choose: "choose", zoom_large: "View large",
+    no_drawing_service: "No image service available — see the home screen",
+    action_failed: "That did not work: {message}",
+    /* hero */
+    hero_who: "Who is the hero?",
+    hero_lede: "Upload a few photos of your son — I turn them into a drawn character. Or simply describe the character if you would rather not use a photo. You do this <b>once</b>; after that he is in every book.",
+    hero_existing: "Already there", hero_new: "Create a new one",
+    hero_pick_aria: "Choose character {name}",
+    hero_unnamed: "Without a name", hero_unnamed_low: "without a name",
+    hero_delete: "Delete character", hero_delete_aria: "Delete character {name}",
+    hero_sheet_alt: "Character sheet of {name}", hero_the_figure: "the character",
+    hero_from_photo: "from a photo", hero_described: "described",
+    hero_photos_label: "Photos (optional, up to four)",
+    hero_drop_aria: "Choose photos or drag them here",
+    hero_drop_title: "Drag photos here", hero_drop_hint: "or click to choose",
+    hero_photo_privacy: "The photos stay on this computer and are turned upright automatically. They go to the text and image service for this step only — once per drawn variant — after that I work from the drawing alone.",
+    hero_photo_remove: "Click to remove",
+    hero_desc_label: "Description (only needed if you are not using photos)",
+    hero_desc_example: "A five-year-old boy with dark blond curls, blue eyes and red dungarees.",
+    hero_age_label: "Rough age (helps with the drawing)",
+    hero_draw: "Draw the character",
+    hero_three_variants: "I draw three variants, you pick one.",
+    hero_need_input: "Either upload photos or describe the character briefly.",
+    hero_your_figure: "Your character",
+    hero_which_fits: "Which one fits best? The one you pick becomes the reference for every picture.",
+    hero_name_and_desc: "Name &amp; description", hero_more_variants: "Draw some more",
+    hero_to_look: "On to the style",
+    hero_pick_variant: "Choose this variant", hero_variant_alt: "Character sheet variant",
+    hero_how_described: "How I described him",
+    hero_edit: "Edit character",
+    hero_edit_desc: "Description — it is the yardstick every page is checked against for likeness",
+    hero_edit_note: "Applies to everything drawn from now on; sheets that already exist stay unchanged.",
+    hero_delete_q: "Delete this character?",
+    hero_delete_detail: "Character sheets and photos are deleted from this computer. Finished books keep their pictures but lose the link to the character.",
+    hero_deleted: "Character deleted.",
+    job_hero_draw: "Drawing the character", job_hero_more: "More variants",
   },
 };
 let uiLang = store.get("uiLang") || "de";
 const t = (key) => LOCALES[uiLang]?.[key] ?? LOCALES.de[key] ?? key;
+
+// Numbers and names stay out of the table: a string carries {slots} and gets
+// them filled here, so a translation may put them in a different order.
+const ti = (key, values) => t(key).replace(/\{(\w+)\}/g,
+  (slot, name) => (name in values ? values[name] : slot));
 
 function applyChrome() {
   document.documentElement.lang = uiLang;
@@ -562,7 +641,7 @@ function confirmModal(question, detail, verb, onYes) {
   openModal(`<h3>${esc(question)}</h3>
     <p class="lede">${esc(detail || "")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
       <button class="btn" id="m-yes">${esc(verb)}</button></div>`);
   $("m-yes").onclick = () => { closeModal(); onYes(); };
 }
@@ -1172,51 +1251,46 @@ async function renderHero() {
 
   view().innerHTML = stepsBar("hero") + `
     <div class="card">
-      <h2>Wer ist der Held?</h2>
-      <p class="lede">Lade ein paar Fotos von deinem Sohn hoch — daraus mache ich eine
-        gezeichnete Figur. Oder beschreib die Figur einfach, wenn es kein Foto sein soll.
-        Das machst du <b>einmal</b>; danach kommt er in jedes Buch.</p>
+      <h2>${t("hero_who")}</h2>
+      <p class="lede">${t("hero_lede")}</p>
 
-      ${heroes.length ? `<h3 class="small muted" style="margin-bottom:.6rem">Schon vorhanden</h3>
+      ${heroes.length ? `<h3 class="small muted" style="margin-bottom:.6rem">${t("hero_existing")}</h3>
         <div class="grid g4" style="margin-bottom:1.6rem">` + heroes.map((h) => `
           <div class="pick ${h.id === S.heroId ? "on" : ""}" onclick="chooseHero('${h.id}')"
-            role="button" tabindex="0" aria-label="Figur ${esc(h.name || "ohne Namen")} wählen">
-            <button class="xdel" title="Figur löschen" aria-label="Figur ${esc(h.name || "")} löschen"
+            role="button" tabindex="0" aria-label="${esc(ti("hero_pick_aria", { name: h.name || t("hero_unnamed_low") }))}">
+            <button class="xdel" title="${t("hero_delete")}" aria-label="${esc(ti("hero_delete_aria", { name: h.name || "" }))}"
               onclick="event.stopPropagation();deleteHero('${h.id}')">×</button>
-            ${h.sheet_url ? `<button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
+            ${h.sheet_url ? `<button class="xzoom" title="${t("zoom_large")}" aria-label="${t("zoom_large")}"
               onclick="event.stopPropagation();zoom('${esc(h.sheet_url)}')">🔍</button>` : ""}
-            ${h.sheet_url ? `<img src="${esc(tn(h.sheet_url))}" loading="lazy" decoding="async" alt="Charakterblatt von ${esc(h.name || "der Figur")}">` : ""}
-            <div class="cap"><b>${esc(h.name || "Ohne Namen")}</b>
-              <small>${h.source === "photo" ? "nach Foto" : "beschrieben"}</small></div>
+            ${h.sheet_url ? `<img src="${esc(tn(h.sheet_url))}" loading="lazy" decoding="async" alt="${esc(ti("hero_sheet_alt", { name: h.name || t("hero_the_figure") }))}">` : ""}
+            <div class="cap"><b>${esc(h.name || t("hero_unnamed"))}</b>
+              <small>${h.source === "photo" ? t("hero_from_photo") : t("hero_described")}</small></div>
           </div>`).join("") + `</div>` : ""}
 
-      <h3 class="small muted" style="margin-bottom:.6rem">Neu anlegen</h3>
+      <h3 class="small muted" style="margin-bottom:.6rem">${t("hero_new")}</h3>
       <div class="grid g2">
         <div>
-          <label class="f"><span>Name</span>
+          <label class="f"><span>${t("name")}</span>
             <input type="text" id="h-name" placeholder="Mats" value="${esc(keep.name)}"></label>
-          <label class="f"><span>Fotos (optional, bis zu vier)</span></label>
+          <label class="f"><span>${t("hero_photos_label")}</span></label>
           <div class="drop" id="h-drop" role="button" tabindex="0"
-            aria-label="Fotos auswählen oder hierher ziehen">
-            <div class="small"><b>Fotos hierher ziehen</b><br>oder klicken zum Auswählen</div>
+            aria-label="${t("hero_drop_aria")}">
+            <div class="small"><b>${t("hero_drop_title")}</b><br>${t("hero_drop_hint")}</div>
             <input type="file" id="h-file" accept="image/*" multiple class="hide">
           </div>
           <div class="thumbs" id="h-thumbs"></div>
-          <p class="small muted" style="margin-top:.6rem">Die Fotos bleiben auf diesem
-            Rechner und werden automatisch aufrecht gedreht. Sie gehen nur für diesen
-            Schritt an Text- und Bilddienst — einmal je gezeichneter Variante — danach
-            arbeite ich nur mit der Zeichnung.</p>
+          <p class="small muted" style="margin-top:.6rem">${t("hero_photo_privacy")}</p>
         </div>
         <div>
-          <label class="f"><span>Beschreibung (nur nötig, wenn du keine Fotos nimmst)</span>
-            <textarea id="h-desc" rows="7" placeholder="Ein fünfjähriger Junge mit dunkelblonden Locken, blauen Augen und einer roten Latzhose.">${esc(keep.description)}</textarea></label>
-          <label class="f"><span>Ungefähres Alter (hilft beim Zeichnen)</span>
+          <label class="f"><span>${t("hero_desc_label")}</span>
+            <textarea id="h-desc" rows="7" placeholder="${esc(t("hero_desc_example"))}">${esc(keep.description)}</textarea></label>
+          <label class="f"><span>${t("hero_age_label")}</span>
             <input type="text" id="h-age" placeholder="5" value="${esc(keep.age)}"></label>
           <div class="row">
-            <button class="btn" id="h-go" ${can("drawing") ? "" : `disabled title="Es fehlt ein Bilddienst — siehe Startseite"`}>Figur zeichnen · ${eur(3 * sheetUsd())}</button>
+            <button class="btn" id="h-go" ${can("drawing") ? "" : `disabled title="${t("no_drawing_service")}"`}>${t("hero_draw")} · ${eur(3 * sheetUsd())}</button>
             ${pickerHtml()}
           </div>
-          <p class="small muted" style="margin-top:.6rem">Ich zeichne drei Varianten, du suchst aus.</p>
+          <p class="small muted" style="margin-top:.6rem">${t("hero_three_variants")}</p>
         </div>
       </div>
     </div>
@@ -1229,57 +1303,53 @@ async function renderHero() {
 function heroVariants(hero) {
   return `<div class="card">
     <div class="spread"><div>
-      <h2>${esc(hero.name || "Deine Figur")}</h2>
-      <p class="lede" style="margin-bottom:0">Welche passt am besten? Die ausgewählte
-        wird die Vorlage für jedes Bild.</p></div>
+      <h2>${esc(hero.name || t("hero_your_figure"))}</h2>
+      <p class="lede" style="margin-bottom:0">${t("hero_which_fits")}</p></div>
       <div class="row">
-        <button class="btn ghost" onclick="editHero()">Name &amp; Beschreibung</button>
-        <button class="btn ghost" onclick="moreVariants()">Noch welche zeichnen
+        <button class="btn ghost" onclick="editHero()">${t("hero_name_and_desc")}</button>
+        <button class="btn ghost" onclick="moreVariants()">${t("hero_more_variants")}
           · ${eur(2 * sheetUsd())}</button>
         ${pickerHtml()}
-        <button class="btn" onclick="go('look')">Weiter zum Look</button>
+        <button class="btn" onclick="go('look')">${t("hero_to_look")}</button>
       </div></div>
     <div class="grid g3" style="margin-top:1.2rem">` + hero.variant_urls.map((v) => `
       <div class="pick ${v.path === hero.sheet ? "on" : ""}" role="button" tabindex="0"
-        aria-label="Diese Variante wählen" onclick="pickSheet('${v.path}')">
-        <button class="xzoom" title="Groß ansehen" aria-label="Groß ansehen"
+        aria-label="${t("hero_pick_variant")}" onclick="pickSheet('${v.path}')">
+        <button class="xzoom" title="${t("zoom_large")}" aria-label="${t("zoom_large")}"
           onclick="event.stopPropagation();zoom('${esc(v.url)}')">🔍</button>
-        <img src="${esc(tn(v.url))}" loading="lazy" decoding="async" alt="Charakterblatt-Variante">
-        <div class="cap"><small>${v.path === hero.sheet ? "ausgewählt" : "auswählen"}</small></div>
+        <img src="${esc(tn(v.url))}" loading="lazy" decoding="async" alt="${t("hero_variant_alt")}">
+        <div class="cap"><small>${v.path === hero.sheet ? t("chosen") : t("choose")}</small></div>
       </div>`).join("") + `</div>
-    <details style="margin-top:1rem"><summary class="small muted">So habe ich ihn beschrieben</summary>
+    <details style="margin-top:1rem"><summary class="small muted">${t("hero_how_described")}</summary>
       <p class="small muted" style="margin-top:.5rem">${esc(hero.description)}</p></details>
   </div>`;
 }
 
 async function editHero() {
   const hero = await api(`/api/book/heroes/${S.heroId}`);
-  openModal(`<h3>Figur bearbeiten</h3>
-    <label class="f"><span>Name</span>
+  openModal(`<h3>${t("hero_edit")}</h3>
+    <label class="f"><span>${t("name")}</span>
       <input type="text" id="m-name" value="${esc(hero.name)}"></label>
-    <label class="f"><span>Beschreibung — sie ist der Maßstab, an dem jede Seite
-      auf Ähnlichkeit geprüft wird</span>
+    <label class="f"><span>${t("hero_edit_desc")}</span>
       <textarea id="m-desc" rows="7">${esc(hero.description)}</textarea></label>
-    <p class="small muted">Wirkt auf alles, was ab jetzt gezeichnet wird; schon
-      vorhandene Blätter bleiben unverändert.</p>
+    <p class="small muted">${t("hero_edit_note")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-      <button class="btn" id="m-save">Speichern</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-save">${t("save")}</button></div>`);
   $("m-save").onclick = async () => {
     await api(`/api/book/heroes/${S.heroId}`, { method: "PUT", body: JSON.stringify(
       { name: $("m-name").value.trim(), description: $("m-desc").value.trim() }) });
-    closeModal(); toast("Gespeichert."); renderHero();
+    closeModal(); toast(t("saved")); renderHero();
   };
 }
 
 function deleteHero(id) {
-  confirmModal("Diese Figur löschen?",
-    "Charakterblätter und Fotos werden vom Rechner gelöscht. Fertige Bücher behalten ihre Bilder, verlieren aber die Verbindung zur Figur.",
-    "Löschen", async () => {
+  confirmModal(t("hero_delete_q"), t("hero_delete_detail"),
+    t("delete"), async () => {
       await api(`/api/book/heroes/${id}`, { method: "DELETE" });
       if (S.heroId === id) { S.heroId = null; store.set("heroId", null);
         S.styleId = null; store.set("styleId", null); }
-      toast("Figur gelöscht."); renderHero();
+      toast(t("hero_deleted")); renderHero();
     });
 }
 
@@ -1306,7 +1376,7 @@ async function takePhotos(files) {
 
 function renderThumbs() {
   $("h-thumbs").innerHTML = pendingPhotos.map((p, i) => `
-    <img src="${p.data}" alt="" title="Klicken zum Entfernen"
+    <img src="${p.data}" alt="" title="${t("hero_photo_remove")}"
       style="cursor:pointer" onclick="dropPhoto(${i})">`).join("");
 }
 
@@ -1315,12 +1385,12 @@ function dropPhoto(index) { pendingPhotos.splice(index, 1); renderThumbs(); }
 function createHero() {
   const description = $("h-desc").value.trim();
   if (!pendingPhotos.length && !description) {
-    toast("Entweder Fotos hochladen oder die Figur kurz beschreiben."); return;
+    toast(t("hero_need_input")); return;
   }
   runJob("hero_create",
     { name: $("h-name").value.trim(), description, age_hint: $("h-age").value.trim(),
       photos: pendingPhotos, variants: 3, ...drawParams() },
-    "Figur wird gezeichnet",
+    t("job_hero_draw"),
     (job) => {
       if (job.result.hero_id) {
         S.heroId = job.result.hero_id; store.set("heroId", S.heroId);
@@ -1333,7 +1403,7 @@ function createHero() {
 
 function moreVariants() {
   runJob("hero_more", { hero_id: S.heroId, variants: 2, ...drawParams() },
-    "Weitere Varianten", renderHero);
+    t("job_hero_more"), renderHero);
 }
 function chooseHero(id) {
   if (id !== S.heroId) {  // re-clicking the chosen hero must not reset the style

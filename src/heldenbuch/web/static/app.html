@@ -510,6 +510,39 @@ const LOCALES = {
     job_style_from_image: "Stil wird aus dem Bild abgeleitet",
     job_style_adopt: "Stil wird eingerichtet",
     job_style_scout: "Bilddienste werden verglichen",
+    /* story */
+    story_what: "Worum soll es gehen?",
+    story_lede: "Ein Satz reicht. Wenn dir nichts einfällt, lass das Feld leer — dann denke ich mir etwas aus, das zu dem Alter passt.",
+    story_idea_label: "Die Idee", story_age_label: "Für welches Alter?",
+    story_pages_n: "{n} Seiten", quality: "Bildqualität",
+    story_langs_label: "Sprachen — die Bilder sind für alle dieselben, nur die Worte ändern sich",
+    story_rhyme: "In Reimen", story_revise: "Danach noch einmal überarbeiten",
+    story_recommended: "(empfohlen)",
+    no_writing_key: "Es fehlt ein Text-Schlüssel — siehe Startseite",
+    story_write: "Geschichte schreiben", story_write_new: "Neue Geschichte schreiben",
+    story_to_pictures: "Zu den Bildern",
+    pick_a_language: "Mindestens eine Sprache auswählen.",
+    job_story_write: "Geschichte wird geschrieben",
+    story_page_nav: "Seiten-Navigation", page_n: "Seite {n}", page_n_caps: "SEITE {n}",
+    story_editor_lede: "{count} Seiten. Text und Bildanweisung sind direkt editierbar und werden beim Verlassen des Feldes gespeichert — „KI: neu“ lässt die Seite stattdessen neu schreiben.",
+    book_draw_pictures: "Bilder zeichnen",
+    story_cast_note: "Weitere Figuren und Orte, die auch ein Referenzblatt bekommen: {names}",
+    page_image_alt: "Bild Seite {n}",
+    story_stale_title: "Seit dem Zeichnen geändert — das Bild zeigt noch die alte Anweisung",
+    story_stale_flag: "Bild noch alt", story_text_aria: "Text Seite {n}",
+    story_illustration_short: "Bild:",
+    story_illustration_title: "Was die Illustration zeigt (englisch)",
+    layout_label: "Seitenlayout", layout_aria: "Layout Seite {n}",
+    story_ai_rewrite: "KI: neu",
+    story_ai_rewrite_title: "Die KI schreibt Text und Bildanweisung dieser Seite neu",
+    page_saved: "Seite {n} gespeichert.",
+    save_failed: "Speichern fehlgeschlagen: {message}",
+    layout_saved: "Layout von Seite {n} gespeichert.",
+    illustration_saved: "Bildanweisung für Seite {n} gespeichert — wirkt beim nächsten Zeichnen.",
+    rewrite_title: "Seite {n} neu schreiben",
+    rewrite_label: "Was soll anders sein? (leer lassen = einfach besser machen)",
+    rewrite_placeholder: "Weniger Text. Und es soll regnen.",
+    rewrite_verb: "Neu schreiben", job_page_rewrite: "Seite {n} neu",
   },
   en: {
     tagline: "Make your own picture books",
@@ -593,6 +626,39 @@ const LOCALES = {
     job_style_from_image: "Deriving the style from the image",
     job_style_adopt: "Setting the style up",
     job_style_scout: "Comparing image services",
+    /* story */
+    story_what: "What should it be about?",
+    story_lede: "One sentence is enough. If nothing comes to mind, leave the field empty — then I think of something that suits the age.",
+    story_idea_label: "The idea", story_age_label: "For what age?",
+    story_pages_n: "{n} pages", quality: "Image quality",
+    story_langs_label: "Languages — the pictures are the same for all of them, only the words change",
+    story_rhyme: "In rhyme", story_revise: "Revise it once afterwards",
+    story_recommended: "(recommended)",
+    no_writing_key: "No text key available — see the home screen",
+    story_write: "Write the story", story_write_new: "Write a new story",
+    story_to_pictures: "On to the pictures",
+    pick_a_language: "Choose at least one language.",
+    job_story_write: "Writing the story",
+    story_page_nav: "Page navigation", page_n: "Page {n}", page_n_caps: "PAGE {n}",
+    story_editor_lede: "{count} pages. Text and illustration brief can be edited right here and are saved when you leave the field — “AI: redo” has the page written again instead.",
+    book_draw_pictures: "Draw the pictures",
+    story_cast_note: "Further characters and places that also get a reference sheet: {names}",
+    page_image_alt: "Picture page {n}",
+    story_stale_title: "Changed since it was drawn — the picture still shows the old brief",
+    story_stale_flag: "Picture still old", story_text_aria: "Text page {n}",
+    story_illustration_short: "Picture:",
+    story_illustration_title: "What the illustration shows (in English)",
+    layout_label: "Page layout", layout_aria: "Layout page {n}",
+    story_ai_rewrite: "AI: redo",
+    story_ai_rewrite_title: "The AI writes this page's text and illustration brief again",
+    page_saved: "Page {n} saved.",
+    save_failed: "Saving failed: {message}",
+    layout_saved: "Layout of page {n} saved.",
+    illustration_saved: "Illustration brief for page {n} saved — it takes effect the next time the page is drawn.",
+    rewrite_title: "Write page {n} again",
+    rewrite_label: "What should be different? (leave empty = just make it better)",
+    rewrite_placeholder: "Less text. And let it rain.",
+    rewrite_verb: "Write it again", job_page_rewrite: "Rewriting page {n}",
   },
 };
 let uiLang = store.get("uiLang") || "de";
@@ -1658,50 +1724,49 @@ async function renderStory() {
 
   view().innerHTML = stepsBar("story") + `
     <div class="card">
-      <h2>Worum soll es gehen?</h2>
-      <p class="lede">Ein Satz reicht. Wenn dir nichts einfällt, lass das Feld leer —
-        dann denke ich mir etwas aus, das zu dem Alter passt.</p>
+      <h2>${t("story_what")}</h2>
+      <p class="lede">${t("story_lede")}</p>
 
-      <label class="f"><span>Die Idee</span>
+      <label class="f"><span>${t("story_idea_label")}</span>
         <textarea id="s-idea" rows="3"
           placeholder="Eine Geschichte über Angst im Dunkeln, mit einem Leuchtturm.">${esc(book?.idea || "")}</textarea></label>
 
       <div class="grid g2">
-        <label class="f"><span>Für welches Alter?</span>
+        <label class="f"><span>${t("story_age_label")}</span>
           <select id="s-age">${(S.status.ages || []).map((a) => `
             <option value="${a.key}" ${(book?.age || "4-5") === a.key ? "selected" : ""}>
-              ${esc(a.label)} — ${a.pages} Seiten</option>`).join("")}</select></label>
-        <label class="f"><span>Bildqualität</span>
+              ${esc(a.label)} — ${ti("story_pages_n", { n: a.pages })}</option>`).join("")}</select></label>
+        <label class="f"><span>${t("quality")}</span>
           <select id="s-quality">${(S.status.render_profiles || []).map((p) => `
             <option value="${p.key}" ${(book?.render_quality || "draft") === p.key ? "selected" : ""}>
               ${esc(p.label)}</option>`).join("")}</select></label>
       </div>
 
-      <label class="f"><span>Sprachen — die Bilder sind für alle dieselben, nur die Worte ändern sich</span></label>
+      <label class="f"><span>${t("story_langs_label")}</span></label>
       <div class="chips" id="s-langs">${languageChips(book?.languages || ["de"])}</div>
 
       <div class="row" style="margin-top:1rem">
         <label class="check"><input type="checkbox" id="s-rhyme" ${book?.rhyme ? "checked" : ""}>
-          In Reimen</label>
+          ${t("story_rhyme")}</label>
         <label class="check"><input type="checkbox" id="s-revise" checked>
-          Danach noch einmal überarbeiten <span class="muted small">(empfohlen)</span></label>
+          ${t("story_revise")} <span class="muted small">${t("story_recommended")}</span></label>
       </div>
 
       <div class="row" style="margin-top:1.3rem">
-        <button class="btn" id="s-go" ${can("writing") ? "" : `disabled title="Es fehlt ein Text-Schlüssel — siehe Startseite"`}>${book ? "Neue Geschichte schreiben" : "Geschichte schreiben"}</button>
-        ${book ? `<button class="btn ghost" onclick="go('book')">Zu den Bildern</button>` : ""}
+        <button class="btn" id="s-go" ${can("writing") ? "" : `disabled title="${t("no_writing_key")}"`}>${book ? t("story_write_new") : t("story_write")}</button>
+        ${book ? `<button class="btn ghost" onclick="go('book')">${t("story_to_pictures")}</button>` : ""}
       </div>
     </div>
     ${book ? storyEditor(book) : ""}`;
 
   $("s-go").onclick = () => {
     const languages = [...$("s-langs").querySelectorAll("input:checked")].map((i) => i.value);
-    if (!languages.length) return toast("Mindestens eine Sprache auswählen.");
+    if (!languages.length) return toast(t("pick_a_language"));
     runJob("story_write", {
       hero_id: S.heroId, style_id: S.styleId, idea: $("s-idea").value.trim(),
       age: $("s-age").value, languages, render_quality: $("s-quality").value,
       rhyme: $("s-rhyme").checked, revise: $("s-revise").checked,
-    }, "Geschichte wird geschrieben", (job) => {
+    }, t("job_story_write"), (job) => {
       if (job.result.book_id) { S.bookId = job.result.book_id; store.set("bookId", S.bookId); }
       renderStory();
     });
@@ -1724,12 +1789,12 @@ function storyEditor(book) {
   // The rail: one dot per page, coloured by what needs attention, jumping
   // straight to the page. Sixteen pages of forms need a map.
   const rail = book.pages.length > 6 ? `
-    <div class="row" style="gap:.25rem;margin-top:1rem" aria-label="Seiten-Navigation">
+    <div class="row" style="gap:.25rem;margin-top:1rem" aria-label="${t("story_page_nav")}">
       ${book.pages.map((p) => {
         const colour = p.error ? "var(--bad)"
           : (p.check_status === "failed" || p.image_stale) ? "var(--warn)"
           : p.image_url ? "var(--good)" : "var(--line)";
-        return `<a href="#edit-page-${p.index}" title="Seite ${p.index}"
+        return `<a href="#edit-page-${p.index}" title="${ti("page_n", { n: p.index })}"
           style="width:1.5rem;height:1.5rem;border-radius:6px;display:grid;place-items:center;
           font-size:.7rem;text-decoration:none;color:var(--fg);
           border:2px solid ${colour}">${p.index}</a>`;
@@ -1738,14 +1803,12 @@ function storyEditor(book) {
   return `<div class="card">
     <div class="spread"><div>
       <h2>${esc(book.title[language] || book.display_title)}</h2>
-      <p class="lede" style="margin-bottom:0">${book.pages.length} Seiten. Text und
-        Bildanweisung sind direkt editierbar und werden beim Verlassen des Feldes
-        gespeichert — „KI: neu“ lässt die Seite stattdessen neu schreiben.</p></div>
-      <button class="btn" onclick="go('book')">Bilder zeichnen</button></div>
+      <p class="lede" style="margin-bottom:0">${
+        ti("story_editor_lede", { count: book.pages.length })}</p></div>
+      <button class="btn" onclick="go('book')">${t("book_draw_pictures")}</button></div>
 
     ${book.cast.length ? `<p class="small muted" style="margin-top:.8rem">
-      Weitere Figuren und Orte, die auch ein Referenzblatt bekommen:
-      ${book.cast.map((c) => esc(c.name)).join(", ")}</p>` : ""}
+      ${ti("story_cast_note", { names: book.cast.map((c) => esc(c.name)).join(", ") })}</p>` : ""}
     ${languageTabs}
     ${rail}
 
@@ -1753,29 +1816,29 @@ function storyEditor(book) {
       <div id="edit-page-${p.index}"
         style="display:flex;gap:.9rem;padding:.7rem 0;border-bottom:1px solid var(--line)">
         ${p.image_url
-          ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="Bild Seite ${p.index}" onclick="zoom('${esc(p.image_url)}')"
+          ? `<img src="${esc(tn(p.image_url))}" loading="lazy" decoding="async" alt="${ti("page_image_alt", { n: p.index })}" onclick="zoom('${esc(p.image_url)}')"
               style="width:76px;height:76px;object-fit:cover;border-radius:8px;cursor:zoom-in;flex:none">`
           : `<div class="num" style="min-width:1.8rem;padding-top:.5rem">${p.index}</div>`}
         <div style="flex:1">
-          ${p.image_url ? `<div class="num">SEITE ${p.index}
+          ${p.image_url ? `<div class="num">${ti("page_n_caps", { n: p.index })}
             ${p.image_stale ? `<span class="flag warn"
-              title="Seit dem Zeichnen geändert — das Bild zeigt noch die alte Anweisung">Bild noch alt</span>` : ""}</div>` : ""}
+              title="${t("story_stale_title")}">${t("story_stale_flag")}</span>` : ""}</div>` : ""}
           <textarea rows="2" data-page="${p.index}" data-lang="${language}" lang="${language}"
-            aria-label="Text Seite ${p.index}" onchange="savePage(this)">${esc(p.text[language] || "")}</textarea>
+            aria-label="${ti("story_text_aria", { n: p.index })}" onchange="savePage(this)">${esc(p.text[language] || "")}</textarea>
           <label class="small muted" style="display:flex;gap:.4rem;align-items:baseline;margin-top:.3rem">
-            Bild:
-            <input type="text" value="${esc(p.illustration)}" title="Was die Illustration zeigt (englisch)"
+            ${t("story_illustration_short")}
+            <input type="text" value="${esc(p.illustration)}" title="${t("story_illustration_title")}"
               style="flex:1;font-size:.82rem;padding:.25rem .5rem"
               onchange="saveIllustration(${p.index}, this.value)">
           </label>
         </div>
         <div style="display:flex;flex-direction:column;gap:.3rem;align-items:flex-end">
-          <label class="small muted" style="text-align:right">Seitenlayout
+          <label class="small muted" style="text-align:right">${t("layout_label")}
             <select style="width:auto;font-size:.78rem;padding:.2rem .4rem;display:block"
-              aria-label="Layout Seite ${p.index}"
+              aria-label="${ti("layout_aria", { n: p.index })}"
               onchange="saveLayout(${p.index}, this.value)">${layoutOptions(p.layout)}</select></label>
           <button class="btn ghost tiny" onclick="rewrite(${p.index})"
-            title="Die KI schreibt Text und Bildanweisung dieser Seite neu">KI: neu</button>
+            title="${t("story_ai_rewrite_title")}">${t("story_ai_rewrite")}</button>
         </div>
       </div>`).join("") + `</div></div>`;
 }
@@ -1787,37 +1850,38 @@ async function savePage(element) {
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
       pages: [{ index: Number(element.dataset.page),
                 text: { [element.dataset.lang]: element.value } }] }) });
-    toast(`Seite ${element.dataset.page} gespeichert.`);
+    toast(ti("page_saved", { n: element.dataset.page }));
   } catch (exc) {
-    toast(`Speichern fehlgeschlagen: ${exc.message}`);
+    toast(ti("save_failed", { message: exc.message }));
   }
 }
 async function saveLayout(index, layout) {
   try {
     await api(`/api/book/books/${S.bookId}`,
       { method: "PUT", body: JSON.stringify({ pages: [{ index, layout }] }) });
-    toast(`Layout von Seite ${index} gespeichert.`);
+    toast(ti("layout_saved", { n: index }));
   } catch (exc) {
-    toast(`Speichern fehlgeschlagen: ${exc.message}`);
+    toast(ti("save_failed", { message: exc.message }));
   }
 }
 async function saveIllustration(index, illustration) {
   if (!illustration.trim()) return;
   await api(`/api/book/books/${S.bookId}`,
     { method: "PUT", body: JSON.stringify({ pages: [{ index, illustration }] }) });
-  toast(`Bildanweisung für Seite ${index} gespeichert — wirkt beim nächsten Zeichnen.`);
+  toast(ti("illustration_saved", { n: index }));
 }
 function rewrite(index) {
-  openModal(`<h3>Seite ${index} neu schreiben</h3>
-    <label class="f"><span>Was soll anders sein? (leer lassen = einfach besser machen)</span>
-      <textarea id="m-note" rows="3" placeholder="Weniger Text. Und es soll regnen."></textarea></label>
+  openModal(`<h3>${ti("rewrite_title", { n: index })}</h3>
+    <label class="f"><span>${t("rewrite_label")}</span>
+      <textarea id="m-note" rows="3" placeholder="${esc(t("rewrite_placeholder"))}"></textarea></label>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Abbrechen</button>
-      <button class="btn" id="m-go">Neu schreiben</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-go">${t("rewrite_verb")}</button></div>`);
   $("m-go").onclick = () => {
     const note = $("m-note").value.trim();
     closeModal();
-    runJob("story_rewrite", { book_id: S.bookId, index, note }, `Seite ${index} neu`,
+    runJob("story_rewrite", { book_id: S.bookId, index, note },
+      ti("job_page_rewrite", { n: index }),
       () => (S.screen === "book" ? renderBook() : renderStory()));
   };
 }

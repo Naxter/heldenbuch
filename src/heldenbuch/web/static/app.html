@@ -441,6 +441,32 @@ const LOCALES = {
     books_on_shelf: "Bücher im Regal", pages_drawn: "Seiten gezeichnet",
     services: "Bilddienste",
     ready: "Bereit", jobs: "Aufträge", details: "Details", cancel: "Abbrechen",
+    /* jobs: names, states and the drawer's own words. `pollJob` rewrites the
+       drawer title about a second after a job starts, so these decide what a
+       running job is called far more than the title passed to runJob. */
+    job_hero_create: "Figur zeichnen", job_hero_more: "Weitere Varianten",
+    job_style_try: "Stil ausprobieren", job_style_adopt: "Stil einrichten",
+    job_style_scout: "Bilddienste vergleichen", job_voice_preview: "Stimmprobe",
+    job_story_write: "Geschichte schreiben", job_story_rewrite: "Seite neu schreiben",
+    job_story_languages: "Sprache dazu", job_book_illustrate: "Bilder zeichnen",
+    job_book_check: "Seiten prüfen", job_book_undo: "Seite zurück",
+    job_book_photo: "Fotoseite", job_book_narrate: "Ton erzeugen",
+    job_book_export: "PDF bauen", job_cast_redraw: "Referenzblatt zeichnen",
+    job_bench_run: "Vergleich läuft", job_bench_generate: "Vergleichsbilder zeichnen",
+    job_bench_score: "Vergleich bewerten", job_bench_report: "Vergleichsbericht bauen",
+    state_queued: "wartet", state_running: "läuft", state_done: "fertig",
+    state_failed: "fehlgeschlagen", state_cancelled: "abgebrochen",
+    verdict_done: "Fertig", verdict_cancelled: "Abgebrochen",
+    verdict_failed: "Fehlgeschlagen", verdict_error: "Fehler",
+    job_generic: "Auftrag", job_retry_suffix: "{name} — neuer Versuch",
+    job_queue_ahead: " — {count} davor",
+    job_none_running: "Gerade läuft nichts.",
+    job_one_at_a_time: "Es läuft immer nur ein Auftrag — alles weitere wartet in der Reihe und geht dann von selbst los.",
+    job_why: "warum?", job_retry: "erneut", job_cancelling: "Wird abgebrochen.",
+    conn_lost_title: "Verbindung unterbrochen — versuche erneut …",
+    conn_lost_log: "Verbindung verloren: {message}",
+    conn_lost_hint: "Der Auftrag läuft weiter. Seite neu laden, um wieder mitzulesen.",
+    progress_done: "{done} von {total} fertig",
     name: "Name", save: "Speichern", saved: "Gespeichert.", delete: "Löschen",
     chosen: "ausgewählt", choose: "auswählen", zoom_large: "Groß ansehen",
     no_drawing_service: "Es fehlt ein Bilddienst — siehe Startseite",
@@ -749,6 +775,29 @@ const LOCALES = {
     books_on_shelf: "Books on the shelf", pages_drawn: "Pages drawn",
     services: "Image services",
     ready: "Ready", jobs: "Jobs", details: "Details", cancel: "Cancel",
+    job_hero_create: "Draw the character", job_hero_more: "More variants",
+    job_style_try: "Try a style", job_style_adopt: "Set up the style",
+    job_style_scout: "Compare image services", job_voice_preview: "Voice sample",
+    job_story_write: "Write the story", job_story_rewrite: "Rewrite the page",
+    job_story_languages: "Add a language", job_book_illustrate: "Draw the pictures",
+    job_book_check: "Check the pages", job_book_undo: "Undo the page",
+    job_book_photo: "Photo page", job_book_narrate: "Record the narration",
+    job_book_export: "Build the PDF", job_cast_redraw: "Draw a reference sheet",
+    job_bench_run: "Comparison running", job_bench_generate: "Draw comparison images",
+    job_bench_score: "Score the comparison", job_bench_report: "Build the comparison report",
+    state_queued: "waiting", state_running: "running", state_done: "done",
+    state_failed: "failed", state_cancelled: "cancelled",
+    verdict_done: "Done", verdict_cancelled: "Cancelled",
+    verdict_failed: "Failed", verdict_error: "Error",
+    job_generic: "Job", job_retry_suffix: "{name} — new attempt",
+    job_queue_ahead: " — {count} ahead",
+    job_none_running: "Nothing is running right now.",
+    job_one_at_a_time: "Only one job runs at a time — everything else waits in line and starts by itself.",
+    job_why: "why?", job_retry: "retry", job_cancelling: "Cancelling.",
+    conn_lost_title: "Connection interrupted — trying again …",
+    conn_lost_log: "Connection lost: {message}",
+    conn_lost_hint: "The job keeps running. Reload the page to follow it again.",
+    progress_done: "{done} of {total} done",
     name: "Name", save: "Save", saved: "Saved.", delete: "Delete",
     chosen: "chosen", choose: "choose", zoom_large: "View large",
     no_drawing_service: "No image service available — see the home screen",
@@ -1394,18 +1443,18 @@ async function pollJob() {
     // and label a healthy render "Fehler".
     S.pollFails = (S.pollFails || 0) + 1;
     if (S.pollFails < 10) {
-      $("dtitle").textContent = "Verbindung unterbrochen — versuche erneut …";
+      $("dtitle").textContent = t("conn_lost_title");
       return;
     }
-    appendLog(`Verbindung verloren: ${exc.message}`);
-    appendLog("Der Auftrag läuft weiter. Seite neu laden, um wieder mitzulesen.");
+    appendLog(ti("conn_lost_log", { message: exc.message }));
+    appendLog(t("conn_lost_hint"));
     return endJob(null);
   }
 
   if (job.lines.length) { S.seen = job.total_lines; appendLog(job.lines.join("\n")); }
-  const name = JOB_NAMES[job.action] || job.action;
+  const name = jobName(job.action);
   $("dtitle").textContent = job.status === "queued"
-    ? `${name} — wartet (${job.queued_behind} vor dir)`
+    ? `${name} — ${t("state_queued")}${ti("job_queue_ahead", { count: job.queued_behind })}`
     : `${name} · ${Math.round(job.elapsed)}s`;
 
   // The bar: real progress when the worker reports it, a wandering shimmer
@@ -1418,13 +1467,14 @@ async function pollJob() {
       const percent = Math.round(100 * job.progress.done / job.progress.total);
       bar.firstElementChild.style.width = `${percent}%`;
       bar.setAttribute("aria-valuenow", String(percent));
-      bar.setAttribute("aria-valuetext",
-        `${job.progress.done} von ${job.progress.total} fertig`);
+      const spoken = ti("progress_done",
+        { done: job.progress.done, total: job.progress.total });
+      bar.setAttribute("aria-valuetext", spoken);
       $("dcount").textContent = `${job.progress.done} / ${job.progress.total}`;
       // Spoken once per finished page, not once per poll.
       if (job.progress.done !== S.saidDone) {
         S.saidDone = job.progress.done;
-        say(`${job.progress.done} von ${job.progress.total} fertig`);
+        say(spoken);
       }
     } else {
       bar.classList.add("indeterminate");
@@ -1503,11 +1553,11 @@ function endJob(job) {
   const ok = job && job.status === "done";
   dot.style.background = ok ? "var(--good)"
     : (job && job.status === "cancelled" ? "var(--warn)" : "var(--bad)");
-  const verdict = ok ? "Fertig"
-    : (job ? ({ cancelled: "Abgebrochen", failed: "Fehlgeschlagen" }[job.status] || job.status)
-           : "Fehler");
+  const verdict = ok ? t("verdict_done")
+    : (job ? (LOCALES.de[`verdict_${job.status}`] ? t(`verdict_${job.status}`) : job.status)
+           : t("verdict_error"));
   $("dtitle").textContent = verdict;
-  say(`${$("dtitle").dataset.job || "Auftrag"}: ${verdict}`);
+  say(`${$("dtitle").dataset.job || t("job_generic")}: ${verdict}`);
   S.saidDone = -1;
   $("dprog").classList.add("hide");
   $("dcount").textContent = "";
@@ -1528,53 +1578,55 @@ function endJob(job) {
 /* The job center: every queued, running and recent job in one place, with a
    retry for failures. The drawer follows only the newest job; this is where
    an overlapping second job stays visible and understandable. */
-const JOB_NAMES = {
-  hero_create: "Figur zeichnen", hero_more: "Weitere Varianten",
-  style_try: "Stil ausprobieren", style_adopt: "Stil einrichten",
-  style_scout: "Bilddienste vergleichen", voice_preview: "Stimmprobe",
-  story_write: "Geschichte schreiben", story_rewrite: "Seite neu schreiben",
-  story_languages: "Sprache dazu", book_illustrate: "Bilder zeichnen",
-  book_check: "Seiten prüfen", book_undo: "Seite zurück",
-  book_photo: "Fotoseite", book_narrate: "Ton erzeugen", book_export: "PDF bauen",
+// The action name a person sees. Unknown actions fall back to the raw id
+// rather than showing a locale key.
+function jobName(action) {
+  const key = `job_${action}`;
+  return LOCALES.de[key] ? t(key) : action;
+}
+
+const STATE_COLOURS = {
+  queued: "var(--warn)", running: "var(--accent)", done: "var(--good)",
+  failed: "var(--bad)", cancelled: "var(--muted)",
 };
-const JOB_STATES = {
-  queued: ["wartet", "var(--warn)"], running: ["läuft", "var(--accent)"],
-  done: ["fertig", "var(--good)"], failed: ["fehlgeschlagen", "var(--bad)"],
-  cancelled: ["abgebrochen", "var(--muted)"],
-};
+
+function jobState(status) {
+  const key = `state_${status}`;
+  return [LOCALES.de[key] ? t(key) : status,
+          STATE_COLOURS[status] || "var(--muted)"];
+}
 
 async function jobCenter() {
   let status;
   try { status = await api("/api/book/status"); } catch { return; }
   const jobs = status.jobs || [];
   const rows = jobs.map((job) => {
-    const [word, colour] = JOB_STATES[job.status] || [job.status, "var(--muted)"];
+    const [word, colour] = jobState(job.status);
     const queuePos = job.status === "queued" && job.queued_behind
-      ? ` — ${job.queued_behind} davor` : "";
+      ? ti("job_queue_ahead", { count: job.queued_behind }) : "";
     const canRetry = job.status === "failed";
     const canCancel = job.status === "running" || job.status === "queued";
     return `<tr>
-      <td>${esc(JOB_NAMES[job.action] || job.action)}</td>
+      <td>${esc(jobName(job.action))}</td>
       <td style="color:${colour};white-space:nowrap">${word}${queuePos}</td>
       <td class="muted" style="text-align:right;white-space:nowrap">${Math.round(job.elapsed)}s</td>
       <td style="text-align:right;white-space:nowrap">
-        ${canCancel ? `<button class="btn ghost tiny" onclick="cancelJob('${job.id}')">abbrechen</button>` : ""}
-        ${canRetry ? `<button class="btn ghost tiny" onclick="retryJob('${job.id}')">erneut</button>` : ""}
-        ${job.status === "failed" && job.error ? `<span class="small muted" title="${esc(job.error)}">warum?</span>` : ""}
+        ${canCancel ? `<button class="btn ghost tiny" onclick="cancelJob('${job.id}')">${t("cancel")}</button>` : ""}
+        ${canRetry ? `<button class="btn ghost tiny" onclick="retryJob('${job.id}')">${t("job_retry")}</button>` : ""}
+        ${job.status === "failed" && job.error ? `<span class="small muted" title="${esc(job.error)}">${t("job_why")}</span>` : ""}
       </td></tr>`;
   }).join("");
-  openModal(`<h3>Aufträge</h3>
+  openModal(`<h3>${t("jobs")}</h3>
     ${jobs.length ? `<table class="small" style="width:100%;border-collapse:collapse">
-      ${rows}</table>` : `<p class="lede">Gerade läuft nichts.</p>`}
-    <p class="small muted" style="margin-top:.8rem">Es läuft immer nur ein Auftrag —
-      alles weitere wartet in der Reihe und geht dann von selbst los.</p>
+      ${rows}</table>` : `<p class="lede">${t("job_none_running")}</p>`}
+    <p class="small muted" style="margin-top:.8rem">${t("job_one_at_a_time")}</p>
     <div class="row" style="justify-content:flex-end">
-      <button class="btn ghost" onclick="closeModal()">Schließen</button></div>`);
+      <button class="btn ghost" onclick="closeModal()">${t("close")}</button></div>`);
 }
 
 async function cancelJob(id) {
   await api(`/api/jobs/${id}/cancel`, { method: "POST" });
-  toast("Wird abgebrochen.");
+  toast(t("job_cancelling"));
   closeModal();
 }
 
@@ -1583,7 +1635,7 @@ async function retryJob(id) {
   // endpoint redacts. Resubmitting from here retried a hero with no photos.
   const job = await api(`/api/jobs/${id}/retry`, { method: "POST" });
   closeModal();
-  attachJob(job, `${JOB_NAMES[job.action] || job.action} — neuer Versuch`,
+  attachJob(job, ti("job_retry_suffix", { name: jobName(job.action) }),
             () => render());
 }
 

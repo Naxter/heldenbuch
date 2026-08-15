@@ -26,6 +26,7 @@ Print presets carry the numbers a print shop needs:
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -440,7 +441,10 @@ def flat_border(source: Path, tol: float = 2.0, min_share: float = 0.02
     """
     try:
         with Image.open(source) as image:
-            array = np.asarray(image.convert("RGB"), dtype=np.float64)
+            # Byte pixels, not floats. As float64 a 4096 px page came to
+            # 400 MB in this one array -- on its own the largest allocation
+            # in the whole export. Only the line being measured is widened.
+            array = np.asarray(image.convert("RGB"))
     except Exception:
         return (0, 0, 0, 0)
     height, width = array.shape[:2]
@@ -448,7 +452,7 @@ def flat_border(source: Path, tol: float = 2.0, min_share: float = 0.02
     def run(lines) -> int:
         count = 0
         for line in lines:
-            if float(line.std(axis=0).mean()) > tol:
+            if float(line.astype(np.float32).std(axis=0).mean()) > tol:
                 break
             count += 1
         return count
@@ -1038,7 +1042,10 @@ def export_pdf(
     def joined(mapping: dict, separator: str = "\n") -> str:
         return join_languages(mapping, langs, separator)
 
-    pages: list[Image.Image] = []
+    # Pages are described first and drawn later, one at a time. Holding all of
+    # them was 20 MB each at print size -- around half a gigabyte for a 24-page
+    # book, every byte of it alive at once while the PDF was written.
+    builders: list[Callable[[], Image.Image]] = []
     warnings: list[str] = []
 
     def art(relative: str | None) -> Path | None:
@@ -1068,20 +1075,23 @@ def export_pdf(
     texts: list[str] = []
     alts: list[str] = []
 
+    def add(builder: Callable[[], Image.Image], text: str = "", alt: str = "") -> None:
+        builders.append(builder)
+        texts.append(text)
+        alts.append(alt)
+
     if include_cover:
-        log("  Titelseite")
-        pages.append(
-            render_title_page(cover_art, joined(book.title, " · ") or book.display_title(),
-                              "", preset, family)
-        )
-        texts.append(joined(book.title, " · ") or book.display_title())
-        alts.append(book.cover_illustration or "")
+        title_text = joined(book.title, " · ") or book.display_title()
+
+        def build_title() -> Image.Image:
+            log("  Titelseite")
+            return render_title_page(cover_art, title_text, "", preset, family)
+
+        add(build_title, title_text, book.cover_illustration or "")
 
     dedication = joined(book.dedication)
     if dedication:
-        pages.append(render_plain_page(dedication, preset, family))
-        texts.append(dedication)
-        alts.append("")
+        add(lambda: render_plain_page(dedication, preset, family), dedication)
 
     ordered = sorted(book.pages, key=lambda p: p.index)
     # One type size and one text position for the whole book, decided before
@@ -1092,49 +1102,55 @@ def export_pdf(
         [art(p.image) for p in ordered if p.layout not in ("wordless", "vignette")],
         preset,
     )
-    for page in ordered:
+    def build_story_page(page) -> Image.Image:
         log(f"  Seite {page.index}")
-        pages.append(
-            render_story_page(art(page.image), joined(page.text), preset,
-                              family, layout=page.layout, age=book.age,
-                              body_px=body_px, zone=zone)
-        )
-        texts.append(joined(page.text))
+        return render_story_page(art(page.image), joined(page.text), preset,
+                                 family, layout=page.layout, age=book.age,
+                                 body_px=body_px, zone=zone)
+
+    for page in ordered:
         # The illustration brief describes the picture in a sentence. It has
         # been sitting in book.json all along as the alt text nobody used.
-        alts.append(single_scene(page.illustration or ""))
+        add(lambda p=page: build_story_page(p),
+            joined(page.text), single_scene(page.illustration or ""))
 
     photo = (book.photo_page or {}).get("image")
     if photo and art(photo):
         log("  Fotoseite")
         caption = (book.photo_page or {}).get("caption", {})
         caption = joined(caption) if isinstance(caption, dict) else str(caption)
-        pages.append(render_photo_page(art(photo), caption, preset, family))
-        texts.append(caption)
-        alts.append("")
+        photo_art = art(photo)
+        add(lambda: render_photo_page(photo_art, caption, preset, family), caption)
 
     closing = joined({code: closing_word(code) for code in langs}, " · ")
-    pages.append(render_plain_page(closing, preset, family))
-    texts.append(closing)
-    alts.append("")
+    add(lambda: render_plain_page(closing, preset, family), closing)
 
-    interior = len(pages)
+    interior = len(builders)
     if preset.pad_to_multiple > 1:
         # Bare paper, not the cream the designed pages sit on. PAPER converts
         # to a four-colour tint at about 9% coverage, so a page the reader
         # thinks is empty would print as a screened wash -- billed as colour,
         # and prone to mottling, which is exactly what light tints do on press.
-        blank = Image.new("RGB", preset.page_px(), (255, 255, 255))
-        while len(pages) % preset.pad_to_multiple:
-            pages.append(blank.copy())
+        while len(builders) % preset.pad_to_multiple:
+            add(lambda: Image.new("RGB", preset.page_px(), (255, 255, 255)))
 
     target.parent.mkdir(parents=True, exist_ok=True)
+
+    def drawn() -> Iterator[Image.Image]:
+        """Each page, drawn as the writer asks for it and dropped after.
+
+        Pillow consumes `append_images` lazily, so only the page being
+        written and the first one are alive at any moment.
+        """
+        for build in builders[1:]:
+            yield build()
+
     # Pillow's PDF writer JPEGs every page at its default quality of 75 with
     # chroma subsampling, which puts ringing around typeset letterforms at
     # 300 dpi. Neither is visible on screen and both are visible on paper.
-    pages[0].save(target, "PDF", save_all=True, append_images=pages[1:],
-                  resolution=float(preset.dpi), quality=95, subsampling=0,
-                  title=book.title.get(language) or book.display_title())
+    builders[0]().save(target, "PDF", save_all=True, append_images=drawn(),
+                       resolution=float(preset.dpi), quality=95, subsampling=0,
+                       title=book.title.get(language) or book.display_title())
 
     if embed_srgb(target, language=langs[0] if langs else ""):
         log("  sRGB-Profil eingebettet")
@@ -1154,7 +1170,7 @@ def export_pdf(
 
     return {
         "path": target,
-        "pages": len(pages),
+        "pages": len(builders),
         "content_pages": interior,
         "preset": preset.key,
         "language": "+".join(langs),

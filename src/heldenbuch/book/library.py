@@ -60,8 +60,15 @@ class Library:
         than directly inside `library/<kind>/`, and every one of them is
         refused here rather than at each call site.
         """
+        ident = str(ident)
+        # A backslash separates paths on Windows and is an ordinary filename
+        # character on Linux. Refuse it on both, explicitly: the resolve()
+        # check below only catches it where it separates, and a library must
+        # stay safe to copy between the two systems.
+        if not ident or "/" in ident or "\\" in ident or ident in (".", ".."):
+            raise ValueError(f"invalid {self._KINDS.get(kind, kind)} id: {ident!r}")
         parent = (self.root / kind).resolve()
-        target = (parent / str(ident)).resolve()
+        target = (parent / ident).resolve()
         if target.parent != parent or target == parent:
             raise ValueError(f"invalid {self._KINDS.get(kind, kind)} id: {ident!r}")
         return target

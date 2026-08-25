@@ -783,6 +783,10 @@ const LOCALES = {
     style_try_detail: "Zwei Vorschauen und ein Charakterblatt — zusammen ungefähr {price}.",
     style_try_verb: "Ausprobieren",
     style_stale: "veraltetes Stilblatt",
+    style_refresh: "Stilblatt neu zeichnen",
+    look_setup_q: "Diesen Stil für diese Figur einrichten?",
+    look_setup_detail: "Das Charakterblatt wird in diesem Stil gezeichnet — ungefähr {price}.",
+    look_setup_verb: "Einrichten",
     style_stale_title: "Das Stilblatt entstand aus einem früheren Charakterblatt. Beim nächsten Einrichten wird es neu gezeichnet.",
     cast_sheet_failed: "Blatt fehlgeschlagen",
     cast_add: "Figur, Ort oder Gegenstand hinzufügen",
@@ -1229,6 +1233,10 @@ const LOCALES = {
     style_try_detail: "Two previews and a character sheet — about {price} together.",
     style_try_verb: "Try it",
     style_stale: "outdated styled sheet",
+    style_refresh: "Redraw the styled sheet",
+    look_setup_q: "Set this style up for this character?",
+    look_setup_detail: "The character sheet is drawn in this style — about {price}.",
+    look_setup_verb: "Set it up",
     style_stale_title: "The styled sheet was drawn from an earlier character sheet. It will be redrawn the next time this style is set up.",
     cast_sheet_failed: "sheet failed",
     cast_add: "Add a character, place or prop",
@@ -1435,6 +1443,9 @@ const S = {
   watch: [],
   //: which language the story editor currently edits
   editLang: null,
+  //: the export panel's format, font and shop, kept across re-renders and
+  //: reloads like every other choice on this screen
+  exportSel: store.get("exportSel") || null,
 };
 
 /* --------------------------------------------------- toast + modal + money */
@@ -2341,6 +2352,10 @@ async function renderLook() {
               ${isReady ? "" : `<button class="btn ghost tiny"
                 onclick="event.stopPropagation();adoptStyle('${s.id}')">
                 ${esc(ti("look_setup_for", { name: hero.name || t("look_this_figure") }))} · ${eur(sheetUsd())}</button>`}
+              ${isReady && (s.stale_for || []).includes(S.heroId) ? `<button class="btn ghost tiny"
+                onclick="event.stopPropagation();adoptStyle('${s.id}')"
+                title="${t("style_stale_title")}">
+                ${t("style_refresh")} · ${eur(sheetUsd())}</button>` : ""}
             </div></div>
         </div>`;
       }).join("") + `</div></div>` : ""}`;
@@ -2352,8 +2367,11 @@ async function renderLook() {
   $("style-wish-go").onclick = () => {
     const wish = $("style-wish").value.trim();
     if (!wish) return;
-    runJob("style_try", { hero_id: S.heroId, wish, previews: 2, ...drawParams() },
-      t("job_style_try"), afterStyle);
+    confirmModal(t("style_try_q"),
+      ti("style_try_detail", { price: eur(styleTryUsd()) }), t("style_try_verb"),
+      () => runJob("style_try",
+        { hero_id: S.heroId, wish, previews: 2, ...drawParams() },
+        t("job_style_try"), afterStyle));
   };
 
   const drop = $("style-drop"), file = $("style-file");
@@ -2368,8 +2386,11 @@ async function renderLook() {
 async function styleFromImage(file) {
   if (!file || !file.type.startsWith("image/")) return;
   const reference = await readFile(file);
-  runJob("style_try", { hero_id: S.heroId, reference, previews: 2, ...drawParams() },
-    t("job_style_from_image"), afterStyle);
+  confirmModal(t("style_try_q"),
+    ti("style_try_detail", { price: eur(styleTryUsd()) }), t("style_try_verb"),
+    () => runJob("style_try",
+      { hero_id: S.heroId, reference, previews: 2, ...drawParams() },
+      t("job_style_from_image"), afterStyle));
 }
 
 function tryPreset(key) {
@@ -2412,8 +2433,11 @@ async function styleDetail(id) {
 }
 
 function adoptStyle(id) {
-  runJob("style_adopt", { hero_id: S.heroId, style_id: id, ...drawParams() },
-    t("job_style_adopt"), afterStyle);
+  confirmModal(t("look_setup_q"),
+    ti("look_setup_detail", { price: eur(sheetUsd()) }),
+    t("look_setup_verb"),
+    () => runJob("style_adopt", { hero_id: S.heroId, style_id: id, ...drawParams() },
+      t("job_style_adopt"), afterStyle));
 }
 
 function deleteStyle(id) {
@@ -2995,9 +3019,10 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
   openModal(`<h3>${esc(title)}</h3>
     <p class="lede">${esc(detail)} ${t("bigrun_retry_note")}</p>
     ${gemini ? `<label class="check" style="margin-bottom:1rem">
-      <input type="checkbox" id="m-batch">
+      <input type="checkbox" id="m-batch" onchange="syncChainBox()">
       <span>${ti("bigrun_batch", { price: eur(batchUsd) })}</span></label>` : ""}
-    <label class="check" style="margin-bottom:1rem" title="${esc(t("bigrun_chain_title"))}">
+    <label class="check" style="margin-bottom:1rem" id="m-chain-label"
+      title="${esc(t("bigrun_chain_title"))}">
       <input type="checkbox" id="m-chain">
       <span>${t("bigrun_chain")}</span></label>
     <label class="f" style="max-width:260px"><span>${t("bigrun_cap_label")}</span>
@@ -3009,7 +3034,8 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
     const eurCap = parseFloat($("m-budget").value);
     const batch = !!$("m-batch")?.checked;
     // Batch sends everything to Google at once, so there is no "previous
-    // page" to chain from; the two options exclude each other.
+    // page" to chain from. syncChainBox() disables the chain box while batch
+    // is ticked, so this can no longer discard a choice the person made.
     const chain = !batch && !!$("m-chain")?.checked;
     closeModal();
     const budget = Number.isFinite(eurCap) && eurCap > 0
@@ -3019,6 +3045,15 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
         ...(chain ? { chain: true } : {}), ...drawParams() },
       batch ? ti("job_batch_suffix", { title: jobTitle }) : jobTitle, renderBook);
   };
+}
+
+function syncChainBox() {
+  const batch = !!$("m-batch")?.checked;
+  const box = $("m-chain");
+  if (!box) return;
+  box.disabled = batch;
+  if (batch) box.checked = false;
+  $("m-chain-label")?.classList.toggle("muted", batch);
 }
 
 function redrawAll() {
@@ -3517,9 +3552,11 @@ let preflightState = null;
 function rememberExport() {
   // The whole book screen is rebuilt after every job; without this the
   // format snapped back to the default and yelled "not ready" over the
-  // fresh PDFs of the format the person had actually chosen.
+  // fresh PDFs of the format the person had actually chosen. Stored the way
+  // every other choice is, so a reload does not undo it either.
   S.exportSel = { preset: $("e-preset")?.value, font: $("e-font")?.value,
                   shop: $("e-shop")?.value };
+  store.set("exportSel", S.exportSel);
 }
 
 async function refreshPreflight() {

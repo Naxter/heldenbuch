@@ -202,13 +202,17 @@ class BookApi:
         styles = self.library.styles()
         if hero_id:
             styles = [s for s in styles if hero_id in s.sheets]
-        return {"styles": [self._style_public(s) for s in styles]}
+        # Read the shelf once. Asking per style meant the same hero.json was
+        # parsed again for every style that referenced it, on an endpoint the
+        # style screen hits after every click.
+        sheets = {h.id: h.sheet for h in self.library.heroes()}
+        return {"styles": [self._style_public(s, sheets) for s in styles]}
 
     def style_delete(self, style_id: str, _query, _body) -> dict[str, Any]:
         self.library.delete_style(style_id)
         return {"deleted": style_id}
 
-    def _style_public(self, style) -> dict[str, Any]:
+    def _style_public(self, style, hero_sheets: dict[str, str] | None = None) -> dict[str, Any]:
         data = style.to_dict()
         data["preview_urls"] = [f"/library/{p}" for p in style.previews]
         data["sheet_urls"] = {
@@ -217,16 +221,13 @@ class BookApi:
         data["reference_url"] = f"/library/{style.reference}" if style.reference else None
         # Heroes whose character sheet moved on after their styled sheet was
         # drawn. Unrecorded sources (older styles) are trusted, not flagged.
-        stale = []
-        for hero_id, source in (style.sheets_from or {}).items():
-            if not (source and style.sheets.get(hero_id)):
-                continue
-            try:
-                if self.library.get_hero(hero_id).sheet != source:
-                    stale.append(hero_id)
-            except FileNotFoundError:
-                continue
-        data["stale_for"] = stale
+        if hero_sheets is None:
+            hero_sheets = {h.id: h.sheet for h in self.library.heroes()}
+        data["stale_for"] = [
+            hero_id for hero_id, source in (style.sheets_from or {}).items()
+            if source and style.sheets.get(hero_id)
+            and hero_id in hero_sheets and hero_sheets[hero_id] != source
+        ]
         return data
 
     # ------------------------------------------------------------------- books
@@ -504,7 +505,9 @@ class BookApi:
                 changed = True
                 continue
             fresh_name = str(edit.get("name") or "").strip()
-            if fresh_name and fresh_name != member.name:
+            taken = any(c is not member and c.name.lower() == fresh_name.lower()
+                        for c in book.cast)
+            if fresh_name and not taken and fresh_name != member.name:
                 old = member.name.lower()
                 pattern = re.compile(rf"\b{re.escape(member.name)}\b",
                                      re.IGNORECASE)
@@ -515,8 +518,11 @@ class BookApi:
                     # The brief is what decides which sheets travel with the
                     # page, so the old name must not linger there. The same
                     # entity keeps its picture: no staleness bump.
+                    # A function replacement, not a template: a name carrying
+                    # a backslash raised re.error, and one carrying \g<0>
+                    # rewrote the brief with the text it was meant to replace.
                     if page.illustration:
-                        page.illustration = pattern.sub(fresh_name,
+                        page.illustration = pattern.sub(lambda _m: fresh_name,
                                                         page.illustration)
                 changed = True
             fresh_desc = str(edit.get("description") or "").strip()
@@ -525,7 +531,9 @@ class BookApi:
                 changed = True
             if isinstance(edit.get("pages"), list):
                 wanted = {int(i) for i in edit["pages"]}
-                member.pages = sorted(wanted)
+                if member.pages != sorted(wanted):
+                    member.pages = sorted(wanted)
+                    changed = True
                 for page in book.pages:
                     named = any(n.lower() == member.name.lower() for n in page.cast)
                     if page.index in wanted and not named:
@@ -534,13 +542,17 @@ class BookApi:
                         page.cast = [n for n in page.cast
                                      if n.lower() != member.name.lower()]
                     else:
+                        # Unchanged membership. Marking the book edited here
+                        # made every routine cast save flag the exports
+                        # stale, because the dialog always sends the current
+                        # page list back.
                         continue
                     # Membership decides which reference sheets travel with
                     # the page, so a change here is a brief change: the
                     # current picture no longer matches what a redraw would
                     # be conditioned on.
                     page.illustration_rev += 1
-                changed = True
+                    changed = True
 
         if changed:
             book.touch()

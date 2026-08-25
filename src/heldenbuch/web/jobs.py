@@ -200,7 +200,7 @@ class JobManager:
             with self._lock:
                 self._running = None
                 job.status = "failed"
-                job.lines.append("worker thread could not be started")
+                job.lines.append("Der Auftrag konnte nicht gestartet werden.")
             raise
 
     def _execute(self, job: Job, worker: Worker) -> None:

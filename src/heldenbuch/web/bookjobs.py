@@ -10,6 +10,7 @@ from typing import Any
 
 from PIL import Image, ImageOps
 
+from ..backends import get_backend
 from ..book import author, handoff, illustrate, look, narrate, preflight, scout
 from ..book import cast as cast_mod
 from ..book import hero as hero_mod
@@ -653,8 +654,8 @@ class BookJobs:
                 style_reference = None
 
         target = self.library.book_dir(book.id) / "cast" / f"cast_{position + 1:02d}.png"
-        kind = "Ort" if member.kind == "place" else "Figur"
-        log(f"{kind}: {member.name} wird neu gezeichnet …")
+        log(f"{cast_mod.kind_label(member.kind)}: {member.name} wird neu "
+            "gezeichnet …")
         result = cast_mod.generate_sheet(
             member, style, target,
             backend_name=self._backend(job, style), model=job.params.get("model"),
@@ -665,6 +666,9 @@ class BookJobs:
         book = self.library.get_book(book.id)
         if position < len(book.cast):
             book.cast[position].sheet = f"cast/{target.name}"
+            # This is the recovery path from a failed sheet, so the old
+            # failure must not keep flying its flag over a good drawing.
+            book.cast[position].sheet_error = None
         add_spend(book.spend, result.usage, "cast")
         self.library.save_book(book)
         job.result["book_id"] = book.id
@@ -691,6 +695,13 @@ class BookJobs:
         if not pages:
             raise ValueError("Keine gezeichnete Seite zum Prüfen.")
 
+        # The judge is held to the reference budget of the service that drew
+        # the pages, not to its own default: a recheck must not fail a page
+        # over a sheet the render had no room to attach, because nothing on
+        # this path can redraw it anyway.
+        ref_limit = get_backend(self._backend(job, style),
+                                job.params.get("model")).max_references
+
         # The cover is re-checked with the pages: it is the image everyone
         # sees first, and this used to be the one path that skipped it.
         if wanted is None and book.cover:
@@ -698,11 +709,9 @@ class BookJobs:
             if cover.is_file():
                 book.cover_check = illustrate.judge_page(
                     book, hero, sheet, cover, book.cover_illustration or "",
-                    list(book.cast), resolve, checker)
-                log("  Titelbild: " + {"passed": "in Ordnung",
-                                       "failed": "beanstandet"}.get(
-                    illustrate.verdict_from(book.cover_check),
-                    "Prüfung fehlgeschlagen"))
+                    list(book.cast), resolve, checker, ref_limit=ref_limit)
+                log("  Titelbild: " + illustrate.verdict_word(
+                    illustrate.verdict_from(book.cover_check)))
 
         log(f"{len(pages)} Seite(n) werden geprüft — von {checker}.")
         for page in pages:
@@ -717,11 +726,9 @@ class BookJobs:
             # checking without them re-created three fixed bugs at once.
             page.check = illustrate.judge_page(
                 book, hero, sheet, target, page.illustration,
-                book.cast_for(page), resolve, checker)
-            status = illustrate.check_status(page)
-            word = {"passed": "in Ordnung", "failed": "beanstandet",
-                    "unknown": "Prüfung fehlgeschlagen"}.get(status, status)
-            log(f"  Seite {page.index}: {word}")
+                book.cast_for(page), resolve, checker, ref_limit=ref_limit)
+            log(f"  Seite {page.index}: "
+                f"{illustrate.verdict_word(illustrate.check_status(page))}")
 
         self.library.save_book(book)
         job.result["book_id"] = book.id

@@ -90,6 +90,9 @@ Give each page a layout so the book does not read as identical slides:
 Use "full" for most pages. Use "split" two or three times. Use "vignette" for a
 quiet or small moment. Use "wordless" at most once, at a beat that carries
 itself without words -- and then leave the text empty for that page.
+The page you name as the "climax" gets a full page. A vignette prints small,
+and the moment the whole book has been building to is the one moment that must
+not be the smallest picture in it.
 """
 
 
@@ -152,6 +155,17 @@ only what it names gets a reference image, so a character you list for the
 page but leave out of the instruction will be drawn from imagination -- or
 left out and invented back in. Equally, do not name anyone who is not in the
 picture.
+Give each page an "expression": what the hero's face is doing, in two or three
+words ("delighted", "close to tears", "narrowing his eyes", "fast asleep").
+Left to infer a feeling from the events, an illustrator paints the same
+pleasant half-smile on every page, and a story with a real problem in it reads
+as sixteen pleasant afternoons. Let it follow the story: the low point should
+look like the low point.
+Give each page a "direction": which way the picture faces ("moving left to
+right", "facing the reader", "looking back over his shoulder"). A picture book
+is read left to right, so setting out faces right and coming home faces left;
+a page that contradicts the page turn feels wrong even to a child who cannot
+say why.
 Never ask for text, letters, numbers or speech bubbles in the picture. Vary the
 framing across the book -- close on a face, a wide landscape, a view from
 behind, a small hero in a big space -- so the pages do not all look alike.
@@ -169,6 +183,7 @@ def _shape(languages: list[str], count: int) -> str:
   "title": {{ {per_language} }},
   "dedication": {{ {per_language} }},
   "cover_illustration": "what the cover picture shows",
+  "climax": 0,
   "cast": [
     {{ "name": "...", "kind": "character", "description": "concrete details an illustrator can draw" }},
     {{ "name": "...", "kind": "place", "description": "..." }},
@@ -179,6 +194,8 @@ def _shape(languages: list[str], count: int) -> str:
       "index": 1,
       "text": {{ {per_language} }},
       "illustration": "...",
+      "expression": "what the hero's face is doing, two or three words",
+      "direction": "which way the picture faces",
       "layout": "full",
       "cast": ["names from the cast list who appear on this page"]
     }}
@@ -186,7 +203,8 @@ def _shape(languages: list[str], count: int) -> str:
 }}
 
 The dedication is one short warm line, as a parent would write it.
-Give exactly {count} pages, numbered 1 to {count}."""
+"climax" is the page number where the story peaks -- the moment everything has
+been leading to. Give exactly {count} pages, numbered 1 to {count}."""
 
 
 def write_story(
@@ -323,6 +341,8 @@ def _normalise(payload: dict[str, Any], languages: list[str], count: int) -> dic
                 index=int(item.get("index") or position),
                 text={code: str(text.get(code, "")).strip() for code in languages},
                 illustration=single_scene(str(item.get("illustration", ""))),
+                expression=str(item.get("expression", "")).strip(),
+                direction=str(item.get("direction", "")).strip(),
                 layout=layout if layout in LAYOUTS else "full",
                 cast=appearing,
             )
@@ -345,13 +365,31 @@ def _normalise(payload: dict[str, Any], languages: list[str], count: int) -> dic
     if isinstance(dedication, str):
         dedication = {languages[0]: dedication}
 
+    # The layout is chosen before a single picture exists, so nothing later
+    # notices when the story's high point was handed a vignette -- which
+    # prints smaller than every page around it. The author knows which page
+    # that is; asking it, and then holding it to the answer, is enough.
+    climax = _page_index(payload.get("climax"), len(pages))
+    if climax and pages[climax - 1].layout == "vignette":
+        pages[climax - 1].layout = "full"
+
     return {
         "title": {code: str(title.get(code, "")).strip() for code in languages},
         "dedication": {code: str(dedication.get(code, "")).strip() for code in languages},
         "cover_illustration": str(payload.get("cover_illustration", "")).strip(),
+        "climax": climax,
         "cast": cast,
         "pages": pages,
     }
+
+
+def _page_index(raw: Any, total: int) -> int:
+    """A page number from the model, or 0 when it is not one."""
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 0
+    return value if 1 <= value <= total else 0
 
 
 def rewrite_page(

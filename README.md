@@ -190,11 +190,14 @@ or a print format are in **[docs/development.md](docs/development.md)**.
 Ground rules for contributions are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,print]"
+python -m ruff check src tests
 python -m pytest
 ```
 
-The tests call no APIs and need no keys.
+The tests call no APIs and need no keys. `print` is optional at runtime, but
+without it the colour-profile and PDF text-layer tests skip rather than run,
+so CI installs it too.
 
 ---
 

@@ -18,6 +18,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e ".[dev]" ruff
+      # `print` is optional at runtime, but the sRGB profile and the PDF text
+      # layer are only covered while it is installed -- without it four tests
+      # skip and the badge says nothing about either.
+      - run: python -m pip install -e ".[dev,print]" ruff
       - run: python -m ruff check src tests
       - run: python -m pytest -q

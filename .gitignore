@@ -7,6 +7,9 @@ runs/*
 # Never commit this.
 library/
 
+# Built by `heldenbuch demo`. Regenerate it rather than committing it.
+demo_library/
+
 # Secrets
 .env
 

@@ -1,5 +1,6 @@
 """Command line interface.
 
+    heldenbuch demo                build an example book offline, then serve it
     heldenbuch serve               open the local control panel in a browser
     heldenbuch doctor              what is installed and which keys are set
     heldenbuch prompts             print the prompts, call nothing
@@ -184,6 +185,20 @@ def cmd_report(args, layout: RunLayout | None = None) -> int:
     return 0
 
 
+def cmd_demo(args) -> int:
+    """Build the example book, and offer to open it."""
+    from .demo import build
+
+    root = Path(args.library)
+    book = build(root, fresh=args.fresh)
+    print()
+    print(f"{book.display_title()} -- {len(book.pages)} pages in {root}")
+    print("The pictures are offline placeholders; the point is the shape of a book.")
+    print()
+    print(f"  python -m heldenbuch serve --library {root}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .web import serve
 
@@ -272,6 +287,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="bind address; the panel has no authentication, so keep it on localhost")
     p.add_argument("--no-browser", action="store_true", help="do not open a browser window")
     p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("demo", help="build an example book without any API key")
+    p.add_argument("--library", default="demo_library",
+                   help="where to build it (default: demo_library, never your own)")
+    p.add_argument("--fresh", action="store_true", help="delete it and build again")
+    p.set_defaults(func=cmd_demo)
 
     p = sub.add_parser("doctor", help="check keys and installed packages")
     p.set_defaults(func=cmd_doctor)

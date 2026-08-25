@@ -322,6 +322,8 @@ def check_page(
     try:
         verdict["metrics"] = score_page(page_image, sheet)
     except Exception:
+        # The colour metrics are a nice-to-have beside the judge's verdict.
+        # Losing them must not lose the verdict itself.
         verdict["metrics"] = {}
 
     # Also free, and measured rather than asked: a page split into two pictures.

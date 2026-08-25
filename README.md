@@ -2,6 +2,10 @@
 
 ![heldenbuch — personalised children's picture books](docs/heldenbuch-banner.png)
 
+[![ci](https://github.com/Naxter/heldenbuch/actions/workflows/ci.yml/badge.svg)](https://github.com/Naxter/heldenbuch/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Make personalised picture books for your own child — with their photo or
 without — and get a file a print shop will accept.
 
@@ -9,13 +13,22 @@ The hard part of an AI picture book is not writing it. It is that the child
 looks like a different child on page seven. Heldenbuch solves that by getting
 the character right **once**, then pointing every page at that one drawing.
 
+## Try it without an API key
+
 ```bash
 pip install -e .
-python -m heldenbuch serve
+python -m heldenbuch demo
+python -m heldenbuch serve --library demo_library
 ```
 
-That opens the app at `http://127.0.0.1:8765`. One OpenAI key in `.env` runs
-everything — see [Setup](#setup).
+That builds a finished eight-page book — hero, style, cast, pages, export —
+and opens it at `http://127.0.0.1:8765`. It writes to `demo_library/` and
+never touches your own books. The pictures are offline placeholders drawn by
+the `stub` backend, so this shows the shape of a book rather than the quality
+of an image model; everything else is the real thing. `--fresh` rebuilds it,
+and deleting `demo_library/` removes it.
+
+For a real book you need one API key — see [Setup](#setup).
 
 The interface speaks German or English; switch it any time under the gear icon.
 Books themselves can be written in any of the supported languages, independent
@@ -184,6 +197,24 @@ python -m pytest
 The tests call no APIs and need no keys.
 
 ---
+
+## Security and scope
+
+This is a single-user tool that runs on your own machine. It binds to
+`127.0.0.1` and **has no authentication of any kind** — anyone who can reach
+the port can spend your API credit. Do not put it on a public interface, and
+do not port-forward it. It refuses requests whose `Host` header is not
+localhost and rejects cross-origin writes, which stops a web page you visit
+from driving it behind your back; that is the whole of the threat model.
+
+Uploaded photos live in `library/` in the clear, and API keys live in `.env`
+in the clear. Both are gitignored. Anything you can read on that machine, a
+program running as you can read too.
+
+Costs are real and are yours: every button that spends shows an estimate
+first, and a per-book ledger records what each call actually cost, but nothing
+here can stop a provider charging you. Set a budget cap on a render if that
+matters to you.
 
 ## Legal, before anything leaves the house
 

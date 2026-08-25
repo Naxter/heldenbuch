@@ -42,7 +42,7 @@ in that style*, so you judge the real combination. When you like it, the
 character sheet is redrawn in that style — identity and look locked into one
 reference image.
 
-**3. The story.** One line is enough: *"Mats loses his rubber boot in the
+**3. The story.** One line is enough: *"Claudio loses his rubber boot in the
 mud."* Leave it blank and it invents the idea. It writes the whole story
 at the right reading level for the age you choose, splits it into pages, and
 writes both the text and the illustration instruction for each page. Every page

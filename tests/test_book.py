@@ -68,7 +68,7 @@ def test_display_title_falls_back_across_languages():
 
 @pytest.mark.parametrize(
     "raw,expected",
-    [("Mats und der Matschstiefel", "mats-und-der-matschstiefel"),
+    [("Claudio und der Matschstiefel", "claudio-und-der-matschstiefel"),
      ("  ", "buch"), ("Ärger!! im Garten", "rger-im-garten")],
 )
 def test_slugify(raw, expected):
@@ -84,11 +84,11 @@ def library(tmp_path) -> Library:
 
 
 def test_library_round_trips_each_kind(library):
-    hero = library.save_hero(Hero(name="Mats", description="d"))
+    hero = library.save_hero(Hero(name="Claudio", description="d"))
     style = library.save_style(Style(name="Aquarell", description="d"))
     book = library.save_book(Book(hero_id=hero.id, style_id=style.id))
 
-    assert library.get_hero(hero.id).name == "Mats"
+    assert library.get_hero(hero.id).name == "Claudio"
     assert library.get_style(style.id).name == "Aquarell"
     assert library.get_book(book.id).hero_id == hero.id
     assert [h.id for h in library.heroes()] == [hero.id]
@@ -412,7 +412,7 @@ class TestWhatEachPageIsShown:
         from heldenbuch.book.models import Book, CastMember, Page
 
         cast = [
-            CastMember(name="Chase", kind="character", sheet="cast/01.png"),
+            CastMember(name="Pip", kind="character", sheet="cast/01.png"),
             CastMember(name="Trixi", kind="character", sheet="cast/02.png"),
             CastMember(name="Dino-Tal", kind="place", sheet="cast/03.png"),
             CastMember(name="Stammbrücke", kind="prop", sheet="cast/04.png"),
@@ -421,18 +421,18 @@ class TestWhatEachPageIsShown:
 
     def test_a_character_the_brief_omits_is_not_attached(self):
         Book, cast, Page = self._book()
-        page = Page(index=1, cast=["Chase", "Trixi"],
+        page = Page(index=1, cast=["Pip", "Trixi"],
                     illustration="Trixi rolls an egg back into the nest.")
         got = [m.name for m in Book(cast=cast).cast_for(page)]
-        assert "Chase" not in got
+        assert "Pip" not in got
         assert "Trixi" in got
 
     def test_a_prop_is_attached_when_the_brief_names_it(self):
         Book, cast, Page = self._book()
-        page = Page(index=1, cast=["Chase"],
-                    illustration="Chase crosses the Stammbrücke at sunset.")
+        page = Page(index=1, cast=["Pip"],
+                    illustration="Pip crosses the Stammbrücke at sunset.")
         got = [m.name for m in Book(cast=cast).cast_for(page)]
-        assert "Stammbrücke" in got and "Chase" in got
+        assert "Stammbrücke" in got and "Pip" in got
         assert "Trixi" not in got
 
     def test_a_prop_the_page_does_not_use_stays_behind(self):
@@ -450,15 +450,15 @@ class TestWhatEachPageIsShown:
         """Older books, and pages written from behind a character's shoulder,
         carry no names -- dropping every reference there would be worse."""
         Book, cast, Page = self._book()
-        page = Page(index=1, cast=["Chase"],
+        page = Page(index=1, cast=["Pip"],
                     illustration="A view from behind the seats of the Dino-Mobile.")
-        assert "Chase" in [m.name for m in Book(cast=cast).cast_for(page)]
+        assert "Pip" in [m.name for m in Book(cast=cast).cast_for(page)]
 
     def test_a_member_without_a_sheet_is_never_attached(self):
         from heldenbuch.book.models import Book, CastMember, Page
 
-        page = Page(index=1, illustration="Chase runs.")
-        book = Book(cast=[CastMember(name="Chase", kind="character", sheet=None)])
+        page = Page(index=1, illustration="Pip runs.")
+        book = Book(cast=[CastMember(name="Pip", kind="character", sheet=None)])
         assert book.cast_for(page) == []
 
     def test_the_prop_reference_is_briefed_as_one_object(self):

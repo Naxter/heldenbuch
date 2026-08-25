@@ -37,7 +37,7 @@ class _Backend:
 
 def test_character_sheets_are_recorded_on_the_hero(tmp_path, monkeypatch):
     monkeypatch.setattr(hero_mod, "get_backend", lambda *a, **k: _Backend())
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
 
     spend: dict = {}
     hero_mod.generate_variants(
@@ -51,7 +51,7 @@ def test_character_sheets_are_recorded_on_the_hero(tmp_path, monkeypatch):
 
 def test_style_previews_are_recorded_on_the_style(tmp_path, monkeypatch):
     monkeypatch.setattr(look, "get_backend", lambda *a, **k: _Backend())
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="soft")
     sheet = tmp_path / "sheet.png"
     Image.new("RGB", (16, 16), "white").save(sheet)
@@ -67,7 +67,7 @@ def test_style_previews_are_recorded_on_the_style(tmp_path, monkeypatch):
 def test_the_library_total_includes_what_no_book_owns(tmp_path):
     library = Library(tmp_path)
 
-    hero = Hero(name="Mats")
+    hero = Hero(name="Claudio")
     add_spend(hero.spend, USAGE, "hero_sheet")
     library.save_hero(hero)
 
@@ -90,7 +90,7 @@ def test_the_library_total_includes_what_no_book_owns(tmp_path):
 
 def test_a_hero_ledger_survives_a_round_trip(tmp_path):
     library = Library(tmp_path)
-    hero = Hero(name="Mats")
+    hero = Hero(name="Claudio")
     add_spend(hero.spend, USAGE, "hero_sheet")
     library.save_hero(hero)
 

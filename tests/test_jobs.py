@@ -113,19 +113,19 @@ class TestJobQueue:
             "photos": ["data:image/png;base64,AAA"],
             "photo": {"name": "p.jpg", "data": "data:image/png;base64,AAA"},
             "reference": {"name": "r.jpg", "data": "data:image/png;base64,AAA"},
-            "name": "Mats",
+            "name": "Claudio",
         })
         params = job.public()["params"]
         for key in ("photos", "photo", "reference"):
             assert params[key] == "<upload>", key
-        assert params["name"] == "Mats"
+        assert params["name"] == "Claudio"
 
     def test_an_unnamed_bulk_parameter_is_redacted_too(self):
         """So the next upload parameter is safe by default, not by memory."""
         manager = JobManager({"w": lambda job, log: None})
-        job = manager.start("w", {"artwork": "x" * 5000, "name": "Mats"})
+        job = manager.start("w", {"artwork": "x" * 5000, "name": "Claudio"})
         assert job.public()["params"]["artwork"] == "<upload>"
-        assert job.public()["params"]["name"] == "Mats"
+        assert job.public()["params"]["name"] == "Claudio"
 
     def test_a_retry_keeps_the_uploads_the_browser_never_saw(self):
         """Retrying used to resubmit `public()` params -- with the photos
@@ -134,7 +134,7 @@ class TestJobQueue:
         seen = []
         manager = JobManager({"w": lambda job, log: seen.append(job.params)})
         photos = [{"name": "p.jpg", "data": "data:image/png;base64,AAA"}]
-        first = manager.start("w", {"photos": photos, "name": "Mats"})
+        first = manager.start("w", {"photos": photos, "name": "Claudio"})
         assert _wait(lambda: manager.pending() == 0)
 
         again = manager.retry(first.id)
@@ -142,7 +142,7 @@ class TestJobQueue:
 
         assert again.id != first.id
         assert seen[-1]["photos"] == photos
-        assert seen[-1]["name"] == "Mats"
+        assert seen[-1]["name"] == "Claudio"
 
     def test_a_running_job_cannot_be_retried(self):
         started, release = threading.Event(), threading.Event()

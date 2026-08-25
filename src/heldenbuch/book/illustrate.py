@@ -152,7 +152,7 @@ def _who_is_who(hero: Hero, members: list[CastMember]) -> str:
     """Bind every name the scene can use to the reference image that shows it.
 
     Without this a name in the SCENE is just a name, and the model is free to
-    guess what it belongs to -- which is how a rescue pup called Chase became a
+    guess what it belongs to -- which is how a rescue pup called Pip became a
     second boy. It says which image, never what they look like: appearance in
     words competes with the sheet and is what makes a character drift.
     """
@@ -272,8 +272,8 @@ def cover_prompt(book: Book, hero: Hero, style: Style,
     """The prompt for the cover.
 
     The cover gets the same reference block as a page. It used to get only the
-    hero's sheet, which is how a cover naming "Simon and Chase" ended up with
-    two boys on it: with no picture of Chase attached, a rescue pup reads as a
+    hero's sheet, which is how a cover naming "Claudio and Pip" ended up with
+    two boys on it: with no picture of Pip attached, a rescue pup reads as a
     second child's name and the model drew one.
     """
     name = hero.name or "the character"
@@ -424,7 +424,7 @@ def verdict_from(check: dict[str, Any]) -> str:
 
     Deriving this rather than storing a boolean is what lets a tightened rule
     reach books that were checked under an older one. Every page of the first
-    finished book carried `ok: true` while its own notes read "Chase and Trixi
+    finished book carried `ok: true` while its own notes read "Pip and Trixi
     are duplicated" -- and because the flag was frozen, no later fix could ever
     change that page's verdict.
     """

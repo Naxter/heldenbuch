@@ -22,7 +22,7 @@ def _png(path, size=(32, 32)):
 
 def _setup(tmp_path):
     library = Library(tmp_path / "library")
-    hero = Hero(name="Simon", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     _png(library.hero_dir(hero.id) / "sheet.png")
     hero.sheet = f"heroes/{hero.id}/sheet.png"
     library.save_hero(hero)

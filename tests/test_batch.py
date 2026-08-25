@@ -74,7 +74,7 @@ def test_the_shared_sheet_is_resolved_once_per_page_but_cacheable(tmp_path):
 
 
 def _book(library):
-    hero = Hero(name="Simon", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     _png(library.hero_dir(hero.id) / "sheet.png")
     hero.sheet = f"heroes/{hero.id}/sheet.png"
     library.save_hero(hero)

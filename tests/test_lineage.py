@@ -45,7 +45,7 @@ def _png(path, size=(64, 64), colour="white"):
 
 
 def _hero_style_book(library, styled=True):
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     _png(library.hero_dir(hero.id) / "sheet_01.png", colour="red")
     hero.sheet = f"heroes/{hero.id}/sheet_01.png"
     library.save_hero(hero)

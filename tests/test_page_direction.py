@@ -13,7 +13,7 @@ from heldenbuch.book.models import Book, Hero, Page, Style
 
 def _prompt(**page_kwargs) -> str:
     page = Page(index=1, illustration="the boy crosses the plank", **page_kwargs)
-    return page_prompt(Book(pages=[page]), Hero(name="Mats"),
+    return page_prompt(Book(pages=[page]), Hero(name="Claudio"),
                        Style(description="soft watercolour"), page, [])
 
 

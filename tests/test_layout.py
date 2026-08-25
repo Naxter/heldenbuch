@@ -77,12 +77,12 @@ def test_wrap_breaks_on_words_not_mid_word():
     from heldenbuch.book.layout import load_font
 
     font = load_font("georgia", "regular", 40)
-    lines = wrap("Mats stapft durch den Garten, plitsch platsch plitsch.", font, 300)
+    lines = wrap("Claudio stapft durch den Garten, plitsch platsch plitsch.", font, 300)
     assert len(lines) > 1
     assert all(" " in line or line.count(" ") == 0 for line in lines)
     # every original word survives, in order
     assert " ".join(lines).split() == \
-        "Mats stapft durch den Garten, plitsch platsch plitsch.".split()
+        "Claudio stapft durch den Garten, plitsch platsch plitsch.".split()
 
 
 def test_fit_text_shrinks_until_it_fits():
@@ -186,7 +186,7 @@ class TestRenderStoryPage:
         """
         preset = PRESETS["print_square"]
         page_w, page_h = preset.page_px()
-        long_text = ("Im weichen Beet entdeckt Mats einen Pfotenabdruck. Daneben liegt "
+        long_text = ("Im weichen Beet entdeckt Claudio einen Pfotenabdruck. Daneben liegt "
                      "ein umgeknicktes Salbeiblatt. „Hier lang!“, flüstert er und folgt "
                      "der Spur bis zum Kürbis.")
         page = render_story_page(self._art(tmp_path), long_text, preset, layout="vignette")
@@ -483,16 +483,16 @@ class TestMultilingualPagesAreSeparated:
     def test_languages_get_a_blank_line_between_them(self):
         from heldenbuch.book.layout import join_languages
 
-        mapping = {"de": "Simon geht.", "en": "Simon walks."}
-        assert join_languages(mapping, ["de"]) == "Simon geht."
-        assert join_languages(mapping, ["de", "en"]) == "Simon geht.\n\nSimon walks."
+        mapping = {"de": "Claudio geht.", "en": "Claudio walks."}
+        assert join_languages(mapping, ["de"]) == "Claudio geht."
+        assert join_languages(mapping, ["de", "en"]) == "Claudio geht.\n\nClaudio walks."
 
     def test_the_separator_survives_wrapping(self):
         from heldenbuch.book.layout import join_languages, load_font, wrap
 
         font = load_font("georgia", "regular", 40)
-        joined = join_languages({"de": "Simon geht.", "en": "Simon walks."}, ["de", "en"])
-        assert wrap(joined, font, 900) == ["Simon geht.", "", "Simon walks."]
+        joined = join_languages({"de": "Claudio geht.", "en": "Claudio walks."}, ["de", "en"])
+        assert wrap(joined, font, 900) == ["Claudio geht.", "", "Claudio walks."]
 
     def test_stray_blank_lines_are_still_trimmed(self):
         from heldenbuch.book.layout import load_font, wrap

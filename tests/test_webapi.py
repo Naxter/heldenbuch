@@ -97,7 +97,7 @@ def test_page_prompt_lets_the_scene_override_the_reference():
     the prompt must say the scene wins for what is worn or carried."""
     from heldenbuch.book.illustrate import page_prompt
 
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="watercolour")
     book = Book(hero_id=hero.id, style_id=style.id)
     page = Page(index=1, illustration="wearing only one yellow boot")
@@ -110,7 +110,7 @@ def test_page_prompt_lets_the_scene_override_the_reference():
 def test_author_brief_demands_story_state_in_the_instructions():
     from heldenbuch.book.author import _story_instructions
 
-    text = _story_instructions(Hero(name="Mats", description="d"), "4-5", ["de"], 12)
+    text = _story_instructions(Hero(name="Claudio", description="d"), "4-5", ["de"], 12)
     assert "boot lost in the mud" in text
     assert "every\nfollowing page" in text or "every following page" in text.replace("\n", " ")
 
@@ -167,7 +167,7 @@ def test_style_payload_carries_the_reference_url(api, library):
 
 def test_export_files_get_human_labels(api, library):
     """The deliverables panel shows what a file IS, not what it is called."""
-    book = library.save_book(Book(title={"de": "Mats im Zoo"}, languages=["de", "en"]))
+    book = library.save_book(Book(title={"de": "Claudio im Zoo"}, languages=["de", "en"]))
     folder = library.book_dir(book.id) / "export"
     folder.mkdir(parents=True, exist_ok=True)
     for name in ("mats-im-zoo_de-en_print_square.pdf",
@@ -300,7 +300,7 @@ def test_illustrate_reports_progress_per_page(library, monkeypatch):
 
 
 def test_backup_zips_the_whole_book_folder(api, library):
-    book = library.save_book(Book(title={"de": "Mats im Zoo"}))
+    book = library.save_book(Book(title={"de": "Claudio im Zoo"}))
     _png(library.book_dir(book.id) / "pages" / "page_01.png")
 
     info = api.book_backup(book.id, {}, None)
@@ -331,7 +331,7 @@ def test_voice_preview_rejects_an_unknown_voice(library):
 
 
 def test_style_adopt_draws_only_the_missing_sheet(library):
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     sheet = _png(library.hero_dir(hero.id) / "sheet_01.png")
     hero.sheet = library.relative(sheet)
     library.save_hero(hero)
@@ -346,7 +346,7 @@ def test_style_adopt_draws_only_the_missing_sheet(library):
 
 
 def test_style_adopt_is_a_no_op_when_the_sheet_exists(library):
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     sheet = _png(library.hero_dir(hero.id) / "sheet_01.png")
     hero.sheet = library.relative(sheet)
     library.save_hero(hero)
@@ -359,7 +359,7 @@ def test_style_adopt_is_a_no_op_when_the_sheet_exists(library):
 
 
 def test_cover_only_redraws_the_cover_and_nothing_else(library):
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     sheet = _png(library.hero_dir(hero.id) / "sheet_01.png")
     hero.sheet = library.relative(sheet)
     library.save_hero(hero)
@@ -406,7 +406,7 @@ def test_single_scene_rewrites_a_diptych_brief_into_one_view():
 
 
 @pytest.mark.parametrize("brief", [
-    "A split composition: one side shows the splash; the other shows Mats on a stump.",
+    "A split composition: one side shows the splash; the other shows Claudio on a stump.",
     "Two-panel image: on one side the door, on the other the garden.",
     "A diptych - in one half the cat sleeps, in the other half it wakes.",
 ])
@@ -421,7 +421,7 @@ def test_single_scene_catches_the_other_ways_of_asking_for_two_pictures(brief):
 def test_single_scene_leaves_an_ordinary_brief_alone():
     from heldenbuch.book.models import single_scene
 
-    brief = "Mats kneels by the brook at dusk, holding one boot. Quiet, tired mood."
+    brief = "Claudio kneels by the brook at dusk, holding one boot. Quiet, tired mood."
     assert single_scene(brief) == brief
     assert single_scene("") == ""
 
@@ -429,7 +429,7 @@ def test_single_scene_leaves_an_ordinary_brief_alone():
 def test_page_prompt_forbids_panels_and_duplicate_characters():
     from heldenbuch.book.illustrate import page_prompt
 
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="watercolour")
     book = Book(hero_id=hero.id, style_id=style.id)
     page = Page(index=1, layout="split",
@@ -446,10 +446,10 @@ def test_vignette_prompt_no_longer_asks_for_faded_edges():
     printed a full-page render at a fraction of the paper."""
     from heldenbuch.book.illustrate import page_prompt
 
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
     book = Book(hero_id=hero.id, style_id=style.id)
-    page = Page(index=1, layout="vignette", illustration="Mats naps under a hedge")
+    page = Page(index=1, layout="vignette", illustration="Claudio naps under a hedge")
 
     prompt = page_prompt(book, hero, style, page, [])
     assert "fading out" not in prompt
@@ -460,35 +460,35 @@ def test_vignette_prompt_no_longer_asks_for_faded_edges():
 
 
 def test_cover_prompt_ties_every_cast_name_to_a_reference_image():
-    """A cover reading "Simon and Chase" was given only Simon's sheet, so the
+    """A cover reading "Claudio and Pip" was given only Claudio's sheet, so the
     rescue pup had nothing but a name behind it and was drawn as a second boy.
     """
     from heldenbuch.book.illustrate import cover_prompt
     from heldenbuch.book.models import CastMember
 
-    hero = Hero(name="Simon", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
     book = Book(hero_id=hero.id, style_id=style.id,
-                cover_illustration="Simon and Chase in the valley with Trixi")
-    cast = [CastMember(name="Chase", description="a rescue pup", sheet="cast/01.png"),
+                cover_illustration="Claudio and Pip in the valley with Trixi")
+    cast = [CastMember(name="Pip", description="a rescue pup", sheet="cast/01.png"),
             CastMember(name="Trixi", description="a triceratops", sheet="cast/02.png")]
 
     prompt = cover_prompt(book, hero, style, cast)
-    assert "Image 2 is the reference for Chase" in prompt
+    assert "Image 2 is the reference for Pip" in prompt
     assert "Image 3 is the reference for Trixi" in prompt
-    assert "Simon is image 1" in prompt and "Chase is image 2" in prompt
+    assert "Claudio is image 1" in prompt and "Pip is image 2" in prompt
     assert "a name alone never" in prompt
 
 
 def test_cover_prompt_without_cast_still_works():
     from heldenbuch.book.illustrate import cover_prompt
 
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="d")
     book = Book(hero_id=hero.id, style_id=style.id)
 
     prompt = cover_prompt(book, hero, style)
-    assert "Image 1 is the character reference sheet for Mats" in prompt
+    assert "Image 1 is the character reference sheet for Claudio" in prompt
     assert "WHO IS WHO" not in prompt  # nothing to disambiguate with one character
 
 
@@ -502,7 +502,7 @@ def test_attach_drops_the_name_when_its_sheet_is_missing(tmp_path):
 
     sheet = _png(tmp_path / "hero.png")
     real = _png(tmp_path / "trixi.png")
-    cast = [CastMember(name="Chase", sheet="missing.png"),
+    cast = [CastMember(name="Pip", sheet="missing.png"),
             CastMember(name="Trixi", sheet="trixi.png")]
 
     paths, named = _attach(sheet, cast, lambda rel: tmp_path / rel, limit=8)
@@ -528,12 +528,12 @@ def test_attach_respects_the_backend_reference_limit(tmp_path):
 
 
 def test_a_duplicated_character_fails_the_check_whatever_it_scored():
-    """The checker wrote "Chase and Trixi are duplicated" into the notes and
+    """The checker wrote "Pip and Trixi are duplicated" into the notes and
     then scored the page a passing 3. It shipped. The note is now read directly.
     """
     from heldenbuch.book.illustrate import duplicate_note
 
-    assert duplicate_note(["Chase and Trixi are duplicated"])
+    assert duplicate_note(["Pip and Trixi are duplicated"])
     assert duplicate_note(["an extra uniformed dog appears beside the trunk"])
     assert duplicate_note(["An extra triceratops-like creature is present"])
     assert duplicate_note(["the hero appears twice"])
@@ -572,7 +572,7 @@ def test_the_gate_turns_on_facts_not_on_a_blended_score():
     assert verdict_from({**good, "extra_or_duplicated_character": True}) == "failed"
     assert verdict_from({**good, "panelled": True}) == "failed"
     assert verdict_from({**good, "story_state_ok": False}) == "failed"
-    assert verdict_from({**good, "notes": ["Chase and Trixi are duplicated"]}) == "failed"
+    assert verdict_from({**good, "notes": ["Pip and Trixi are duplicated"]}) == "failed"
     assert verdict_from({**good, "identity": 3}) == "failed"
     assert verdict_from({**good, "scene": 2}) == "failed"
 
@@ -585,7 +585,7 @@ def test_a_stored_verdict_is_re_judged_under_todays_rules():
 
     stale = Page(index=1, check={
         "ok": True, "status": "passed", "identity": 5, "style": 5, "scene": 3,
-        "notes": ["Chase and Trixi are duplicated: one pair stands on the bridge"],
+        "notes": ["Pip and Trixi are duplicated: one pair stands on the bridge"],
     })
     assert check_status(stale) == "failed"
 
@@ -598,7 +598,7 @@ def test_a_check_that_errored_is_never_read_as_a_pass():
 
 
 @pytest.mark.parametrize("brief", [
-    "Mats stands on the other side of the brook, looking back at the nest.",
+    "Claudio stands on the other side of the brook, looking back at the nest.",
     "A wide view: the hedge on one side of the path, the gate beyond it.",
 ])
 def test_single_scene_does_not_maul_ordinary_prose(brief):

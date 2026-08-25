@@ -364,7 +364,7 @@ class Book:
     blurb: dict[str, str] = field(default_factory=dict)
     #: the consistency verdict for the cover, in the same shape as Page.check.
     #: The cover is the one image everybody sees first and it used to be the
-    #: only one nothing checked -- which is how a book called "Simon und Chase"
+    #: only one nothing checked -- which is how a book called "Claudio und Pip"
     #: shipped with the dog drawn as a second boy.
     cover_check: dict[str, Any] = field(default_factory=dict)
     #: an accepted batch render that has not been collected yet:

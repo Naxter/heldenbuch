@@ -3,7 +3,7 @@
 A sheet shows the same character several times on purpose, which is right for
 designing an identity and wrong for drawing a page: the model copies what it
 sees, and the pages that failed the first finished book failed exactly that
-way -- two Chases, three Trixis.
+way -- the same character drawn twice on one page.
 """
 
 from __future__ import annotations

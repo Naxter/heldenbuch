@@ -11,8 +11,8 @@ from heldenbuch.book.models import Book, Page
 
 def _book():
     return Book(
-        title={"de": "Mats und der Matschstiefel"},
-        dedication={"de": "Für Mats, Weihnachten 2026"},
+        title={"de": "Claudio und der Matschstiefel"},
+        dedication={"de": "Für Claudio, Weihnachten 2026"},
         languages=["de"],
         pages=[Page(index=1, text={"de": "Es regnet."}),
                Page(index=2, text={"de": "Der Stiefel ist weg."})],
@@ -39,13 +39,13 @@ def test_title_dedication_pages_and_closing_are_all_read(tmp_path, monkeypatch):
     spoken = _record(monkeypatch, book, tmp_path / "audio")
 
     said = [text for _, text in spoken]
-    assert "Mats und der Matschstiefel" in said
-    assert "Für Mats, Weihnachten 2026" in said
+    assert "Claudio und der Matschstiefel" in said
+    assert "Für Claudio, Weihnachten 2026" in said
     assert "Es regnet." in said
     assert "Ende" in said
 
     # and in the order the book is read
-    assert said.index("Mats und der Matschstiefel") < said.index("Es regnet.")
+    assert said.index("Claudio und der Matschstiefel") < said.index("Es regnet.")
     assert said.index("Ende") == len(said) - 1
 
     assert book.matter_audio["title"]["de"] == "audio/title_de.mp3"
@@ -76,16 +76,16 @@ def test_an_edited_dedication_is_recorded_again(tmp_path, monkeypatch):
     audio = tmp_path / "audio"
     _record(monkeypatch, book, audio)
 
-    book.dedication["de"] = "Für Mats, zum sechsten Geburtstag"
+    book.dedication["de"] = "Für Claudio, zum sechsten Geburtstag"
     spoken = _record(monkeypatch, book, audio)
 
-    assert [text for _, text in spoken] == ["Für Mats, zum sechsten Geburtstag"]
+    assert [text for _, text in spoken] == ["Für Claudio, zum sechsten Geburtstag"]
 
 
 def test_the_closing_word_follows_the_language(tmp_path, monkeypatch):
     book = _book()
     book.languages = ["de", "en"]
-    book.title["en"] = "Mats and the muddy boot"
+    book.title["en"] = "Claudio and the muddy boot"
     book.pages[0].text["en"] = "It is raining."
     book.pages[1].text["en"] = "The boot is gone."
     spoken = _record(monkeypatch, book, tmp_path / "audio")

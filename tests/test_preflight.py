@@ -185,7 +185,7 @@ def test_checker_crash_is_unknown_not_a_pass(tmp_path, monkeypatch):
         raise TimeoutError("provider unreachable")
 
     monkeypatch.setattr(illustrate, "complete_json", boom)
-    verdict = check_page(page, sheet, Hero(name="Mats"), scene="a meadow")
+    verdict = check_page(page, sheet, Hero(name="Claudio"), scene="a meadow")
     assert verdict["status"] == "unknown"
     assert "ok" not in verdict
     assert "provider unreachable" in verdict["error"]
@@ -223,7 +223,7 @@ def test_a_beanstandetes_titelbild_blocks_the_export(library):
     """The cover is the image on the shelf and the one a buyer sees first.
 
     It was drawn, paid for, and never checked -- which is how a book called
-    "Simon und Chase" shipped with the dog drawn as a second human boy.
+    "Claudio und Pip" shipped with the dog drawn as a second human boy.
     """
     from heldenbuch.book.illustrate import cover_flagged
 
@@ -231,7 +231,7 @@ def test_a_beanstandetes_titelbild_blocks_the_export(library):
     book.cover_check = {
         "identity": 5, "style": 5, "scene": 5,
         "extra_or_duplicated_character": True,
-        "notes": ["Chase is drawn as a boy, not a dog"],
+        "notes": ["Pip is drawn as a boy, not a dog"],
     }
     assert cover_flagged(book) is True
 

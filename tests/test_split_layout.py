@@ -17,7 +17,7 @@ def _prompt(layout: str, illustration: str = "the boy crosses the plank") -> str
     book = Book(title={"de": "T"}, languages=["de"],
                 pages=[Page(index=1, text={"de": "x"}, illustration=illustration,
                             layout=layout)])
-    hero = Hero(name="Mats", description="a boy")
+    hero = Hero(name="Claudio", description="a boy")
     style = Style(name="S", description="soft watercolour")
     return page_prompt(book, hero, style, book.pages[0], [])
 

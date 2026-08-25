@@ -371,6 +371,8 @@ class BookJobs:
             spend=style.spend,
             log=log, should_stop=lambda: job.cancelled,
         )
+        # A run that found no clear winner must not leave an old recommendation
+        # standing, and must not invent a new one.
         style.recommended_backend = outcome["winner"]
         style.scout = outcome
         self.library.save_style(style)

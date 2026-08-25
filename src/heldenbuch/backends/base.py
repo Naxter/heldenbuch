@@ -21,6 +21,21 @@ class BackendError(RuntimeError):
     """Raised when generation fails in a way retrying will not fix."""
 
 
+def refuse_unknown_model(what: str, model: str, models: dict[str, str]) -> None:
+    """Stop a model that belongs to a different service, or to none.
+
+    Every backend used to accept whatever string it was handed, so picking
+    `openai` with a Gemini model, or a model with a typo in it, got as far as
+    the provider before failing -- mid-render, after other pages had already
+    been paid for. The names are known up front, so the mistake can be caught
+    up front.
+    """
+    if model in models.values() or model in models:
+        return
+    known = ", ".join(sorted(set(models.values())))
+    raise BackendError(f"unknown {what} model {model!r}; valid: {known}")
+
+
 def explain_provider_error(detail: str) -> str | None:
     """A provider error, said in words a person can act on.
 

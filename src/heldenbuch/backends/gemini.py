@@ -16,7 +16,7 @@ from typing import Any
 
 from ..config import require_key
 from ..types import GenRequest
-from .base import Backend, BackendError, explain_provider_error
+from .base import Backend, BackendError, explain_provider_error, refuse_unknown_model
 
 # Model ids, cheapest first. Pass `--model` to pick one explicitly.
 MODELS = {
@@ -40,6 +40,7 @@ class GeminiBackend(Backend):
     def __init__(self, model: str | None = None) -> None:
         # Allow the short aliases above as well as full model ids.
         super().__init__(MODELS.get(model or "", model))
+        refuse_unknown_model("Gemini image", self.model, MODELS)
         self._client = None
 
     def _get_client(self):

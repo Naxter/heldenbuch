@@ -733,7 +733,7 @@ def test_picking_a_variant_waits_for_the_running_render(library):
         def pending(self):
             return 1
 
-    book = library.save_book(Book(id="book_x", title={"de": "T"}))
+    library.save_book(Book(id="book_x", title={"de": "T"}))
     busy_api = BookApi(library, _Busy())
     with pytest.raises(ValueError):
         busy_api.book_pick_variant("book_x", {}, {"index": 1, "variant": "x"})

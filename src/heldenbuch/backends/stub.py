@@ -127,7 +127,11 @@ class StubBackend(Backend):
 
         is_sheet = req.kind == "sheet"
         drift = 0.0 if is_sheet else DRIFT_BY_REFERENCES.get(len(req.reference_images), 0.05)
-        rolls = _hash_floats(req.prompt, 8)
+        # The seed joins the hash: real services vary per seed, and the
+        # variants feature draws the same prompt several times expecting
+        # different candidates -- hashing the prompt alone made all of them
+        # pixel-identical in the no-key harness.
+        rolls = _hash_floats(f"{req.prompt}|{req.output.seed or ''}", 8)
 
         fur, scarf, eyes = CANON_FUR, CANON_SCARF, CANON_EYES
         if req.reference_images:

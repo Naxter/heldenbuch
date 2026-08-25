@@ -34,6 +34,7 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
+from ..imageutil import subject_mask
 from .models import closing_word, single_scene
 
 MM_PER_INCH = 25.4
@@ -43,6 +44,12 @@ MM_PER_INCH = 25.4
 FONT_FAMILIES: dict[str, dict[str, str]] = {
     "georgia": {"name": "Georgia", "regular": "georgia.ttf", "bold": "georgiab.ttf",
                 "italic": "georgiai.ttf"},
+    # Ships with the app (SIL OFL, licence beside the files): designed for
+    # early readers, and the one family here with full Cyrillic -- Russian
+    # books set in a system face were at the mercy of what happened to be
+    # installed.
+    "andika": {"name": "Andika", "regular": "Andika-Regular.ttf",
+               "bold": "Andika-Bold.ttf", "italic": "Andika-Italic.ttf"},
     "candara": {"name": "Candara", "regular": "Candara.ttf", "bold": "Candarab.ttf",
                 "italic": "Candarai.ttf"},
     "segoe": {"name": "Segoe UI", "regular": "segoeui.ttf", "bold": "segoeuib.ttf",
@@ -54,6 +61,9 @@ FONT_FAMILIES: dict[str, dict[str, str]] = {
 }
 
 FONT_DIRS = [
+    # The app's own fonts first: the one directory that exists on every
+    # machine this runs on.
+    Path(__file__).resolve().parent.parent / "fonts",
     Path("C:/Windows/Fonts"),
     Path("/usr/share/fonts"),
     Path("/Library/Fonts"),
@@ -474,8 +484,18 @@ def flat_border(source: Path, tol: float = 2.0, min_share: float = 0.02
     )
 
 
-def cover_image(source: Path, size: tuple[int, int]) -> Image.Image:
-    """Scale an illustration to fill a box, cropping the overflow centrally."""
+def cover_image(source: Path, size: tuple[int, int],
+                focus: bool = True) -> Image.Image:
+    """Scale an illustration to fill a box, cropping the overflow.
+
+    With `focus` the crop follows the subject rather than the centre:
+    pictures are drawn square, so a landscape page cuts a quarter away, and a
+    centred cut walked straight through off-centre compositions -- which then
+    read as "the model ignored my prompt" when it was the export doing the
+    cutting. Title and wrap-cover callers pass focus=False: their panels are
+    painted over the top of the crop and assume the deterministic centring --
+    a subject-shifted crop can pull the character's head under the title.
+    """
     inset = flat_border(source)
     with Image.open(source) as image:
         image = ImageOps.exif_transpose(image.convert("RGB"))
@@ -489,9 +509,34 @@ def cover_image(source: Path, size: tuple[int, int]) -> Image.Image:
             (max(1, math.ceil(image.width * scale)), max(1, math.ceil(image.height * scale))),
             Image.Resampling.LANCZOS,
         )
-    left = (resized.width - size[0]) // 2
-    top = (resized.height - size[1]) // 2
+    cx, cy = _subject_centre(resized) if focus else (0.5, 0.5)
+    left = min(max(int(cx * resized.width - size[0] / 2), 0),
+               resized.width - size[0])
+    top = min(max(int(cy * resized.height - size[1] / 2), 0),
+              resized.height - size[1])
     return resized.crop((left, top, left + size[0], top + size[1]))
+
+
+def _subject_centre(image: Image.Image) -> tuple[float, float]:
+    """Where the picture's subject sits, as fractions of width and height.
+
+    Judged on a thumbnail: the mask needs shapes, not pixels. Falls back to
+    the centre when the mask finds nothing to hold on to (a near-blank page,
+    a stub placeholder), so the old behaviour is the floor, never worse.
+    """
+    thumb = image.copy()
+    thumb.thumbnail((128, 128))
+    pixels = np.asarray(thumb)
+    mask = subject_mask(pixels, min_saturation=40)
+    if mask.sum() < mask.size * 0.02:
+        # A subject in near-black or muted tones is invisible to the
+        # saturation mask -- a night scene would crop like the centred cut
+        # this exists to replace. Second try: anything that is not paper.
+        mask = pixels.min(axis=-1) < 200
+    if mask.sum() < mask.size * 0.02:
+        return 0.5, 0.5
+    ys, xs = np.nonzero(mask)
+    return float(xs.mean()) / thumb.width, float(ys.mean()) / thumb.height
 
 
 def fit_inside(source: Path, size: tuple[int, int]) -> Image.Image:
@@ -739,7 +784,9 @@ def render_title_page(
     page_w, page_h = preset.page_px()
     safety = preset.safety_px
     canvas = (
-        cover_image(cover, (page_w, page_h))
+        # focus=False: the title panel is painted over the top of this crop
+        # and assumes the centred framing the cover was composed for.
+        cover_image(cover, (page_w, page_h), focus=False)
         if cover and cover.is_file()
         else Image.new("RGB", (page_w, page_h), PAPER)
     )
@@ -862,12 +909,14 @@ def render_wrap_cover(
     # Front is on the right; the back is on the left, as the sheet wraps.
     front_x = panel_w + spine_px
     if cover_art:
-        canvas.paste(cover_image(cover_art, (page_w - front_x, page_h)), (front_x, 0))
+        canvas.paste(cover_image(cover_art, (page_w - front_x, page_h),
+                                 focus=False), (front_x, 0))
         # A soft, heavily blurred wash of the same art behind the back cover
         # keeps the two sides related without competing with the blurb.
         from PIL import ImageFilter
 
-        back = cover_image(cover_art, (panel_w, page_h)).filter(ImageFilter.GaussianBlur(
+        back = cover_image(cover_art, (panel_w, page_h),
+                           focus=False).filter(ImageFilter.GaussianBlur(
             radius=max(8, page_h // 90)))
         canvas.paste(Image.blend(back, Image.new("RGB", back.size, PAPER), 0.62), (0, 0))
 
@@ -953,6 +1002,29 @@ def join_languages(mapping: dict, langs: list[str], separator: str = "\n") -> st
     return separator.join(seen)
 
 
+#: One remembered answer is enough: a person pages through one book's proof
+#: at a time, and any content edit bumps book.updated, which changes the key.
+_PREVIEW_TYPOGRAPHY: dict = {}
+
+
+def _preview_typography(book, preset: PrintPreset, family: str,
+                        langs: list[str], art) -> tuple[int, str]:
+    key = (book.id, book.updated, preset.key, preset.dpi, family, tuple(langs))
+    cached = _PREVIEW_TYPOGRAPHY.get(key)
+    if cached is not None:
+        return cached
+    ordered = sorted(book.pages, key=lambda p: p.index)
+    body_px = book_body_size([join_languages(p.text, langs) for p in ordered],
+                             preset, family, book.age)
+    zone = book_text_zone(
+        [art(p.image) for p in ordered
+         if p.layout not in ("wordless", "vignette")],
+        preset)
+    _PREVIEW_TYPOGRAPHY.clear()
+    _PREVIEW_TYPOGRAPHY[key] = (body_px, zone)
+    return body_px, zone
+
+
 def render_preview(
     book,
     index: int,
@@ -998,9 +1070,17 @@ def render_preview(
         page = next((p for p in book.pages if p.index == index), None)
         if page is None:
             raise ValueError(f"Seite {index} gibt es nicht.")
+        # The same book-wide type size and text zone the export locks in.
+        # Fitted per preview page instead, the proof showed a size and a
+        # position the finished PDF then contradicted. Cached across calls:
+        # the result does not depend on the requested page, and paging
+        # through the proof recomputed the whole book per click -- measured
+        # at over 90% of each call.
+        body_px, zone = _preview_typography(book, small, family, langs, art)
         image = render_story_page(
             art(page.image), join_languages(page.text, langs), small,
-            family, layout=page.layout, age=book.age)
+            family, layout=page.layout, age=book.age,
+            body_px=body_px, zone=zone)
 
     if guides and small.bleed_px > 0:
         overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))

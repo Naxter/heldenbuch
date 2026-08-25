@@ -403,6 +403,18 @@ def check_page(
             # Losing them must not lose the verdict itself.
             verdict["metrics"] = {}
 
+        # The embedding similarity, when the optional extra is installed: a
+        # numeric page-vs-sheet likeness that the export's cross-page look
+        # can compare across the whole book. Local and free per call; the
+        # first call downloads the model, which is why it stays opt-in.
+        try:
+            from ..metrics.embed import available, similarity
+            if available():
+                verdict["metrics"]["dino_cosine"] = round(
+                    similarity(page_image, sheet), 4)
+        except Exception:
+            pass
+
         # Also free, and measured rather than asked: a page split in two.
         seam = seam_in_frame(page_image)
     verdict["seam"] = seam
@@ -901,6 +913,7 @@ def illustrate_book(
     auto_retry: bool = True,
     budget_usd: float | None = None,
     chain: bool = False,
+    feedback: list[str] = (),
     resolve=None,
     on_progress=None,
     log=print,
@@ -914,7 +927,10 @@ def illustrate_book(
     is a hard spending ceiling for this run: once crossed, remaining pages
     are skipped rather than drawn. `chain` additionally shows each page the
     last accepted page as a reference -- the strongest setting-continuity
-    signal there is, bought with a strictly sequential render.
+    signal there is, bought with a strictly sequential render. `feedback`
+    carries the person's own complaint about the outgoing picture into the
+    first attempt -- a redraw is a second attempt by definition, and the
+    reason it was asked for is the most useful line the prompt can have.
     """
     stop = should_stop or (lambda: False)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -928,6 +944,7 @@ def illustrate_book(
     # The judge grades against the members the artist could actually attach,
     # so a page is never failed over a sheet the drawing call had no room for.
     ref_limit = _backend.max_references
+    drawn_by = f"{backend_name}:{model or _backend.default_model}"
     # `in_flight` reserves the estimated price of each image while it draws, so
     # the cap counts work already started and not only work already billed.
     _profile = RENDER_PROFILES.get(book.render_quality, RENDER_PROFILES["draft"])
@@ -1051,7 +1068,9 @@ def illustrate_book(
             _keep_previous(page, pages_dir, target)
 
         best: tuple[Path, dict[str, Any]] | None = None
-        feedback: list[str] = []
+        # The caller's redraw reason seeds the first attempt; the judge's
+        # notes replace it for the automatic second one.
+        notes_for_model: list[str] = list(feedback)
 
         # Say when the backend's reference budget cuts someone out. The sheet
         # exists so the member cannot drift; losing it must be loud, because
@@ -1076,13 +1095,15 @@ def illustrate_book(
                 result = draw_page(
                     book, hero, style, page, sheet, target, members=members,
                     backend_name=backend_name, model=model,
-                    insist=attempt == 2, feedback=feedback,
+                    insist=attempt == 2 or bool(notes_for_model),
+                    feedback=notes_for_model,
                     previous=previous, resolve=resolve, seed=seed,
                 )
                 with lock:
                     page.image = f"pages/{target.name}"
                     page.image_from_rev = brief_rev
                     page.seed = seed if records_seed else None
+                    page.drawn_by = drawn_by
                 spend(result.usage, "pages")
             except Exception as exc:
                 with lock:
@@ -1125,7 +1146,7 @@ def illustrate_book(
                 # The redraw carries the judge's concrete complaints, not
                 # just a sterner tone -- "same colours" fixed nothing when
                 # the note knew it was the jacket.
-                feedback = [str(n) for n in (page.check.get("notes") or [])]
+                notes_for_model = [str(n) for n in (page.check.get("notes") or [])]
                 with lock:
                     log(f"  Seite {page.index}: abgedriftet, zeichne noch einmal nach")
                 continue
@@ -1222,6 +1243,7 @@ def illustrate_book_batch(
     only: list[int] | None = None,
     redraw: bool = False,
     budget_usd: float | None = None,
+    feedback: list[str] = (),
     resolve=None,
     on_progress=None,
     save=None,
@@ -1292,7 +1314,10 @@ def illustrate_book_batch(
         # stale rather than stamped current.
         brief_revs[id(page)] = page.illustration_rev
         requests.append(GenRequest(
-            prompt=page_prompt(book, hero, style, page, named),
+            # The redraw reason travels here too. Without it, the batch path
+            # logged and stored the complaint and then never told the model.
+            prompt=page_prompt(book, hero, style, page, named,
+                               insist=bool(feedback), feedback=feedback),
             reference_images=references, output=output,
         ))
         todo.append((page, target))
@@ -1356,6 +1381,8 @@ def illustrate_book_batch(
             page.image_from_rev = brief_revs.get(id(page),
                                                  page.illustration_rev)
             page.error = None
+            page.drawn_by = (
+                f"gemini:{model or gemini_mod.GeminiBackend.default_model}")
         drawn += 1
     log(f"{drawn} von {len(todo)} Bildern angekommen.")
 
@@ -1384,6 +1411,161 @@ def illustrate_book_batch(
             log(f"  Seite {page.index}: {word}")
 
     return book
+
+
+def draw_variants(
+    book: Book,
+    hero: Hero,
+    style: Style,
+    sheet: Path,
+    pages_dir: Path,
+    index: int,
+    count: int = 3,
+    backend_name: str = "openai",
+    model: str | None = None,
+    resolve=None,
+    log=print,
+    should_stop=None,
+) -> list[str]:
+    """Draw several candidates for one page (index 0 = the cover) and let a
+    person choose.
+
+    The hero flow already works this way -- draw three, pick one -- and it is
+    the best judgement loop in the app: a human choosing between finished
+    pictures beats any checker score. Reserved for the images that carry the
+    book (the cover, the climax); nothing is adopted until someone picks.
+
+    Returns the book-relative paths of the candidates that were drawn.
+    Failures of single candidates are logged and skipped -- two choices are
+    still a choice, and the money for the failed one was not spent.
+    """
+    stop = should_stop or (lambda: False)
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    page = None
+    if index:
+        page = next((p for p in book.pages if p.index == index), None)
+        if page is None:
+            raise ValueError(f"Seite {index} gibt es nicht.")
+    members = book.cast_for(page) if page is not None else list(book.cast)
+    stem = "cover" if index == 0 else f"page_{index:02d}"
+
+    made: list[str] = []
+    lock = threading.Lock()
+
+    def one(position: int) -> None:
+        if stop():
+            return
+        target = pages_dir / f"{stem}_var{position}.png"
+        try:
+            if page is None:
+                result = draw_cover(book, hero, style, sheet, target,
+                                    backend_name, model, members=members,
+                                    resolve=resolve)
+            else:
+                result = draw_page(book, hero, style, page, sheet, target,
+                                   members=members, backend_name=backend_name,
+                                   model=model, resolve=resolve,
+                                   seed=random.randrange(1, 2**31))
+            with lock:
+                add_spend(book.spend, result.usage,
+                          "cover" if page is None else "pages")
+                made.append(f"pages/{target.name}")
+                log(f"  Entwurf {position} ist fertig.")
+        except Exception as exc:
+            with lock:
+                log(f"  Entwurf {position}: fehlgeschlagen — {exc}")
+
+    with ThreadPoolExecutor(max_workers=min(count, 3)) as pool:
+        list(pool.map(one, range(1, count + 1)))
+
+    made.sort()
+    drawn_by = f"{backend_name}:{model or get_backend(backend_name, model).default_model}"
+    if page is None:
+        book.cover_variants = made
+        book.cover_variants_by = drawn_by
+    else:
+        page.variants = made
+        page.variants_by = drawn_by
+    return made
+
+
+def adopt_variant(book: Book, index: int, chosen: str, pages_dir: Path) -> None:
+    """Make the picked candidate the page's picture; the rest are removed.
+
+    The outgoing picture is kept in the page history the way a redraw keeps
+    it, so the choice stays undoable.
+    """
+    page = None
+    if index:
+        page = next((p for p in book.pages if p.index == index), None)
+        if page is None:
+            raise ValueError(f"Seite {index} gibt es nicht.")
+    variants = book.cover_variants if page is None else page.variants
+    if chosen not in variants:
+        raise ValueError("Diesen Entwurf gibt es nicht mehr.")
+    source = pages_dir / Path(chosen).name
+    if not source.is_file():
+        # A double submit adopts a file the first call already moved away.
+        # Refusing here keeps the history clean -- proceeding used to crash
+        # AFTER copying the already-adopted picture in as a fake old version.
+        raise ValueError("Diesen Entwurf gibt es nicht mehr.")
+
+    stem = "cover" if page is None else f"page_{index:02d}"
+    target = pages_dir / f"{stem}.png"
+    if page is None:
+        # The cover has no Page to hang a history on, so it keeps its own.
+        # The pick dialog promises the previous version survives; for pages
+        # _keep_previous delivers that, and the cover must not break it.
+        if target.is_file():
+            keep = pages_dir / f"cover_v{len(book.cover_history) + 1}.png"
+            shutil.copy2(target, keep)
+            book.cover_history.append(f"pages/{keep.name}")
+    else:
+        _keep_previous(page, pages_dir, target)
+    os.replace(source, target)
+    for other in variants:
+        if other != chosen:
+            (pages_dir / Path(other).name).unlink(missing_ok=True)
+
+    if page is None:
+        book.cover = f"pages/{target.name}"
+        book.cover_variants = []
+        book.cover_variants_by = ""
+        # A new picture is unreviewed by definition.
+        book.cover_check = {}
+    else:
+        page.image = f"pages/{target.name}"
+        # The ledger follows the picture: the adopted image was drawn by the
+        # variants run, and its seed is unknown rather than the old one's.
+        page.drawn_by = page.variants_by or page.drawn_by
+        page.seed = None
+        page.variants = []
+        page.variants_by = ""
+        page.check = {}
+        page.image_from_rev = page.illustration_rev
+    book.touch()
+
+
+def discard_variants(book: Book, index: int, pages_dir: Path) -> None:
+    """Throw the waiting candidates away without adopting any.
+
+    Without this, a set of drafts blocked the page forever: drawing again is
+    refused while candidates wait, and waiting was the only other option.
+    """
+    page = None
+    if index:
+        page = next((p for p in book.pages if p.index == index), None)
+        if page is None:
+            raise ValueError(f"Seite {index} gibt es nicht.")
+    variants = book.cover_variants if page is None else page.variants
+    for rel in variants:
+        (pages_dir / Path(rel).name).unlink(missing_ok=True)
+    if page is None:
+        book.cover_variants = []
+        book.cover_variants_by = ""
+    else:
+        page.variants = []
+        page.variants_by = ""
 
 
 def cover_flagged(book: Book) -> bool:

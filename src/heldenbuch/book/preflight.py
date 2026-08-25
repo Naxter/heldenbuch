@@ -33,7 +33,7 @@ from .layout import (
     join_languages,
     text_fits,
 )
-from .models import LANGUAGES, Book
+from .models import AGE_BANDS, LANGUAGES, Book
 
 #: below this a 300-dpi print preset reads as visibly soft on paper
 DPI_WARN = 280
@@ -50,21 +50,61 @@ PALETTE_DRIFT = 0.15
 MIN_SCORED_PAGES = 6
 
 
-def palette_outliers(book: Book) -> list[int]:
-    """Pages whose colour balance stands apart from the rest of the book.
+#: how far a page's embedding similarity may sit from the book's median.
+#: Tighter than the palette rule because DINO cosines cluster high; like it,
+#: unvalidated until the benchmark runs, which is why both feed only notes.
+#: Known confound, stated in embed.py's own docstring: the similarity is
+#: whole-image and measured against the sheet, so a busy scene scores lower
+#: than a plain one regardless of identity. The median-of-the-book framing
+#: softens that (every page shares the handicap) but does not remove it --
+#: page-to-neighbour distance would, and needs the benchmark to calibrate.
+EMBED_DRIFT = 0.12
 
-    Derived from the stored per-page colour metrics, so it costs nothing and
-    reaches books already on disk. Needs enough scored pages for a median to
-    mean anything.
+
+def _metric_outliers(book: Book, key: str, drift: float) -> list[int]:
+    """Pages whose stored per-page metric stands apart from the book's median.
+
+    Derived from stored evidence, so it costs nothing and reaches books
+    already on disk. Needs enough scored pages for a median to mean anything.
     """
-    scored = [(p.index, (p.check or {}).get("metrics", {}).get("palette_cosine"))
+    scored = [(p.index, (p.check or {}).get("metrics", {}).get(key))
               for p in book.pages]
     values = sorted(v for _, v in scored if isinstance(v, (int, float)))
     if len(values) < MIN_SCORED_PAGES:
         return []
     median = statistics.median(values)
     return sorted(index for index, v in scored
-                  if isinstance(v, (int, float)) and abs(v - median) > PALETTE_DRIFT)
+                  if isinstance(v, (int, float)) and abs(v - median) > drift)
+
+
+def palette_outliers(book: Book) -> list[int]:
+    return _metric_outliers(book, "palette_cosine", PALETTE_DRIFT)
+
+
+def wordy_pages(book: Book, language: str) -> list[int]:
+    """Pages clearly over the age band's word budget, in the given language.
+
+    The 1.4 headroom keeps this quiet for ordinary variance; only pages a
+    listener would actually feel as long are named.
+    """
+    limit = AGE_BANDS.get(book.age, {}).get("words_max")
+    if not limit:
+        return []
+    return sorted(
+        page.index for page in book.pages
+        if page.layout != "wordless"
+        and len((page.text or {}).get(language, "").split()) > limit * 1.4)
+
+
+def embed_outliers(book: Book) -> list[int]:
+    """The sharper cross-page look, where the embedding extra was installed.
+
+    `dino_cosine` measures whole-image likeness to the reference sheet; a
+    page whose likeness sits far from the book's own median looks different
+    from its siblings in a way the palette histogram cannot see -- style
+    drift, a recoloured character, a wrong setting.
+    """
+    return _metric_outliers(book, "dino_cosine", EMBED_DRIFT)
 
 
 def finding(code: str, text: str, **params: Any) -> dict[str, Any]:
@@ -223,31 +263,43 @@ def validate_export_readiness(
             "Druckbogen-Vorschau zeigt den Ausschnitt.",
             percent=percent))
 
+    def pages_note(code: str, template: str, indices: list[int]) -> None:
+        if indices:
+            listed = ", ".join(map(str, indices))
+            notes.append(finding(code, template.format(pages=listed),
+                                 pages=listed, count=len(indices)))
+
     # Pages whose check said the location plainly is not the place reference.
     # A hint like the palette rule: the judge's word alone must not gate an
     # export, but a person should hear it before ordering the book.
-    mismatched = sorted(
-        page.index for page in book.pages
-        if (page.check or {}).get("setting_consistent") is False)
-    if mismatched:
-        listed = ", ".join(map(str, mismatched))
-        notes.append(finding(
-            "setting_mismatch",
-            f"Seite(n) {listed}: Der Schauplatz passt laut Prüfung nicht zur "
-            "Orts-Referenz — beim Durchblättern prüfen.",
-            pages=listed, count=len(mismatched)))
+    pages_note("setting_mismatch",
+               "Seite(n) {pages}: Der Schauplatz passt laut Prüfung nicht "
+               "zur Orts-Referenz — beim Durchblättern prüfen.",
+               sorted(page.index for page in book.pages
+                      if (page.check or {}).get("setting_consistent") is False))
 
-    # The one cross-page look the pipeline has: every check compares a page to
-    # the reference sheet alone, so drift between pages -- the thing a reader
-    # flipping the book actually sees -- shows up nowhere else.
+    # The cross-page look: every check compares a page to the reference sheet
+    # alone, so drift between pages -- the thing a reader flipping the book
+    # actually sees -- shows up nowhere else. The embedding rule sees more
+    # (style, setting, a recoloured figure) where the extra is installed; the
+    # palette rule is the floor that always works.
     drifted = palette_outliers(book)
-    if drifted:
-        listed = ", ".join(map(str, drifted))
-        notes.append(finding(
-            "palette_outlier",
-            f"Seite(n) {listed} weichen farblich deutlich vom Rest des "
-            "Buches ab — beim Durchblättern prüfen.",
-            pages=listed, count=len(drifted)))
+    pages_note("palette_outlier",
+               "Seite(n) {pages} weichen farblich deutlich vom Rest des "
+               "Buches ab — beim Durchblättern prüfen.", drifted)
+    pages_note("embed_outlier",
+               "Seite(n) {pages} sehen der Vorlage deutlich unähnlicher als "
+               "der Rest des Buches — beim Durchblättern prüfen.",
+               [i for i in embed_outliers(book) if i not in drifted])
+
+    # The words carry half the book, in every chosen language: translations
+    # rarely match lengths, and checking only the first shipped an
+    # over-budget second language unflagged into a bilingual book.
+    chosen = languages or [book.primary_language]
+    pages_note("wordy_pages",
+               "Seite(n) {pages} liegen deutlich über dem Wortbudget der "
+               "Altersstufe — beim Vorlesen prüfen, ob sie zu lang geraten.",
+               sorted({i for code in chosen for i in wordy_pages(book, code)}))
 
     # Measured in the face the export will actually set, not the default:
     # Georgia's metrics said "fits" for pages that Comic Sans then overflowed.

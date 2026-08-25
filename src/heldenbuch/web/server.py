@@ -325,6 +325,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         ("GET", r"^/api/book/backups$", "book.backups"),
         ("POST", r"^/api/book/restore$", "book.book_restore"),
         ("POST", r"^/api/book/books/([^/]+)/open-folder$", "book.book_open_folder"),
+        ("POST", r"^/api/book/books/([^/]+)/pick-variant$", "book.book_pick_variant"),
         ("GET", r"^/api/book/books/([^/]+)$", "book.book"),
         ("PUT", r"^/api/book/books/([^/]+)$", "book.book_update"),
         ("DELETE", r"^/api/book/books/([^/]+)$", "book.book_delete"),

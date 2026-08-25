@@ -208,11 +208,13 @@ class Library:
     #: Fields the background jobs write. The editor adopts these from disk so
     #: saving a text edit cannot throw away a page drawn since the screen was
     #: opened.
-    _RENDERED_BOOK = ("cover", "cover_check", "spend", "pending_batch")
+    _RENDERED_BOOK = ("cover", "cover_check", "spend", "pending_batch",
+                      "cover_variants", "cover_variants_by", "cover_history")
     # `seed` belongs to the render like `image` does: without it here, an
     # editor save could clobber the number a good page was drawn with.
     _RENDERED_PAGE = ("image", "image_from_rev", "check", "history", "error",
-                      "audio", "audio_from_rev", "seed")
+                      "audio", "audio_from_rev", "seed", "drawn_by",
+                      "variants", "variants_by", "redraw_reasons")
     #: The person names and describes a cast member; the render draws their
     #: sheet. Matched by position, the handle the rest of the app already uses
     #: for a cast member (the API's `index`, the sheet's own file name).

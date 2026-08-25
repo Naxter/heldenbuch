@@ -45,6 +45,7 @@ AGE_BANDS = {
         "pages": 12,
         "sentences": "exactly one very short sentence",
         "words_per_page": "5 to 12 words",
+        "words_max": 12,
         "guidance": (
             "Name everyday objects. Use repetition and a returning refrain. One "
             "single idea per page. No subordinate clauses. No abstract feelings "
@@ -56,6 +57,7 @@ AGE_BANDS = {
         "pages": 16,
         "sentences": "two or three short sentences",
         "words_per_page": "20 to 40 words",
+        "words_max": 40,
         "guidance": (
             "A small problem appears early and is solved by the end. Concrete "
             "actions the child can picture. Simple feelings named out loud. At "
@@ -67,6 +69,7 @@ AGE_BANDS = {
         "pages": 20,
         "sentences": "three to five sentences",
         "words_per_page": "45 to 80 words",
+        "words_max": 80,
         "guidance": (
             "A real plot with a turning point. The hero makes a choice that "
             "costs something. Some humour. Dialogue is welcome. Vocabulary may "
@@ -78,6 +81,7 @@ AGE_BANDS = {
         "pages": 24,
         "sentences": "four to seven sentences",
         "words_per_page": "80 to 140 words",
+        "words_max": 140,
         "guidance": (
             "A layered plot with a setback before the resolution. Inner life and "
             "motivation matter. Wordplay and irony land at this age. Chapters "
@@ -362,6 +366,21 @@ class Page:
     #: one is gone. Left None where the service ignores seeds, rather than
     #: recording a number that had no effect.
     seed: int | None = None
+    #: Which service and model drew the current picture ("openai:gpt-image-2").
+    #: Without this, no defect can ever be attributed to a model -- "Gemini
+    #: drifts settings" stays a hunch instead of a count.
+    drawn_by: str = ""
+    #: Candidate drawings waiting for the person to pick one, book-relative.
+    #: The hero flow works this way (draw three, choose one) and it is the
+    #: best judgement loop in the app; this brings it to single pages.
+    variants: list[str] = field(default_factory=list)
+    #: which service drew the waiting candidates, so the pick can set
+    #: `drawn_by` truthfully instead of leaving the replaced picture's entry
+    variants_by: str = ""
+    #: Why redraws were asked for, as short codes ("face", "setting",
+    #: "composition", "style"). Every redraw is a quality verdict the app
+    #: used to throw away.
+    redraw_reasons: list[str] = field(default_factory=list)
 
     def image_stale(self) -> bool:
         return bool(self.image) and self.illustration_rev > self.image_from_rev
@@ -411,6 +430,16 @@ class Book:
     #: language code -> back-cover text. Separate from the dedication, which is
     #: written to one child and belongs inside the book, not on the outside.
     blurb: dict[str, str] = field(default_factory=dict)
+    #: Candidate cover drawings waiting for the person to pick one. Same
+    #: judgement loop as pages: the cover carries the book, so it gets the
+    #: draw-several-choose-one treatment the hero flow proved out.
+    cover_variants: list[str] = field(default_factory=list)
+    #: which service drew the waiting cover candidates ("gemini:...")
+    cover_variants_by: str = ""
+    #: Outgoing covers, newest last -- the pick dialog promises the previous
+    #: version stays recoverable, and pages already kept that promise while
+    #: the cover silently broke it.
+    cover_history: list[str] = field(default_factory=list)
     #: the consistency verdict for the cover, in the same shape as Page.check.
     #: The cover is the one image everybody sees first and it used to be the
     #: only one nothing checked -- which is how a book called "Claudio und Pip"

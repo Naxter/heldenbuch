@@ -258,18 +258,31 @@ def revise(
     spend: dict | None = None,
     provider: str = "openai",
     model: str | None = None,
+    second_reader: bool = False,
 ) -> dict[str, Any]:
     """Second pass over a draft: rhythm, repetition, and the last line.
 
     A first draft from any model is serviceable and slightly flat. Reading it
     back with one job -- make this work out loud -- is the cheapest quality
     improvement in the whole pipeline.
+
+    `second_reader` reshapes the pass for a different provider reading the
+    text cold: an editor is asked different questions than the author asks
+    himself, or the paid second opinion is just the same polish twice.
     """
     band = AGE_BANDS.get(age, AGE_BANDS["4-5"])
     primary = languages[0]
     draft = [{"index": p.index, "text": p.text} for p in story["pages"]]
 
-    user = f"""Here is a draft picture book for {band["label"]}.
+    editor = (
+        "\nYou did not write this draft; you are its first outside reader. "
+        "Also check what only fresh eyes catch: whether the story makes "
+        "sense read cold, anything a listening child would mishear or "
+        "misread, and any page whose meaning leans on something never said."
+        if second_reader else ""
+    )
+
+    user = f"""Here is a draft picture book for {band["label"]}.{editor}
 
 Title: {story["title"].get(primary, "")}
 Pages: {draft}

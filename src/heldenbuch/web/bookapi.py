@@ -110,6 +110,7 @@ class BookApi:
                 # were the only paid actions with no estimate at all.
                 "story_usd": 0.10,     # write + one revision
                 "rewrite_usd": 0.01,   # one page
+                "cross_check_usd": 0.04,  # whole-story second read-through
                 "language_usd": 0.03,  # one added language
                 "usd_per_eur": USD_PER_EUR,
             },
@@ -303,6 +304,7 @@ class BookApi:
             raw["audio_urls"] = {
                 code: f"{prefix}/{path}" for code, path in page.audio.items()
             }
+            raw["variant_urls"] = [f"{prefix}/{v}" for v in page.variants]
             # Long edge in pixels, so the UI can say whether this survives print.
             if page.image:
                 try:
@@ -316,6 +318,8 @@ class BookApi:
                     pass
         for member, raw in zip(book.cast, data["cast"]):
             raw["sheet_url"] = f"{prefix}/{member.sheet}" if member.sheet else None
+        data["cover_variant_urls"] = [f"{prefix}/{v}"
+                                      for v in book.cover_variants]
         if (book.photo_page or {}).get("image"):
             data["photo_page"]["image_url"] = f"{prefix}/{book.photo_page['image']}"
         # Title, dedication and closing narration: the parts of the book that
@@ -560,6 +564,35 @@ class BookApi:
         # adopted from disk rather than clobbered.
         self.library.save_book(book, adopt="rendered")
         return {"ok": True, "book_id": book.id}
+
+    def book_pick_variant(self, book_id: str, _query, body) -> dict[str, Any]:
+        """Adopt one drawn candidate as the page's (or cover's) picture.
+
+        Refused while a render works on this book: the job holds a
+        minutes-old copy whose next save would revert the pick, and both
+        write the same page file. The queue runs one job at a time, so "no
+        active job on this book" really means no concurrent writer.
+        """
+        active = self.jobs.active()
+        if (active is not None
+                and active.params.get("book_id") == book_id
+                and active.action in ("book_illustrate", "page_variants")):
+            raise ValueError("Gerade wird an diesem Buch gezeichnet — bitte "
+                             "warten, bis der Auftrag fertig ist.")
+        book = self.library.get_book(book_id)
+        body = body or {}
+        index = int(body.get("index") or 0)
+        pages_dir = self.library.book_dir(book.id) / "pages"
+        if body.get("discard"):
+            illustrate.discard_variants(book, index, pages_dir)
+        else:
+            illustrate.adopt_variant(book, index,
+                                     str(body.get("variant") or ""), pages_dir)
+        # adopt="editorial": this handler writes rendered fields (image,
+        # variants, checks), so what it must NOT clobber is the editor's --
+        # saving as "rendered" adopted its own fields back from stale disk.
+        self.library.save_book(book, adopt="editorial")
+        return {"ok": True, "book_id": book.id, "index": index}
 
     def book_delete(self, book_id: str, _query, _body) -> dict[str, Any]:
         self.library.delete_book(book_id)

@@ -55,10 +55,35 @@ def embed(path: Path | str):
     return torch.nn.functional.normalize(vector, dim=-1)[0]
 
 
+@lru_cache(maxsize=64)
+def _embed_cached(path_str: str, _mtime_ns: int, _size: int):
+    """The sheet is compared against every page of a render; embedding the
+    same unchanged file once per page was pure waste. Keyed by nanosecond
+    mtime AND size: plain st_mtime collided on fast successive rewrites of
+    the same path (17 of 20 writes shared a float tick when measured), which
+    silently served the previous picture's embedding for the new one."""
+    return embed(path_str)
+
+
 def similarity(page_path: Path | str, sheet_path: Path | str) -> float:
     import torch
 
-    return float(torch.dot(embed(page_path), embed(sheet_path)))
+    def cached(path: Path | str):
+        p = Path(path)
+        stat = p.stat()
+        return _embed_cached(str(p), stat.st_mtime_ns, stat.st_size)
+
+    return float(torch.dot(cached(page_path), cached(sheet_path)))
+
+
+def available() -> bool:
+    """Whether the optional extra is installed, without loading the model."""
+    try:
+        import torch  # noqa: F401
+        import transformers  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 def score_run(records, run_root: Path, log=print) -> None:

@@ -22,6 +22,27 @@ from ..pricing import add as add_spend
 from ..pricing import summary as spend_summary
 from .jobs import Job
 
+#: What each redraw reason tells the illustrator, and what the job log calls
+#: it. One entry per code: two parallel dicts already drifted once elsewhere.
+REDRAW_REASONS = {
+    "face": {"line": ("the character's face or identity was wrong in the "
+                      "previous version -- match image 1 exactly: face "
+                      "shape, hair, colours"),
+             "label": "Gesicht"},
+    "setting": {"line": ("the setting was wrong in the previous version -- "
+                         "follow the place reference and the SCENE's "
+                         "location exactly"),
+                "label": "Schauplatz"},
+    "composition": {"line": ("the composition was wrong in the previous "
+                             "version -- follow the SCENE's framing and the "
+                             "direction note"),
+                    "label": "Bildaufbau"},
+    "style": {"line": ("the style did not match the book in the previous "
+                       "version -- follow the STYLE block exactly, same "
+                       "technique and palette"),
+              "label": "Stil"},
+}
+
 MAX_UPLOAD_BYTES = 16 * 1024 * 1024
 #: Ceiling on decoded pixels, well under Pillow's own bomb threshold. A phone
 #: photo is around 12 megapixels, so this leaves plenty of headroom.
@@ -94,6 +115,7 @@ class BookJobs:
             "story_languages": self.story_languages,
             "book_illustrate": self.book_illustrate,
             "book_check": self.book_check,
+            "page_variants": self.page_variants,
             "cast_redraw": self.cast_redraw,
             "book_undo": self.book_undo,
             "book_photo": self.book_photo,
@@ -421,6 +443,26 @@ class BookJobs:
             for note in story.get("revision_notes", [])[:6]:
                 log(f"  · {note}")
 
+        if params.get("cross_check"):
+            # Fresh eyes: a second text provider re-reads the same story. The
+            # author model is blind to its own habits the way any writer is;
+            # a different model catches different clunk. Opt-in, priced.
+            primary_provider = self._provider(job)
+            other = next((p for p in available_providers()
+                          if p != primary_provider), None)
+            if other is None:
+                log("Kein zweiter Textanbieter eingerichtet — das "
+                    "Zweitlektorat entfällt.")
+            else:
+                what = ("den unlektorierten Erstentwurf"
+                        if not params.get("revise", True) else "denselben Text")
+                log(f"Zweitlektorat von {other} — frische Augen auf {what}.")
+                story = author.revise(story, hero, age, languages, rhyme=rhyme,
+                                      spend=story_spend, provider=other,
+                                      second_reader=True)
+                for note in story.get("revision_notes", [])[:4]:
+                    log(f"  · {note}")
+
         book = Book(
             hero_id=hero.id, style_id=style.id,
             title=story["title"], dedication=story["dedication"],
@@ -438,6 +480,11 @@ class BookJobs:
         job.result["book_id"] = book.id
 
         primary = book.primary_language
+        over = preflight.wordy_pages(book, primary)
+        if over:
+            log("")
+            log("Deutlich über dem Wortbudget der Altersstufe: Seite(n) "
+                + ", ".join(map(str, over)) + " — beim Vorlesen prüfen.")
         log("")
         log(f"„{book.title.get(primary, '')}“ — {len(book.pages)} Seiten")
         if book.cast:
@@ -567,12 +614,24 @@ class BookJobs:
 
         only = [int(i) for i in params.get("only") or []] or None
 
+        # The person's own complaint about the outgoing picture. Recorded on
+        # the page -- every redraw is a quality verdict the app used to throw
+        # away -- and handed to the illustrator as the first line of feedback.
+        reason = str(params.get("reason") or "").strip()
+        feedback: list[str] = []
+        if reason in REDRAW_REASONS and only:
+            feedback = [REDRAW_REASONS[reason]["line"]]
+            for page in book.pages:
+                if page.index in only:
+                    page.redraw_reasons.append(reason)
+            log(f"Grund für das Neuzeichnen: {REDRAW_REASONS[reason]['label']}.")
+
         # Batch: everything to Google at once, half price, no hurry. Only
         # gemini offers this; the interactive path below stays the default.
         if params.get("batch") and backend == "gemini":
             try:
                 illustrate.illustrate_book_batch(
-                    book, hero, style, sheet,
+                    book, hero, style, sheet, feedback=feedback,
                     pages_dir=self.library.book_dir(book.id) / "pages",
                     model=params.get("model"),
                     check=bool(params.get("check", True)),
@@ -617,6 +676,7 @@ class BookJobs:
                 auto_retry=bool(params.get("auto_retry", True)),
                 budget_usd=(float(params["budget_usd"]) if params.get("budget_usd") else None),
                 chain=bool(params.get("chain")),
+                feedback=feedback,
                 resolve=self._book_resolver(book),
                 on_progress=report,
                 log=log, should_stop=lambda: job.cancelled,
@@ -674,6 +734,47 @@ class BookJobs:
         job.result["book_id"] = book.id
         log("Fertig — Seiten, auf denen "
             f"{member.name} vorkommt, zeigen die Änderung erst nach dem Neuzeichnen.")
+
+    def page_variants(self, job: Job, log) -> None:
+        """Draw several candidates for one page and let the person choose.
+
+        The hero flow already works this way; a human choosing between
+        finished pictures beats any checker score. Meant for the images that
+        carry the book -- the cover and the climax page.
+        """
+        params = job.params
+        book = self.library.get_book(params["book_id"])
+        hero = self.library.get_hero(book.hero_id)
+        style = self.library.get_style(book.style_id)
+        sheet = self._locked_sheet(book, hero, style)
+        backend = self._backend(job, style)
+        index = int(params.get("index") or 0)
+        waiting = (book.cover_variants if index == 0 else
+                   next((p.variants for p in book.pages if p.index == index),
+                        []))
+        if waiting:
+            raise ValueError(
+                "Für diese Seite warten schon Entwürfe — erst einen wählen "
+                "oder sie verwerfen, dann neu zeichnen.")
+        count = max(2, min(4, int(params.get("count") or 3)))
+        label = "das Titelbild" if index == 0 else f"Seite {index}"
+        log(f"{count} Entwürfe für {label} — gezeichnet von {backend}.")
+
+        made = illustrate.draw_variants(
+            book, hero, style, sheet,
+            pages_dir=self.library.book_dir(book.id) / "pages",
+            index=index, count=count, backend_name=backend,
+            model=params.get("model"), resolve=self._book_resolver(book),
+            log=log, should_stop=lambda: job.cancelled,
+        )
+        self.library.save_book(book, adopt="editorial")
+        job.result["book_id"] = book.id
+        job.result["variants"] = len(made)
+        job.result["index"] = index
+        log("")
+        word = "Entwurf wartet" if len(made) == 1 else "Entwürfe warten"
+        log(f"{len(made)} {word} auf deine Wahl.")
+        self._report_spend(book, log)
 
     def book_check(self, job: Job, log) -> None:
         """Re-run the consistency check without redrawing anything.

@@ -718,3 +718,22 @@ def test_resaving_the_same_cast_pages_changes_nothing(api, library):
     twice = library.get_book(book.id)
     assert twice.content_rev == once.content_rev
     assert twice.pages[0].illustration_rev == once.pages[0].illustration_rev
+
+
+def test_picking_a_variant_waits_for_the_running_render(library):
+    """The pick and a render job write the same page file and the same
+    rendered fields; refusing during a run is what keeps both alive."""
+    from heldenbuch.web.bookapi import BookApi
+
+    class _Busy:
+        def active(self):
+            return Job(id="9", action="book_illustrate",
+                       params={"book_id": "book_x"})
+
+        def pending(self):
+            return 1
+
+    book = library.save_book(Book(id="book_x", title={"de": "T"}))
+    busy_api = BookApi(library, _Busy())
+    with pytest.raises(ValueError):
+        busy_api.book_pick_variant("book_x", {}, {"index": 1, "variant": "x"})

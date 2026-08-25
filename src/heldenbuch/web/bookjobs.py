@@ -413,6 +413,7 @@ class BookJobs:
             cover_illustration=story["cover_illustration"],
             idea=params.get("idea", ""), age=age, languages=languages,
             pages=story["pages"], cast=story["cast"], rhyme=rhyme,
+            climax=int(story.get("climax") or 0),
             render_quality=params.get("render_quality") or "draft",
         )
         # Freeze the exact references this book will be drawn from. Changing

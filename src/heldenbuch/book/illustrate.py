@@ -243,10 +243,19 @@ def page_prompt(book: Book, hero: Hero, style: Style, page: Page,
         if insist else ""
     )
 
+    # Face and facing, when the author gave them. Kept out of the SCENE
+    # text so they read as direction rather than as things to draw.
+    notes = ""
+    if page.expression.strip():
+        notes += f"The hero's face: {page.expression.strip()}.\n"
+    if page.direction.strip():
+        notes += f"Direction: {page.direction.strip()}.\n"
+
     return (
         "A single full-page illustration for a children's picture book.\n\n"
         f"{references}{warning}\n\n"
-        f"SCENE\n{single_scene(page.illustration)}\n\n"
+        f"SCENE\n{single_scene(page.illustration)}\n"
+        f"{notes}\n"
         f"{_who_is_who(hero, members)}"
         "Use the reference images only for who and where. Do not copy their "
         "pose, framing or background -- build the scene described above.\n\n"

@@ -763,6 +763,10 @@ const LOCALES = {
     page_redraw_title: "Kostet etwa {price}", page_versions: "Versionen ({n})",
     page_edit_heading: "Seite {n} bearbeiten", page_text_label: "Text ({lang})",
     page_brief_label: "Was das Bild zeigt (englisch — wirkt beim nächsten Zeichnen)",
+    page_expression_label: "Gesichtsausdruck",
+    page_expression_hint: "z. B. den Tränen nahe",
+    page_direction_label: "Blickrichtung",
+    page_direction_hint: "z. B. von links nach rechts",
     page_ai_title: "Die KI schreibt die Seite neu, statt dass du selbst tippst",
     page_ai_rewrite: "KI: neu schreiben lassen",
     page_typeset_title: "Diese Seite fertig gesetzt ansehen",
@@ -1178,6 +1182,10 @@ const LOCALES = {
     page_redraw_title: "Costs roughly {price}", page_versions: "Versions ({n})",
     page_edit_heading: "Edit page {n}", page_text_label: "Text ({lang})",
     page_brief_label: "What the picture shows (in English — takes effect the next time it is drawn)",
+    page_expression_label: "Expression",
+    page_expression_hint: "e.g. close to tears",
+    page_direction_label: "Facing",
+    page_direction_hint: "e.g. moving left to right",
     page_ai_title: "The AI writes the page again instead of you typing it",
     page_ai_rewrite: "AI: have it written again",
     page_typeset_title: "See this page fully typeset",
@@ -3038,6 +3046,14 @@ function editPage(index) {
     </div>
     <label class="f"><span>${t("page_brief_label")}</span>
       <textarea id="m-pb" rows="2">${esc(page.illustration)}</textarea></label>
+    <div class="grid g2">
+      <label class="f"><span>${t("page_expression_label")}</span>
+        <input type="text" id="m-pe" value="${esc(page.expression || "")}"
+          placeholder="${esc(t("page_expression_hint"))}"></label>
+      <label class="f"><span>${t("page_direction_label")}</span>
+        <input type="text" id="m-pd" value="${esc(page.direction || "")}"
+          placeholder="${esc(t("page_direction_hint"))}"></label>
+    </div>
     <label class="f" style="max-width:320px"><span>${t("layout_label")}</span>
       <select id="m-pl">${layouts}</select></label>
     ${page.seed ? `<p class="small muted" style="margin:-.4rem 0 1rem">${
@@ -3056,7 +3072,8 @@ function editPage(index) {
     const text = {};
     for (const code of currentBook.languages) text[code] = $(`m-pt-${code}`).value;
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
-      pages: [{ index, text, illustration: $("m-pb").value, layout: $("m-pl").value }] }) });
+      pages: [{ index, text, illustration: $("m-pb").value, layout: $("m-pl").value,
+                expression: $("m-pe").value, direction: $("m-pd").value }] }) });
     closeModal(); toast(ti("page_saved", { n: index })); renderBook();
   };
 }

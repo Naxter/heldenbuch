@@ -439,6 +439,15 @@ class BookApi:
             if edit.get("layout") in LAYOUTS and edit["layout"] != page.layout:
                 page.layout = edit["layout"]
                 changed = True
+            # Face and facing. Editing them changes the next drawing, so they
+            # count as a brief change and make the current picture stale.
+            for slot in ("expression", "direction"):
+                if slot in edit:
+                    fresh = str(edit[slot]).strip()
+                    if fresh != getattr(page, slot):
+                        setattr(page, slot, fresh)
+                        page.illustration_rev += 1
+                        changed = True
 
         # Cast corrections: rename, describe, fix page membership, remove.
         # Renames follow through to every page that names the member --

@@ -296,6 +296,17 @@ class Page:
     image_from_rev: int = 0
     #: language code -> the text_rev that language's narration read
     audio_from_rev: dict[str, int] = field(default_factory=dict)
+    #: What the hero's face is doing on this page: "delighted", "close to
+    #: tears", "asleep". The brief describes what happens, and a model left to
+    #: infer a feeling from events draws the same pleasant half-smile on every
+    #: page -- which is how sixteen pages of a story with a real problem in it
+    #: end up looking like sixteen pleasant afternoons.
+    expression: str = ""
+    #: Which way the picture faces: "moving left to right", "facing the
+    #: reader", "looking back over the shoulder". Picture books read left to
+    #: right, so going onward faces right and coming home faces left. Get it
+    #: wrong and a spread fights the page turn.
+    direction: str = ""
     #: The seed this picture was drawn with, on a service that takes one.
     #: Without it a page that came out well could not be reproduced: the next
     #: attempt at the same prompt is simply a different picture, and the good
@@ -375,6 +386,10 @@ class Book:
     #: library-relative origins of the copies: {"hero": ..., "styled": ...}
     ref_sources: dict[str, str] = field(default_factory=dict)
 
+    #: The page the story peaks on, as the author named it. Layout is chosen
+    #: before any picture exists, so this is what stops the biggest moment
+    #: being handed the smallest picture. 0 when it was never established.
+    climax: int = 0
     #: bumped on every content edit; exports remember what they were built from
     content_rev: int = 0
     export_rev: int = 0

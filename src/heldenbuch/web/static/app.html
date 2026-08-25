@@ -664,6 +664,9 @@ const LOCALES = {
     book_drawn_of: "{drawn} von {total} Seiten gezeichnet",
     book_to_review: "{n} zum Anschauen", book_cost_title: "Aufschlüsselung ansehen",
     book_spend_so_far: "bisher <b>~{amount} €</b> geschätzt",
+    spent_total: "Ausgegeben",
+    cost_shared: "Figur und Stil (einmal bezahlt, für jedes Buch)",
+    cost_shared_note: "Dazu kommen ~{amount} € für Charakterblatt und Stil. Die sind einmal bezahlt und gelten für jedes Buch mit dieser Figur.",
     book_export_stale_title: "Seit dem letzten Export wurde am Buch geändert",
     book_export_stale: "Export veraltet",
     book_read_aloud: "Vorlesen", book_edit_text: "Text ändern",
@@ -1076,6 +1079,9 @@ const LOCALES = {
     book_drawn_of: "{drawn} of {total} pages drawn",
     book_to_review: "{n} to look at", book_cost_title: "See the breakdown",
     book_spend_so_far: "<b>~{amount} €</b> estimated so far",
+    spent_total: "Spent",
+    cost_shared: "Character and style (paid once, for every book)",
+    cost_shared_note: "Plus ~{amount} € for the character sheet and the style. Those were paid once and count for every book with this character.",
     book_export_stale_title: "The book has changed since the last export",
     book_export_stale: "Export out of date",
     book_read_aloud: "Read aloud", book_edit_text: "Change the text",
@@ -1927,6 +1933,9 @@ async function renderHome() {
   `).join("");
 
   const drawn = books.reduce((n, b) => n + (b.drawn || 0), 0);
+  // Everything spent in the library, not only what the books themselves
+  // record: the sheets and previews are paid for before a book exists.
+  const total = S.status.spend_total || {};
   const services = S.status.image_backends || [];
   view().innerHTML = warn + `
     <div class="spread" style="margin-bottom:1.2rem;align-items:center">
@@ -1936,6 +1945,8 @@ async function renderHome() {
     <div class="dash">
       <div class="stat"><b>${books.length}</b><span>${t("books_on_shelf")}</span></div>
       <div class="stat"><b>${drawn}</b><span>${t("pages_drawn")}</span></div>
+      ${total.calls ? `<div class="stat"><b>${esc(eur(total.usd))}</b>
+        <span>${t("spent_total")}</span></div>` : ""}
       <div class="stat"><span>${t("services")}</span>
         <div class="pills">${services.map((b) =>
           `<span class="pill ${b.ready ? "ok" : ""}">${esc(b.name)}</span>`).join("")}</div>
@@ -2753,10 +2764,16 @@ function costDialog() {
     <tr><td class="muted">${esc(nice[e.what] || e.what)}</td>
       <td class="muted">${esc(e.model || "")}</td>
       <td style="text-align:right">${eur(e.usd)}</td></tr>`).join("");
+  const shared = currentBook?.spend_shared || {};
   openModal(`<h3>${ti("cost_title", { amount: (spend.eur ?? 0).toFixed(2) })}</h3>
     <table class="small" style="width:100%;border-collapse:collapse;margin-bottom:1rem">
       ${rows || `<tr><td class="muted">${t("cost_nothing")}</td></tr>`}
+      ${shared.calls ? `<tr><td class="muted">${esc(t("cost_shared"))}</td>
+        <td class="muted" style="text-align:right">${shared.images}×</td>
+        <td class="muted" style="text-align:right">${eur(shared.usd)}</td></tr>` : ""}
     </table>
+    ${shared.calls ? `<p class="small muted" style="margin:-.6rem 0 1rem">${
+      esc(ti("cost_shared_note", { amount: shared.eur.toFixed(2) }))}</p>` : ""}
     ${recent ? `<details><summary class="small muted">${t("cost_recent")}</summary>
       <table class="small" style="width:100%;border-collapse:collapse;margin-top:.5rem">${recent}</table>
     </details>` : ""}

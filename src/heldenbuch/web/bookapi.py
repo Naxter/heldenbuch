@@ -145,6 +145,9 @@ class BookApi:
                 "styles": len(self.library.styles()),
                 "books": len(self.library.books()),
             },
+            #: everything spent in this library, including the character
+            #: sheets and style previews that belong to no single book
+            "spend_total": self.library.totals(),
             "active_job": active.id if active else None,
             "queued": self.jobs.pending(),
             #: for the job center: everything recent, queued and finished alike
@@ -300,6 +303,14 @@ class BookApi:
             for part, by_language in (book.matter_audio or {}).items()
         }
         data["spend"] = spend_summary(book.spend)
+        # The sheets this book reuses were paid for once, before it existed.
+        # Charging them to this book would be wrong, and leaving them out
+        # entirely is how a first book looked cheaper than it was.
+        shared: dict[str, Any] = {"usd": 0.0, "calls": 0, "images": 0}
+        for owner in (hero_obj, style_obj):
+            for key in shared:
+                shared[key] += (getattr(owner, "spend", None) or {}).get(key, 0) or 0
+        data["spend_shared"] = spend_summary(shared)
         data["flagged"] = flagged_pages(book)
         data["review"] = review_split(book)
         data["export_stale"] = book.export_stale()

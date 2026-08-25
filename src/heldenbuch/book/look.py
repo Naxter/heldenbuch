@@ -153,9 +153,14 @@ def generate_previews(
     model: str | None = None,
     output: OutputSpec | None = None,
     style_reference: Path | None = None,
+    spend=None,
     log=print,
 ) -> list[Path]:
-    """Render the hero in this style so the combination can be judged for real."""
+    """Render the hero in this style so the combination can be judged for real.
+
+    `spend` is called with each preview's usage. Previews are drawn before any
+    book exists, so without it they were paid for and recorded nowhere.
+    """
     backend = get_backend(backend_name, model)
     spec = output or OutputSpec(aspect_ratio="4:3", image_size="1K", quality="medium")
     made: list[Path] = []
@@ -168,7 +173,7 @@ def generate_previews(
         target = folder / f"preview_{hero.id}_{index + 1}.png"
         log(f"  Vorschau {index + 1} von {count}")
         try:
-            backend.generate(
+            result = backend.generate(
                 GenRequest(
                     prompt=preview_prompt(hero, style, scene,
                                           with_reference=len(references) > 1),
@@ -177,6 +182,8 @@ def generate_previews(
                 ),
                 target,
             )
+            if spend is not None:
+                spend(result.usage)
             made.append(target)
         except Exception as exc:
             log(f"  Vorschau {index + 1} fehlgeschlagen: {exc}")
@@ -208,7 +215,8 @@ DESCRIBE_IMAGE_SYSTEM = (
 
 
 def describe_style_from_image(
-    path: Path, provider: str = "openai", model: str | None = None
+    path: Path, provider: str = "openai", model: str | None = None,
+    spend: dict | None = None,
 ) -> dict[str, str]:
     """Turn an uploaded picture into a style description.
 
@@ -228,7 +236,8 @@ def describe_style_from_image(
         "the picture, and nothing about where or when it happens."
     )
     payload = complete_json(DESCRIBE_IMAGE_SYSTEM, user, images=[path],
-                            provider=provider, model=model) or {}
+                            provider=provider, model=model,
+                            spend=spend, what="style") or {}
     description = (payload.get("description") or "").strip()
     if not description:
         raise RuntimeError("aus diesem Bild ließ sich kein Stil ableiten")
@@ -236,7 +245,8 @@ def describe_style_from_image(
 
 
 def describe_custom_style(
-    wish: str, provider: str = "openai", model: str | None = None
+    wish: str, provider: str = "openai", model: str | None = None,
+    spend: dict | None = None,
 ) -> dict[str, str]:
     """Turn a rough wish ("wie Janosch", "neon space comic") into a usable style.
 
@@ -260,7 +270,8 @@ def describe_custom_style(
         "five English sentences naming the medium, palette, line quality, "
         "lighting and level of detail, ending with what to avoid."
     )
-    payload = complete_json(system, user, provider=provider, model=model) or {}
+    payload = complete_json(system, user, provider=provider, model=model,
+                            spend=spend, what="style") or {}
     name = (payload.get("name") or wish[:30]).strip()
     description = (payload.get("description") or "").strip()
     if not description:

@@ -281,3 +281,37 @@ class Library:
 
     def delete_book(self, book_id: str) -> None:
         shutil.rmtree(self.book_dir(book_id), ignore_errors=True)
+
+    # ---------------------------------------------------------------- money
+
+    def totals(self) -> dict[str, Any]:
+        """Everything this library has cost, by where the money went.
+
+        A book's own ledger is only part of the bill: the character sheets and
+        the style previews are drawn before any book exists and are paid for
+        once, then reused. Summing all three is the only figure that matches
+        what the providers actually charged.
+        """
+        from ..pricing import summary
+
+        parts = {
+            "heroes": [h.spend for h in self.heroes()],
+            "styles": [s.spend for s in self.styles()],
+            "books": [b.spend for b in self.books()],
+        }
+        combined: dict[str, Any] = {}
+        by_area: dict[str, Any] = {}
+        for area, ledgers in parts.items():
+            area_total = {"usd": 0.0, "calls": 0, "images": 0}
+            for ledger in ledgers:
+                for key in area_total:
+                    area_total[key] += (ledger or {}).get(key, 0) or 0
+                for key in ("usd", "calls", "images"):
+                    combined[key] = combined.get(key, 0) + ((ledger or {}).get(key, 0) or 0)
+            area_total["usd"] = round(area_total["usd"], 6)
+            by_area[area] = summary(area_total)
+        combined["usd"] = round(combined.get("usd", 0.0), 6)
+
+        total = summary(combined)
+        total["by_area"] = by_area
+        return total

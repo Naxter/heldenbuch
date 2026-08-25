@@ -68,7 +68,7 @@ def test_display_title_falls_back_across_languages():
 
 @pytest.mark.parametrize(
     "raw,expected",
-    [("Claudio und der Matschstiefel", "mats-und-der-matschstiefel"),
+    [("Claudio und der Matschstiefel", "claudio-und-der-matschstiefel"),
      ("  ", "buch"), ("Ärger!! im Garten", "rger-im-garten")],
 )
 def test_slugify(raw, expected):

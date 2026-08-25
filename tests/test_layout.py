@@ -485,7 +485,7 @@ class TestMultilingualPagesAreSeparated:
 
         mapping = {"de": "Claudio geht.", "en": "Claudio walks."}
         assert join_languages(mapping, ["de"]) == "Claudio geht."
-        assert join_languages(mapping, ["de", "en"]) == "Claudio geht.\n\nSimon walks."
+        assert join_languages(mapping, ["de", "en"]) == "Claudio geht.\n\nClaudio walks."
 
     def test_the_separator_survives_wrapping(self):
         from heldenbuch.book.layout import join_languages, load_font, wrap

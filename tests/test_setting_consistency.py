@@ -72,16 +72,37 @@ def test_a_single_place_still_rides_on_every_page():
 def test_two_places_follow_the_page_not_each_other():
     """A story that moves between areas must not get both settings in one
     prompt -- two competing places is its own kind of drift."""
-    book = Book(cast=[
+    cast = [
         CastMember(name="Der Garten", kind="place", sheet="c/1.png"),
         CastMember(name="Der Leuchtturm", kind="place", sheet="c/2.png"),
-    ])
+    ]
     at_sea = Page(index=5, cast=["Der Leuchtturm"],
                   illustration="Waves at the tower.")
-    assert [m.name for m in book.cast_for(at_sea)] == ["Der Leuchtturm"]
-    # A page that names no place falls back to the first, never to both.
-    nowhere = Page(index=2, illustration="A close-up of two paws.")
-    assert [m.name for m in book.cast_for(nowhere)] == ["Der Garten"]
+    assert [m.name for m in Book(cast=cast).cast_for(at_sea)] == ["Der Leuchtturm"]
+
+
+def test_a_page_naming_no_place_carries_the_last_one_on():
+    """Naming no place does not mean the story teleported. Taking the first
+    place in cast order instead put a lighthouse page on the garden's sheet --
+    and the checker then graded that page against the same wrong sheet."""
+    cast = [
+        CastMember(name="Der Garten", kind="place", sheet="c/1.png"),
+        CastMember(name="Der Leuchtturm", kind="place", sheet="c/2.png"),
+    ]
+    book = Book(cast=cast, pages=[
+        Page(index=1, cast=["Der Garten"], illustration="Rusty digs."),
+        Page(index=2, illustration="A close-up of two paws."),
+        Page(index=3, cast=["Der Leuchtturm"], illustration="The lamp turns."),
+        Page(index=4, illustration="Rusty looks up at the light."),
+    ])
+    got = lambda i: [m.name for m in book.cast_for(book.pages[i - 1])]  # noqa: E731
+    assert got(2) == ["Der Garten"]        # still in the garden
+    assert got(4) == ["Der Leuchtturm"]    # the story moved on
+
+    # Before any place is established there is nothing to carry, and a wrong
+    # guess would be worse than none.
+    early = Book(cast=cast, pages=[Page(index=1, illustration="A paw.")])
+    assert early.cast_for(early.pages[0]) == []
 
 
 def test_the_place_sheet_asks_for_several_views_of_one_place():
@@ -229,3 +250,86 @@ def test_setting_mismatches_land_in_the_preflight_notes(library):
     report = validate_export_readiness(book, PRESETS["screen"], ["de"],
                                        lambda rel: root / rel)
     assert any(f["code"] == "setting_mismatch" for f in report["notes"])
+
+
+def test_a_rejected_page_never_becomes_the_chain_reference(library, monkeypatch):
+    """The bootstrap used to re-fire after every rejected page and hand the
+    next one the picture the check had just turned down -- the propagation
+    this whole mode exists to prevent."""
+    hero, style = Hero(name="Rusty", sheet="heroes/h/sheet.png"), Style(description="ink")
+    book = library.save_book(Book(pages=[
+        Page(index=i, illustration=f"scene {i}") for i in (1, 2, 3)
+    ]))
+    root = library.book_dir(book.id)
+    sheet = _png(library.root / "heroes/h/sheet.png")
+    seen: list = []
+
+    def fake_draw(book_, hero_, style_, page, sheet_, target, **kwargs):
+        previous = kwargs.get("previous")
+        seen.append((page.index, previous.name if previous else None))
+        _png(target)
+
+        class R:
+            usage = {}
+
+        return R()
+
+    # Page 1 fails its check; 2 and 3 pass.
+    def fake_judge(book_, hero_, sheet_, target, scene, members, resolve,
+                   provider, **kwargs):
+        failed = target.name == "page_01.png"
+        return {"status": "failed" if failed else "passed",
+                "identity": 2 if failed else 5, "notes": []}
+
+    monkeypatch.setattr(illustrate, "draw_page", fake_draw)
+    monkeypatch.setattr(illustrate, "judge_page", fake_judge)
+    illustrate.illustrate_book(
+        book, hero, style, sheet, pages_dir=root / "pages",
+        backend_name="stub", check=True, chain=True, auto_retry=False,
+        resolve=lambda rel: root / rel, log=lambda *a: None,
+    )
+    drawn = dict(seen)
+    assert drawn[2] is None                 # page 1 was rejected: no chain
+    assert drawn[3] == "page_02.png"        # page 2 passed: chain resumes
+
+
+def test_the_chain_breaks_where_the_story_changes_place(library, monkeypatch):
+    """The chain tells the model "the same place" in so many words. Across a
+    location change that sentence is a lie the model obeys."""
+    hero, style = Hero(name="Rusty", sheet="heroes/h/sheet.png"), Style(description="ink")
+    cast = [CastMember(name="Garten", kind="place", sheet="cast/01.png"),
+            CastMember(name="Leuchtturm", kind="place", sheet="cast/02.png")]
+    book = library.save_book(Book(cast=cast, pages=[
+        Page(index=1, cast=["Garten"], illustration="Rusty digs."),
+        Page(index=2, cast=["Garten"], illustration="Rusty rests."),
+        Page(index=3, cast=["Leuchtturm"], illustration="The lamp turns."),
+        Page(index=4, cast=["Leuchtturm"], illustration="Rusty climbs."),
+    ]))
+    root = library.book_dir(book.id)
+    sheet = _png(library.root / "heroes/h/sheet.png")
+    for name in ("01", "02"):
+        _png(root / f"cast/cast_{name}.png")
+    for member, name in zip(cast, ("01", "02")):
+        member.sheet = f"cast/cast_{name}.png"
+    seen: list = []
+
+    def fake_draw(book_, hero_, style_, page, sheet_, target, **kwargs):
+        previous = kwargs.get("previous")
+        seen.append((page.index, previous.name if previous else None))
+        _png(target)
+
+        class R:
+            usage = {}
+
+        return R()
+
+    monkeypatch.setattr(illustrate, "draw_page", fake_draw)
+    illustrate.illustrate_book(
+        book, hero, style, sheet, pages_dir=root / "pages",
+        backend_name="stub", check=False, chain=True,
+        resolve=lambda rel: root / rel, log=lambda *a: None,
+    )
+    drawn = dict(seen)
+    assert drawn[2] == "page_01.png"   # same garden: chained
+    assert drawn[3] is None            # the story moved to the lighthouse
+    assert drawn[4] == "page_03.png"   # and settles there again

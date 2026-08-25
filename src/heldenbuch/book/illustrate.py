@@ -377,6 +377,7 @@ def check_page(
     cast_sheets: list[Path] = (),
     cast_names: list[str] = (),
     place_name: str | None = None,
+    measured: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Has the hero survived onto this page -- and does the page show the scene?
 
@@ -386,16 +387,25 @@ def check_page(
     """
     verdict: dict[str, Any] = {"checked_by": provider}
 
-    # Free first: a colour comparison catches gross drift with no API call.
-    try:
-        verdict["metrics"] = score_page(page_image, sheet)
-    except Exception:
-        # The colour metrics are a nice-to-have beside the judge's verdict.
-        # Losing them must not lose the verdict itself.
-        verdict["metrics"] = {}
+    # `measured` carries both results forward when the same picture is
+    # checked twice (the re-ask after an incomplete verdict). They are
+    # deterministic functions of pixels that have not changed, so recomputing
+    # them is half a second of numpy per page for an identical answer.
+    if measured is not None:
+        verdict["metrics"] = measured.get("metrics", {})
+        seam = bool(measured.get("seam"))
+    else:
+        # Free first: a colour comparison catches gross drift with no API call.
+        try:
+            verdict["metrics"] = score_page(page_image, sheet)
+        except Exception:
+            # The colour metrics are a nice-to-have beside the judge's verdict.
+            # Losing them must not lose the verdict itself.
+            verdict["metrics"] = {}
 
-    # Also free, and measured rather than asked: a page split into two pictures.
-    seam = seam_in_frame(page_image)
+        # Also free, and measured rather than asked: a page split in two.
+        seam = seam_in_frame(page_image)
+    verdict["seam"] = seam
 
     scene_block = (
         f"\nThe page was supposed to show this scene:\n{scene}\n\n"
@@ -568,6 +578,16 @@ def verdict_from(check: dict[str, Any]) -> str:
         # its own. That is an incomplete check, not a clean one.
         return "unknown"
     return "passed"
+
+
+#: What a verdict is called in the job log. One source: the same three words
+#: were typed out at four call sites, and the copies had already drifted.
+_VERDICT_WORDS = {"passed": "in Ordnung", "failed": "beanstandet",
+                  "unknown": "Prüfung fehlgeschlagen"}
+
+
+def verdict_word(status: str) -> str:
+    return _VERDICT_WORDS.get(status, status)
 
 
 def check_status(page: Page) -> str:
@@ -765,8 +785,9 @@ def _write_image(target: Path, data: bytes) -> None:
 
 
 def judge_page(book: Book, hero: Hero, sheet: Path, target: Path, scene: str,
-           members: list[CastMember], resolve, provider: str,
-           ref_limit: int = 6) -> dict[str, Any]:
+               members: list[CastMember], resolve, provider: str,
+               ref_limit: int = 6,
+               measured: dict[str, Any] | None = None) -> dict[str, Any]:
     """One page (or the cover) graded against the reference bundle.
 
     The judge gets fuller views than the illustrator did -- the whole sheets
@@ -783,7 +804,7 @@ def judge_page(book: Book, hero: Hero, sheet: Path, target: Path, scene: str,
         target, sheet, hero, provider=provider,
         scene=single_scene(scene), spend=book.spend,
         cast_sheets=judge_refs[1:], cast_names=[m.name for m in judge_named],
-        place_name=place,
+        place_name=place, measured=measured,
     )
 
 
@@ -1083,9 +1104,11 @@ def illustrate_book(
                 with lock:
                     log(f"  Seite {page.index}: Prüfung unvollständig — "
                         "ich frage noch einmal")
-                verdict = judge_page(book, hero, sheet, target, page.illustration,
-                                 members, resolve, check_provider,
-                                 ref_limit=ref_limit)
+                verdict = judge_page(book, hero, sheet, target,
+                                     page.illustration, members, resolve,
+                                     check_provider, ref_limit=ref_limit,
+                                     measured={"metrics": verdict.get("metrics", {}),
+                                               "seam": verdict.get("seam")})
             with lock:
                 page.check = verdict
             with lock:
@@ -1144,19 +1167,37 @@ def illustrate_book(
         # four at a time -- the person opted into that trade.
         log("Schauplatz-Kette: die Seiten entstehen nacheinander, jede sieht "
             "die letzte gute Seite.")
+
+        def place_of(page: Page) -> str | None:
+            return next((m.name for m in book.cast_for(page)
+                         if m.kind == "place"), None)
+
         last_good: Path | None = None
+        last_place: str | None = None
+        # Bootstrapped once, before the loop: a single-page redraw borrows the
+        # neighbour already on disk. Inside the loop this would re-fire after
+        # every rejected page and hand the next one the picture the check just
+        # turned down -- the propagation this whole mode exists to prevent.
+        first = todo[0]
+        prior_page = next((p for p in book.pages
+                           if p.index == first.index - 1), None)
+        prior = pages_dir / f"page_{first.index - 1:02d}.png"
+        if (prior_page is not None and _usable_image(prior)
+                and check_status(prior_page) != "failed"):
+            last_good = prior
+            last_place = place_of(prior_page)
+
         for page in todo:
-            if last_good is None:
-                # A single-page redraw still gets its neighbour: page 14
-                # chains from page 13 already on disk.
-                prior = pages_dir / f"page_{page.index - 1:02d}.png"
-                if _usable_image(prior):
-                    last_good = prior
-            one(page, previous=last_good)
+            here = place_of(page)
+            # The chain says "the same place" in so many words. Where the
+            # story moves on, that sentence would be a lie the model obeys --
+            # a lighthouse page steered back towards the garden it left.
+            previous = last_good if here == last_place else None
+            one(page, previous=previous)
             target = pages_dir / f"page_{page.index:02d}.png"
             if (target.is_file() and not page.error
                     and check_status(page) != "failed"):
-                last_good = target
+                last_good, last_place = target, here
     elif workers > 1 and total > 1:
         with ThreadPoolExecutor(max_workers=min(workers, total)) as pool:
             list(pool.map(one, todo))
@@ -1339,8 +1380,7 @@ def illustrate_book_batch(
                                 book.cast_for(page), resolve, check_provider,
                                 ref_limit=ref_limit)
             status = check_status(page)
-            word = {"passed": "in Ordnung", "failed": "beanstandet",
-                    "unknown": "Prüfung fehlgeschlagen"}.get(status, status)
+            word = verdict_word(status)
             log(f"  Seite {page.index}: {word}")
 
     return book

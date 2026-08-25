@@ -655,7 +655,9 @@ def test_a_cast_member_can_be_added_to_an_existing_book(api, library):
     fresh = library.get_book(book.id)
     assert [(c.name, c.kind) for c in fresh.cast] == [
         ("Pip", "character"), ("Die Laterne", "prop")]
-    # a duplicate name is ignored, an unknown kind becomes a character
+    # Names are the handle everything else matches on, so a duplicate is
+    # refused; an unrecognised kind falls back to the safe default rather
+    # than reaching the prompt as an unknown reference frame.
     api.book_update(book.id, {}, {"cast": [
         {"add": True, "name": "die laterne", "kind": "prop"},
         {"add": True, "name": "Ente", "kind": "vehicle"}]})
@@ -682,3 +684,37 @@ def test_changing_page_membership_marks_the_picture_stale(api, library):
     fresh = library.get_book(book.id)
     assert fresh.pages[0].cast == []
     assert fresh.pages[0].illustration_rev == 1
+
+
+def test_a_rename_survives_regex_special_characters(api, library):
+    r"""The replacement side of a substitution is a template, not a literal:
+    a backslash raised re.error and \g<0> rewrote the brief with the very
+    text it was meant to replace."""
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "name": r"Pip \g<0>"}]})
+    fresh = library.get_book(book.id)
+    assert fresh.cast[0].name == r"Pip \g<0>"
+    assert fresh.pages[0].illustration == r"Pip \g<0> feeds the hens."
+
+
+def test_a_rename_will_not_collide_with_another_member(api, library):
+    """Two members sharing a name make the brief matching and the prompt's
+    "Image N is ..." roster ambiguous, which is why adding one is refused."""
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [
+        {"add": True, "name": "Trixi", "kind": "character"}]})
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "name": "trixi"}]})
+    names = [c.name for c in library.get_book(book.id).cast]
+    assert names == ["Pip", "Trixi"]
+
+
+def test_resaving_the_same_cast_pages_changes_nothing(api, library):
+    """The cast dialog sends the current page list back on every save, so a
+    no-op must not mark the book edited and the exports stale."""
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "pages": [1]}]})
+    once = library.get_book(book.id)
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "pages": [1]}]})
+    twice = library.get_book(book.id)
+    assert twice.content_rev == once.content_rev
+    assert twice.pages[0].illustration_rev == once.pages[0].illustration_rev

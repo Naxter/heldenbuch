@@ -21,6 +21,7 @@ Severity is honest about what each problem means on paper:
 
 from __future__ import annotations
 
+import statistics
 from typing import Any
 
 from .illustrate import check_status, cover_flagged
@@ -45,6 +46,9 @@ DPI_WARN = 280
 #: complained about before the rule existed.
 PALETTE_DRIFT = 0.15
 
+#: Fewer scored pages than this and the median says nothing worth acting on.
+MIN_SCORED_PAGES = 6
+
 
 def palette_outliers(book: Book) -> list[int]:
     """Pages whose colour balance stands apart from the rest of the book.
@@ -56,9 +60,9 @@ def palette_outliers(book: Book) -> list[int]:
     scored = [(p.index, (p.check or {}).get("metrics", {}).get("palette_cosine"))
               for p in book.pages]
     values = sorted(v for _, v in scored if isinstance(v, (int, float)))
-    if len(values) < 6:
+    if len(values) < MIN_SCORED_PAGES:
         return []
-    median = values[len(values) // 2]
+    median = statistics.median(values)
     return sorted(index for index, v in scored
                   if isinstance(v, (int, float)) and abs(v - median) > PALETTE_DRIFT)
 

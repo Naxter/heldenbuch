@@ -118,10 +118,13 @@ class BflBackend(Backend):
         except OSError as exc:
             # The render is finished and billed; only the download failed. A
             # bare exception here would be retried by the base class as a
-            # brand-new submission -- paying twice for one picture.
+            # brand-new submission -- paying twice for one picture. Worded for
+            # the person whose page just failed, not for the developer.
             raise BackendError(
-                f"FLUX finished the image but the download failed ({exc}); "
-                "not resubmitting a paid render"
+                "Das Bild war fertig, aber der Download ist abgebrochen. Es "
+                "wurde bereits berechnet, darum zeichne ich es nicht von "
+                "selbst noch einmal — probiere es für diese Seite erneut."
+                f"\n\n({exc})"
             ) from exc
 
         note = f"model={self.model}"

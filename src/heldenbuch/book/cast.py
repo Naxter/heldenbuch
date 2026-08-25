@@ -52,6 +52,14 @@ PROP_FRAME = (
 _FRAMES = {"place": PLACE_FRAME, "prop": PROP_FRAME}
 _LABELS = {"place": "PLACE", "prop": "OBJECT"}
 
+#: What a kind is called in the job log. One source, because the same three
+#: words are otherwise typed out wherever a cast member is mentioned.
+_KIND_LABELS = {"place": "Ort", "prop": "Gegenstand"}
+
+
+def kind_label(kind: str) -> str:
+    return _KIND_LABELS.get(kind, "Figur")
+
 
 def sheet_prompt(member: CastMember, style: Style) -> str:
     frame = _FRAMES.get(member.kind, CHARACTER_FRAME)
@@ -107,12 +115,11 @@ def generate_all(
     folder.mkdir(parents=True, exist_ok=True)
     base = relative_to or folder.parent
 
-    labels = {"place": "Ort", "prop": "Gegenstand"}
     for index, member in enumerate(cast, start=1):
         if stop() or member.sheet:
             continue
         target = folder / f"cast_{index:02d}.png"
-        log(f"  {labels.get(member.kind, 'Figur')}: {member.name}")
+        log(f"  {kind_label(member.kind)}: {member.name}")
         try:
             result = generate_sheet(
                 member, style, target,

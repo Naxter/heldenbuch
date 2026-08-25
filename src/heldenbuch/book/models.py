@@ -163,9 +163,37 @@ class Style:
 
 #: Leading articles stripped when matching a cast member's registered name
 #: against an illustration brief -- "Die Laterne" has to find "Laterne".
-_ARTICLES = {"der", "die", "das", "den", "dem", "des",
-             "ein", "eine", "einem", "einen", "einer",
-             "the", "a", "an"}
+#: Covers the article languages in LANGUAGES; Polish, Russian and Turkish
+#: have no articles to strip.
+_ARTICLES = {
+    # de
+    "der", "die", "das", "den", "dem", "des",
+    "ein", "eine", "einem", "einen", "einer",
+    # en
+    "the", "a", "an",
+    # fr
+    "le", "la", "les", "un", "une", "des", "du",
+    # es
+    "el", "los", "las", "una", "unos", "unas",
+    # it
+    "lo", "i", "gli", "uno",
+    # nl
+    "de", "het", "een",
+}
+
+
+def _brief_names(member: CastMember, brief: str) -> bool:
+    """Does this illustration brief name the member?
+
+    Tried with and without a leading article, because authors register
+    "Die Laterne" while briefs write "the lantern" or "Laterne".
+    """
+    name = (member.name or "").lower().strip()
+    variants = {name}
+    first, _, rest = name.partition(" ")
+    if rest and first in _ARTICLES:
+        variants.add(rest.strip())
+    return any(re.search(rf"\b{re.escape(v)}\b", brief) for v in variants if v)
 
 #: The last page's word, per language. Printed on the closing page and read
 #: out by the narration, so it lives here rather than inside either one.
@@ -458,33 +486,40 @@ class Book:
         drawable = [m for m in self.cast if m.sheet]
         listed = {n.lower() for n in page.cast}
 
-        def in_brief(member: CastMember) -> bool:
-            # Try the full name and the name without a leading article:
-            # authors register "Die Laterne", briefs write "Laterne".
-            name = member.name.lower().strip()
-            variants = {name}
-            first, _, rest = name.partition(" ")
-            if rest and first in _ARTICLES:
-                variants.add(rest.strip())
-            return any(
-                re.search(rf"\b{re.escape(v)}\b", brief) for v in variants if v
-            )
+        def here(member: CastMember) -> bool:
+            return _brief_names(member, brief) or member.name.lower() in listed
 
-        characters = [m for m in drawable if m.kind == "character" and in_brief(m)]
+        characters = [m for m in drawable
+                      if m.kind == "character" and _brief_names(m, brief)]
         if not characters:
             characters = [m for m in drawable
                           if m.kind == "character" and m.name.lower() in listed]
-        props = [m for m in drawable if m.kind == "prop"
-                 and (in_brief(m) or m.name.lower() in listed)]
+        props = [m for m in drawable if m.kind == "prop" and here(m)]
         places = [m for m in drawable if m.kind == "place"]
         if len(places) > 1:
             # A story that moves between areas must not get every area's
             # sheet on every page -- two competing settings in one prompt is
             # its own kind of drift. With one place the old promise holds.
-            chosen = [m for m in places if in_brief(m) or m.name.lower() in listed]
-            places = chosen or places[:1]
+            chosen = [m for m in places if here(m)]
+            # Naming no place does not mean the story teleported: carry the
+            # last place it established. Guessing the first in cast order
+            # instead put a lighthouse page on the garden's sheet -- and the
+            # checker then graded the page against that same wrong sheet.
+            places = chosen[:1] or self._place_before(page, places)
         keep = {id(m) for m in (*characters, *props, *places)}
         return [m for m in drawable if id(m) in keep]
+
+    def _place_before(self, page: Page, places: list[CastMember]) -> list[CastMember]:
+        """The most recent place an earlier page named, if any."""
+        earlier = sorted((p for p in self.pages if p.index < page.index),
+                         key=lambda p: p.index, reverse=True)
+        for previous in earlier:
+            brief = (previous.illustration or "").lower()
+            named = {n.lower() for n in previous.cast}
+            for member in places:
+                if _brief_names(member, brief) or member.name.lower() in named:
+                    return [member]
+        return []
 
     @property
     def primary_language(self) -> str:

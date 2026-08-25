@@ -193,8 +193,12 @@ class Library:
     #: Fields the person editing writes. A background job that saves a copy it
     #: has held for minutes adopts these from disk first, so a text corrected
     #: mid-render is not reverted by the render's next save.
+    # `cast` is deliberately absent: a cast member is written from both sides
+    # like a page is, so it is merged field by field below. Adopting the whole
+    # list threw away a sheet the render had just paid for whenever an editor
+    # save landed between two of the job's saves.
     _EDITORIAL_BOOK = ("title", "idea", "age", "languages", "dedication",
-                       "rhyme", "render_quality", "narration_voice", "cast",
+                       "rhyme", "render_quality", "narration_voice",
                        "photo_page", "blurb", "content_rev")
     # `expression`, `direction` and `setting` are brief fields like
     # `illustration`: the person writes them, so a job holding a minutes-old
@@ -209,6 +213,40 @@ class Library:
     # editor save could clobber the number a good page was drawn with.
     _RENDERED_PAGE = ("image", "image_from_rev", "check", "history", "error",
                       "audio", "audio_from_rev", "seed")
+    #: The person names and describes a cast member; the render draws their
+    #: sheet. Matched by position, the handle the rest of the app already uses
+    #: for a cast member (the API's `index`, the sheet's own file name).
+    _EDITORIAL_CAST = ("name", "description", "kind", "pages")
+    _RENDERED_CAST = ("sheet", "sheet_error")
+
+    def _merge_cast(self, book: Book, disk: Book, adopt: str) -> None:
+        """Bring the other writer's cast fields over, without losing ours."""
+        fields = (self._EDITORIAL_CAST if adopt == "editorial"
+                  else self._RENDERED_CAST)
+        if len(book.cast) == len(disk.cast):
+            for member, other in zip(book.cast, disk.cast):
+                for name in fields:
+                    setattr(member, name, getattr(other, name))
+            return
+        if adopt != "editorial":
+            # Membership is the editor's own doing, so there is nothing to
+            # reconcile: take the drawn sheets for whoever still matches.
+            drawn = {m.name.lower(): m for m in disk.cast}
+            for member in book.cast:
+                other = drawn.get(member.name.lower())
+                if other is not None:
+                    for name in fields:
+                        setattr(member, name, getattr(other, name))
+            return
+        # Someone was added or removed while this job ran. That list is the
+        # one that counts; keep the sheets this run drew for whoever is in it.
+        ours = {m.name.lower(): m for m in book.cast}
+        for other in disk.cast:
+            mine = ours.get(other.name.lower())
+            if mine is not None:
+                for name in self._RENDERED_CAST:
+                    setattr(other, name, getattr(mine, name))
+        book.cast = list(disk.cast)
 
     def save_book(self, book: Book, adopt: str | None = None) -> Book:
         """Write the book, without clobbering the other writer.
@@ -238,6 +276,7 @@ class Library:
                         else (self._RENDERED_BOOK, self._RENDERED_PAGE))
                     for name in book_fields:
                         setattr(book, name, getattr(disk, name))
+                    self._merge_cast(book, disk, adopt)
                     by_index = {p.index: p for p in disk.pages}
                     for page in book.pages:
                         other = by_index.get(page.index)

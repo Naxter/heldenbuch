@@ -119,7 +119,12 @@ class JobManager:
             return len(self._queue) + (1 if self._running else 0)
 
     def recent(self, limit: int = 10) -> list[dict[str, Any]]:
-        jobs = sorted(self._jobs.values(), key=lambda j: j.started, reverse=True)
+        # Snapshot under the lock: a status poll iterating this dict while a
+        # POST inserts a new job raised "dictionary changed size" and turned
+        # the whole status endpoint into a 500 at the worst moment.
+        with self._lock:
+            jobs = list(self._jobs.values())
+        jobs.sort(key=lambda j: j.started, reverse=True)
         return [{k: v for k, v in j.public().items() if k != "lines"} for j in jobs[:limit]]
 
     def cancel(self, job_id: str) -> bool:
@@ -185,9 +190,18 @@ class JobManager:
             self._running = job
             job.status = "running"
             job.started = time.time()
-        threading.Thread(
-            target=self._execute, args=(job, self.workers[job.action]), daemon=True
-        ).start()
+        try:
+            threading.Thread(
+                target=self._execute, args=(job, self.workers[job.action]), daemon=True
+            ).start()
+        except BaseException:
+            # A thread that never started must not stay the "running" job, or
+            # nothing queued after it would ever run again.
+            with self._lock:
+                self._running = None
+                job.status = "failed"
+                job.lines.append("worker thread could not be started")
+            raise
 
     def _execute(self, job: Job, worker: Worker) -> None:
         def log(*args) -> None:
@@ -214,4 +228,20 @@ class JobManager:
             job.finished = time.time()
             with self._lock:
                 self._running = None
+                self._evict_finished()
             self._pump()
+
+    #: Finished jobs kept for the drawer's history. This is a long-lived local
+    #: control panel: without a cap, every job ever run -- log lines included --
+    #: stayed memory-resident for the life of the process.
+    _KEEP_FINISHED = 50
+
+    def _evict_finished(self) -> None:
+        """Drop the oldest finished jobs beyond the cap. Caller holds the lock."""
+        done = [j for j in self._jobs.values()
+                if j.status not in ("running", "queued")]
+        if len(done) <= self._KEEP_FINISHED:
+            return
+        done.sort(key=lambda j: j.finished or j.started)
+        for stale in done[:len(done) - self._KEEP_FINISHED]:
+            self._jobs.pop(stale.id, None)

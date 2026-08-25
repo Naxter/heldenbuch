@@ -164,7 +164,10 @@ def _gemini(system: str, user: str, images: list[Path], model: str) -> str:
     except ImportError as exc:
         raise LLMError("the gemini provider needs: pip install 'google-genai>=2.3.0'") from exc
 
-    client = genai.Client(api_key=require_key("GEMINI_API_KEY", "gemini"))
+    # Milliseconds, matching _post()'s 300 s. Without it a stalled call held
+    # the job thread forever, and the one-at-a-time queue behind it.
+    client = genai.Client(api_key=require_key("GEMINI_API_KEY", "gemini"),
+                          http_options={"timeout": 300_000})
     payload: list[dict[str, Any]] = [{"type": "text", "text": f"{system}\n\n{user}"}]
     for path in images:
         data, mime = to_data_uri(path, max_edge=768)

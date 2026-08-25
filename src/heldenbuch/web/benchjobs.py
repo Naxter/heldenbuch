@@ -80,7 +80,12 @@ class BenchmarkJobs:
     def _select_run(self, job: Job) -> RunLayout:
         name = job.params.get("run")
         if name:
-            layout = RunLayout(self.runs_dir / name)
+            # Same guard as the /api/runs routes: the name comes from the
+            # client, and scoring writes into the folder it names.
+            root = (self.runs_dir / name).resolve()
+            if not root.is_relative_to(self.runs_dir.resolve()):
+                raise FileNotFoundError(f"run {name!r} escapes the runs folder")
+            layout = RunLayout(root)
             if not layout.pages_json.is_file():
                 raise FileNotFoundError(f"run {name!r} has no pages.json")
         else:

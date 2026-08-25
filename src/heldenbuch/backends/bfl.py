@@ -112,8 +112,17 @@ class BflBackend(Backend):
         cost = submitted.get("cost")
 
         image_url = self._poll(polling_url, key)
-        with urllib.request.urlopen(image_url, timeout=120) as response:
-            data = response.read()
+        try:
+            with urllib.request.urlopen(image_url, timeout=120) as response:
+                data = response.read()
+        except OSError as exc:
+            # The render is finished and billed; only the download failed. A
+            # bare exception here would be retried by the base class as a
+            # brand-new submission -- paying twice for one picture.
+            raise BackendError(
+                f"FLUX finished the image but the download failed ({exc}); "
+                "not resubmitting a paid render"
+            ) from exc
 
         note = f"model={self.model}"
         if cost is not None:

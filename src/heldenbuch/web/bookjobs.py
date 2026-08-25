@@ -318,6 +318,7 @@ class BookJobs:
             backend_name=self._backend(job), model=params.get("model"),
             spend=lambda usage: add_spend(style.spend, usage, "styled_sheet"))
         style.sheets[hero.id] = self.library.relative(styled)
+        style.sheets_from[hero.id] = hero.sheet
         self.library.save_style(style)
 
         job.result["style_id"] = style.id
@@ -336,10 +337,16 @@ class BookJobs:
         hero = self.library.get_hero(job.params["hero_id"])
         if not hero.sheet:
             raise ValueError("Für diesen Helden gibt es noch kein Charakterblatt.")
-        if style.sheets.get(hero.id):
+        current = style.sheets_from.get(hero.id)
+        if style.sheets.get(hero.id) and current in (None, hero.sheet):
+            # `None` means an older style that never recorded its source; it
+            # is trusted rather than redrawn, because redrawing costs money.
             job.result["style_id"] = style.id
             log("Dieser Stil ist für diesen Helden schon eingerichtet.")
             return
+        if style.sheets.get(hero.id):
+            log("Das Charakterblatt hat sich geändert — ich zeichne das "
+                "Stilblatt neu, damit Bücher den gewählten Helden zeigen.")
 
         log(f"Ich zeichne das Charakterblatt von {hero.name or 'dem Helden'} "
             f"im Stil „{style.name}“ …")
@@ -350,6 +357,7 @@ class BookJobs:
             spend=lambda usage: add_spend(style.spend, usage, "styled_sheet"),
         )
         style.sheets[hero.id] = self.library.relative(styled)
+        style.sheets_from[hero.id] = hero.sheet
         self.library.save_style(style)
         job.result["style_id"] = style.id
         log("Fertig — der Stil steht jetzt auch für diesen Helden bereit.")
@@ -394,15 +402,20 @@ class BookJobs:
         if len(languages) > 1:
             log(f"in {len(languages)} Sprachen, jede eigenständig geschrieben — nicht übersetzt.")
 
+        # The book does not exist yet, but its first costs do: collected here
+        # and handed to the Book below, so writing is in the ledger like
+        # drawing is.
+        story_spend: dict = {}
         story = author.write_story(
             hero, idea=params.get("idea", ""), age=age, languages=languages,
             pages=int(params["pages"]) if params.get("pages") else None,
-            rhyme=rhyme, provider=self._provider(job),
+            rhyme=rhyme, spend=story_spend, provider=self._provider(job),
         )
 
         if params.get("revise", True):
             log("Ich lese den Entwurf noch einmal laut und feile daran …")
             story = author.revise(story, hero, age, languages, rhyme=rhyme,
+                                  spend=story_spend,
                                   provider=self._provider(job))
             for note in story.get("revision_notes", [])[:6]:
                 log(f"  · {note}")
@@ -415,6 +428,7 @@ class BookJobs:
             pages=story["pages"], cast=story["cast"], rhyme=rhyme,
             climax=int(story.get("climax") or 0),
             render_quality=params.get("render_quality") or "draft",
+            spend=story_spend,
         )
         # Freeze the exact references this book will be drawn from. Changing
         # the hero or the style tomorrow must not change this book.
@@ -446,7 +460,7 @@ class BookJobs:
         before_text = dict(page.text)
         before_brief = page.illustration
         author.rewrite_page(book, hero, page, note=job.params.get("note", ""),
-                            provider=self._provider(job))
+                            spend=book.spend, provider=self._provider(job))
         # Whatever actually changed makes its derived output stale.
         for code in book.languages:
             if page.text.get(code) != before_text.get(code):
@@ -466,7 +480,8 @@ class BookJobs:
 
         log("Ich schreibe das Buch in weiteren Sprachen. Die Bilder bleiben, "
             "nur die Worte sind neu.")
-        author.add_languages(book, hero, codes, provider=self._provider(job))
+        author.add_languages(book, hero, codes, spend=book.spend,
+                             provider=self._provider(job))
         book.touch()  # existing exports are missing the new language now
         self.library.save_book(book)
         job.result["book_id"] = book.id
@@ -600,6 +615,7 @@ class BookJobs:
                 workers=max(1, min(6, int(params.get("workers") or 4))),
                 auto_retry=bool(params.get("auto_retry", True)),
                 budget_usd=(float(params["budget_usd"]) if params.get("budget_usd") else None),
+                chain=bool(params.get("chain")),
                 resolve=self._book_resolver(book),
                 on_progress=report,
                 log=log, should_stop=lambda: job.cancelled,
@@ -675,6 +691,19 @@ class BookJobs:
         if not pages:
             raise ValueError("Keine gezeichnete Seite zum Prüfen.")
 
+        # The cover is re-checked with the pages: it is the image everyone
+        # sees first, and this used to be the one path that skipped it.
+        if wanted is None and book.cover:
+            cover = resolve(book.cover)
+            if cover.is_file():
+                book.cover_check = illustrate.judge_page(
+                    book, hero, sheet, cover, book.cover_illustration or "",
+                    list(book.cast), resolve, checker)
+                log("  Titelbild: " + {"passed": "in Ordnung",
+                                       "failed": "beanstandet"}.get(
+                    illustrate.verdict_from(book.cover_check),
+                    "Prüfung fehlgeschlagen"))
+
         log(f"{len(pages)} Seite(n) werden geprüft — von {checker}.")
         for page in pages:
             if job.cancelled:
@@ -683,8 +712,12 @@ class BookJobs:
             target = resolve(page.image)
             if not target.is_file():
                 continue
-            page.check = illustrate.check_page(
-                target, sheet, hero, provider=checker, scene=page.illustration)
+            # judge_page, not bare check_page: the judge needs the cast
+            # sheets, the de-diptyched scene text and the spend ledger --
+            # checking without them re-created three fixed bugs at once.
+            page.check = illustrate.judge_page(
+                book, hero, sheet, target, page.illustration,
+                book.cast_for(page), resolve, checker)
             status = illustrate.check_status(page)
             word = {"passed": "in Ordnung", "failed": "beanstandet",
                     "unknown": "Prüfung fehlgeschlagen"}.get(status, status)
@@ -800,6 +833,7 @@ class BookJobs:
         report = preflight.validate_export_readiness(
             book, preset, languages, resolve,
             allow_unknown=bool(params.get("allow_unknown")),
+            family=family,
         )
         for mark, group in (("✗", "errors"), ("?", "unknowns"), ("⚠", "warnings")):
             for item in report[group]:

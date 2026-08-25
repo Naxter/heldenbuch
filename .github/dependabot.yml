@@ -1,22 +1,21 @@
 version: 2
 updates:
+  # One entry per ecosystem and directory: a second entry for the same pair is
+  # rejected, and the whole file is then ignored. Security updates are not a
+  # separate entry -- they are a group inside this one, and they arrive when
+  # an advisory does rather than on the schedule below.
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: monthly
     open-pull-requests-limit: 3
     groups:
-      # One PR a month for routine version bumps. Three runtime dependencies
-      # and a test runner do not need a pull request each.
+      # Three runtime dependencies and a test runner do not need a pull
+      # request each.
       python:
+        applies-to: version-updates
         patterns: ["*"]
-
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: daily
-    groups:
-      security:
+      python-security:
         applies-to: security-updates
         patterns: ["*"]
 
@@ -26,4 +25,8 @@ updates:
       interval: monthly
     groups:
       actions:
+        applies-to: version-updates
+        patterns: ["*"]
+      actions-security:
+        applies-to: security-updates
         patterns: ["*"]

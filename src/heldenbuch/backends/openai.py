@@ -26,7 +26,7 @@ from pathlib import Path
 
 from ..config import require_key
 from ..types import GenRequest
-from .base import Backend, BackendError, explain_provider_error
+from .base import Backend, BackendError, explain_provider_error, refuse_unknown_model
 
 API_BASE = "https://api.openai.com/v1"
 
@@ -145,7 +145,9 @@ class OpenAIBackend(Backend):
         return "gpt-image-2"
 
     def __init__(self, model: str | None = None) -> None:
+        # Allow the short aliases above as well as full model ids.
         super().__init__(MODELS.get(model or "", model))
+        refuse_unknown_model("OpenAI image", self.model, MODELS)
 
     def _generate(self, req: GenRequest) -> tuple[bytes, str]:
         key = require_key("OPENAI_API_KEY", "openai")

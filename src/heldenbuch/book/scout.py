@@ -61,6 +61,33 @@ def _prompt(hero: Hero, style: Style, scene: str) -> str:
     )
 
 
+#: How far ahead a service has to be before the scout calls it the winner.
+#: The judge scores identity in whole numbers from 1 to 5 over two scenes, so
+#: the averages land on halves and ties are common. Below this the difference
+#: is one judge's opinion on one picture, not a property of the model, and
+#: `max()` was quietly breaking those ties by dictionary order.
+WINNING_MARGIN = 0.5
+
+
+def pick_winner(results: dict[str, Any]) -> tuple[str | None, str | None, float]:
+    """The best service, the next best, and how far apart they are.
+
+    Returns `None` for the winner when nothing is far enough ahead. A scout
+    that reports no winner is being honest about a small sample; one that
+    names whichever key came first is not.
+    """
+    ranked = sorted(results.items(), key=lambda kv: -kv[1]["identity"])
+    best, best_row = ranked[0]
+    if len(ranked) == 1:
+        return best, None, float(best_row["identity"])
+
+    second, second_row = ranked[1]
+    margin = float(best_row["identity"]) - float(second_row["identity"])
+    if margin < WINNING_MARGIN:
+        return None, second, margin
+    return best, second, margin
+
+
 def run(
     hero: Hero,
     style: Style,
@@ -126,14 +153,22 @@ def run(
     if not results:
         raise RuntimeError("kein Vergleich möglich — siehe Protokoll oben")
 
-    winner = max(results, key=lambda k: results[k]["identity"])
+    winner, runner_up, margin = pick_winner(results)
     log("")
     for name, row in sorted(results.items(), key=lambda kv: -kv[1]["identity"]):
         mark = "  ←" if name == winner else ""
         log(f"{name:<8} Ähnlichkeit {row['identity']}/5{mark}")
     log("")
-    log(f"Empfehlung für „{style.name}“: {winner}")
+    if winner:
+        log(f"Empfehlung für „{style.name}“: {winner}")
+    else:
+        # Saying "openai" because it sorted first would be inventing a result.
+        tied = ", ".join(sorted(results))
+        log(f"Kein klarer Sieger: {tied} liegen zu dicht beieinander "
+            f"(Abstand {margin:.2f}, nötig wären {WINNING_MARGIN}). "
+            "Nimm den Dienst, der dir sonst zusagt.")
     log("Zwei Szenen sind eine kleine Stichprobe — nimm es als Hinweis, nicht als Urteil.")
 
-    return {"winner": winner, "results": results, "scenes": len(TEST_SCENES),
+    return {"winner": winner, "runner_up": runner_up, "margin": round(margin, 2),
+            "results": results, "scenes": len(TEST_SCENES),
             "checked_by": check_provider}

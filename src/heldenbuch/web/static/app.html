@@ -783,6 +783,28 @@ const LOCALES = {
     style_try_detail: "Zwei Vorschauen und ein Charakterblatt — zusammen ungefähr {price}.",
     style_try_verb: "Ausprobieren",
     style_stale: "veraltetes Stilblatt",
+    story_cross_check: "Zweitlektorat durch den zweiten Anbieter",
+    story_cross_check_title: "Ein zweites Sprachmodell liest denselben Text noch einmal — frische Augen finden anderen Klapperklang.",
+    story_cross_check_price: "({price} extra)",
+    redraw_q: "Seite {n} neu zeichnen?",
+    redraw_why: "Was war falsch? Die Antwort geht als Anweisung mit — und wird gemerkt.",
+    reason_face: "Gesicht/Figur",
+    reason_setting: "Schauplatz",
+    reason_composition: "Bildaufbau",
+    reason_style: "Stil",
+    variants_btn: "3 Entwürfe",
+    variants_title: "Drei Fassungen zeichnen und die beste auswählen — für die Bilder, die das Buch tragen.",
+    variants_q: "Drei Entwürfe zeichnen?",
+    variants_detail: "Drei Fassungen desselben Motivs, du wählst die beste — zusammen ungefähr {price}.",
+    variants_verb: "Zeichnen",
+    variants_pick: "Entwurf wählen ({n})",
+    variants_choose: "Welcher passt am besten?",
+    variants_choose_lede: "Ein Klick übernimmt den Entwurf; die vorherige Fassung bleibt in der Historie.",
+    variants_later: "Später entscheiden",
+    variants_discard: "Alle verwerfen",
+    variants_discarded: "Verworfen — die Seite behält ihr bisheriges Bild.",
+    variants_adopted: "Übernommen — die Seite hat jetzt dieses Bild.",
+    job_variants: "Entwürfe zeichnen",
     style_refresh: "Stilblatt neu zeichnen",
     look_setup_q: "Diesen Stil für diese Figur einrichten?",
     look_setup_detail: "Das Charakterblatt wird in diesem Stil gezeichnet — ungefähr {price}.",
@@ -1233,6 +1255,28 @@ const LOCALES = {
     style_try_detail: "Two previews and a character sheet — about {price} together.",
     style_try_verb: "Try it",
     style_stale: "outdated styled sheet",
+    story_cross_check: "Second read-through by the other provider",
+    story_cross_check_title: "A second language model re-reads the same text — fresh eyes catch different clunk.",
+    story_cross_check_price: "({price} extra)",
+    redraw_q: "Redraw page {n}?",
+    redraw_why: "What was wrong? The answer travels as an instruction — and is remembered.",
+    reason_face: "Face/character",
+    reason_setting: "Setting",
+    reason_composition: "Composition",
+    reason_style: "Style",
+    variants_btn: "3 drafts",
+    variants_title: "Draw three takes and pick the best — for the images that carry the book.",
+    variants_q: "Draw three drafts?",
+    variants_detail: "Three takes on the same motif, you pick the best — about {price} together.",
+    variants_verb: "Draw them",
+    variants_pick: "Choose a draft ({n})",
+    variants_choose: "Which one fits best?",
+    variants_choose_lede: "One click adopts the draft; the previous version stays in the history.",
+    variants_later: "Decide later",
+    variants_discard: "Discard all",
+    variants_discarded: "Discarded — the page keeps its current picture.",
+    variants_adopted: "Adopted — the page shows this picture now.",
+    job_variants: "Drawing drafts",
     style_refresh: "Redraw the styled sheet",
     look_setup_q: "Set this style up for this character?",
     look_setup_detail: "The character sheet is drawn in this style — about {price}.",
@@ -2498,6 +2542,10 @@ async function renderStory() {
           ${t("story_rhyme")}</label>
         <label class="check"><input type="checkbox" id="s-revise" checked>
           ${t("story_revise")} <span class="muted small">${t("story_recommended")}</span></label>
+        ${(S.status.text_providers || []).length > 1 ? `<label class="check"
+          title="${esc(t("story_cross_check_title"))}">
+          <input type="checkbox" id="s-cross">
+          ${t("story_cross_check")} <span class="muted small">${ti("story_cross_check_price", { price: eur(est().cross_check_usd || 0.04) })}</span></label>` : ""}
       </div>
 
       <div class="row" style="margin-top:1.3rem">
@@ -2514,6 +2562,7 @@ async function renderStory() {
       hero_id: S.heroId, style_id: S.styleId, idea: $("s-idea").value.trim(),
       age: $("s-age").value, languages, render_quality: $("s-quality").value,
       rhyme: $("s-rhyme").checked, revise: $("s-revise").checked,
+      cross_check: !!$("s-cross")?.checked,
     }, t("job_story_write"), (job) => {
       if (job.result.book_id) { S.bookId = job.result.book_id; store.set("bookId", S.bookId); }
       renderStory();
@@ -2719,6 +2768,7 @@ async function renderBook() {
             <div class="acts">
               <button class="btn ghost tiny" onclick="redrawCover()"
                 title="${t("book_cover_only_title")}">${t("redraw")} · ${eur(perImage)}</button>
+              ${variantsAction(0, (book.cover_variant_urls || []).length)}
               <button class="btn ghost tiny" onclick="editBookMeta()">${t("book_cover_change")}</button>
             </div></div></div>` : ""}
         ` + book.pages.map((p) => pageCard(p, language)).join("") + `
@@ -3157,8 +3207,10 @@ function pageCard(page, language) {
       <div class="acts">
         <button class="btn ghost tiny" onclick="editPage(${page.index})"
           title="${t("page_edit_title")}">${t("edit")}</button>
-        <button class="btn ghost tiny" onclick="illustrate(true,[${page.index}])"
+        <button class="btn ghost tiny" onclick="redrawPage(${page.index})"
           title="${ti("page_redraw_title", { price: eur(perImageUsd(currentBook.render_quality)) })}">${t("redraw")}</button>
+        ${page.index === currentBook.climax || status === "failed"
+          ? variantsAction(page.index, (page.variant_urls || []).length) : ""}
         ${(page.history_urls || []).length ? `<button class="btn ghost tiny"
           onclick="showVersions(${page.index})">${ti("page_versions", { n: page.history_urls.length })}</button>` : ""}
       </div>
@@ -3262,6 +3314,92 @@ function illustrateAll() {
     t("draw_verb"), { book_id: S.bookId, redraw: false, only: [] },
     t("job_draw_pictures"));
 }
+function redrawPage(index) {
+  const price = eur(perImageUsd(currentBook.render_quality));
+  const chips = [["face", t("reason_face")], ["setting", t("reason_setting")],
+                 ["composition", t("reason_composition")], ["style", t("reason_style")]];
+  openModal(`<h3>${ti("redraw_q", { n: index })}</h3>
+    <p class="lede">${t("redraw_why")}</p>
+    <div class="chips" style="margin-bottom:1.2rem">${chips.map(([v, label]) => `
+      <label class="chip"><input type="checkbox" name="m-reason" value="${v}"
+        onchange="if(this.checked)[...document.querySelectorAll('#modal input[name=m-reason]')].forEach(o=>{if(o!==this)o.checked=false});[...document.querySelectorAll('#modal .chip')].forEach(c=>c.classList.toggle('on', c.querySelector('input').checked))">${label}</label>`).join("")}
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-go">${t("redraw")} · ${price}</button></div>`);
+  $("m-go").onclick = () => {
+    const picked = document.querySelector('#modal input[name="m-reason"]:checked');
+    closeModal();
+    runJob("book_illustrate",
+      { book_id: S.bookId, redraw: true, only: [index],
+        ...(picked ? { reason: picked.value } : {}), ...drawParams() },
+      ti("job_draw_page", { pages: String(index) }), renderBook);
+  };
+}
+
+/* Several candidates for the images that carry the book (cover, climax);
+   the person picks, the way the hero flow already works. */
+function variantsAction(index, waiting) {
+  return waiting
+    ? `<button class="btn ghost tiny" onclick="pickVariant(${index})">
+        ${ti("variants_pick", { n: waiting })}</button>`
+    : `<button class="btn ghost tiny" onclick="drawVariants(${index})"
+        title="${t("variants_title")}">${t("variants_btn")} · ${eur(3 * perImageUsd(currentBook.render_quality))}</button>`;
+}
+
+function drawVariants(index) {
+  confirmModal(t("variants_q"),
+    ti("variants_detail", { price: eur(3 * perImageUsd(currentBook.render_quality)) }),
+    t("variants_verb"),
+    () => runJob("page_variants", { book_id: S.bookId, index, count: 3, ...drawParams() },
+      t("job_variants"), () => pickVariant(index)));
+}
+
+async function pickVariant(index) {
+  const book = await api(`/api/book/books/${S.bookId}`);
+  currentBook = book;
+  const urls = index === 0 ? (book.cover_variant_urls || [])
+                           : ((book.pages.find((p) => p.index === index) || {}).variant_urls || []);
+  if (!urls.length) return renderBook();
+  openModal(`<h3>${t("variants_choose")}</h3>
+    <p class="lede">${t("variants_choose_lede")}</p>
+    <div class="grid g3" style="margin-bottom:1rem">${urls.map((u) => `
+      <div><img src="${esc(tn(u))}" loading="lazy" decoding="async" alt=""
+        style="cursor:pointer;border-radius:9px" onclick="adoptVariant(${index}, '${esc(u)}')"></div>`).join("")}
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn ghost" style="color:var(--bad)"
+        onclick="discardVariants(${index})">${t("variants_discard")}</button>
+      <button class="btn ghost" onclick="closeModal()">${t("variants_later")}</button></div>`);
+}
+
+async function discardVariants(index) {
+  closeModal();
+  try {
+    await api(`/api/book/books/${S.bookId}/pick-variant`,
+      { method: "POST", body: JSON.stringify({ index, discard: true }) });
+    toast(t("variants_discarded"));
+  } catch (exc) {
+    toast(ti("save_failed", { message: exc.message }));
+  }
+  renderBook();
+}
+
+async function adoptVariant(index, url) {
+  // The URL is the payload's prefixed form; the server wants the stored
+  // book-relative path, which is everything after the book folder.
+  const relative = url.split("?")[0].split("/").slice(-2).join("/");
+  closeModal();
+  try {
+    await api(`/api/book/books/${S.bookId}/pick-variant`,
+      { method: "POST", body: JSON.stringify({ index, variant: relative }) });
+    toast(t("variants_adopted"));
+  } catch (exc) {
+    toast(ti("save_failed", { message: exc.message }));
+  }
+  renderBook();
+}
+
 function undoPage(index) {
   runJob("book_undo", { book_id: S.bookId, index },
     ti("job_page_undo", { n: index }), renderBook);

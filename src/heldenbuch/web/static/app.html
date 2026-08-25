@@ -777,6 +777,33 @@ const LOCALES = {
     versions_undo: "Zurück zur vorherigen",
     draw_missing_q: "Alle fehlenden Bilder zeichnen?",
     draw_missing_detail: "{n} Bild(er) werden gezeichnet.",
+    est_note: "Kostet ungefähr {price}.",
+    lang_price_note: "Je Sprache ungefähr {price}.",
+    style_try_q: "Diesen Stil ausprobieren?",
+    style_try_detail: "Zwei Vorschauen und ein Charakterblatt — zusammen ungefähr {price}.",
+    style_try_verb: "Ausprobieren",
+    style_stale: "veraltetes Stilblatt",
+    style_stale_title: "Das Stilblatt entstand aus einem früheren Charakterblatt. Beim nächsten Einrichten wird es neu gezeichnet.",
+    cast_sheet_failed: "Blatt fehlgeschlagen",
+    cast_add: "Figur, Ort oder Gegenstand hinzufügen",
+    cast_add_title: "Neu im Buch",
+    cast_add_name: "Name",
+    cast_add_kind: "Art",
+    cast_add_desc: "Beschreibung (was ein Illustrator wissen muss)",
+    cast_add_note: "Das Referenzblatt entsteht danach über \u201eFehlende Bilder zeichnen\u201c.",
+    cast_add_save: "Hinzufügen",
+    cast_add_name_missing: "Ein Name fehlt noch.",
+    cast_add_done: "{name} ist jetzt im Buch.",
+    book_kind_prop: "Gegenstand",
+    nav_lab_title: "Technischer Vergleich der Bildmodelle",
+    jobs_title: "Alle laufenden und letzten Aufträge",
+    pfx_aspect_crop: "Die Bilder sind quadratisch, dieses Format ist es nicht — pro Bild werden etwa {percent} % mittig weggeschnitten. Die Druckbogen-Vorschau zeigt den Ausschnitt.",
+    pfx_palette_outlier: "Seite(n) {pages} weichen farblich deutlich vom Rest des Buches ab — beim Durchblättern prüfen.",
+    pfx_setting_mismatch: "Seite(n) {pages}: Der Schauplatz passt laut Prüfung nicht zur Orts-Referenz — beim Durchblättern prüfen.",
+    page_setting_label: "Schauplatz (feste Anker, auf Englisch)",
+    page_setting_hint: "z. B. at the brook, the crooked pine on the left bank",
+    bigrun_chain: "Schauplatz-Kette — jede Seite sieht die letzte gute Seite (experimentell, zeichnet nacheinander)",
+    bigrun_chain_title: "Hält Gelände und Kulisse von Seite zu Seite zusammen. Dafür entstehen die Bilder nacheinander statt zu viert — der Lauf dauert entsprechend länger.",
     draw_verb: "Zeichnen", job_page_undo: "Seite {n} zurück",
     /* sound, photo page, export */
     sound_title: "Vorlesen lassen", sound_lede: "Eine Tonspur pro Seite und Sprache.",
@@ -1196,6 +1223,33 @@ const LOCALES = {
     versions_undo: "Back to the previous one",
     draw_missing_q: "Draw all the missing pictures?",
     draw_missing_detail: "{n} picture(s) will be drawn.",
+    est_note: "Costs roughly {price}.",
+    lang_price_note: "Roughly {price} per language.",
+    style_try_q: "Try this style?",
+    style_try_detail: "Two previews and a character sheet — about {price} together.",
+    style_try_verb: "Try it",
+    style_stale: "outdated styled sheet",
+    style_stale_title: "The styled sheet was drawn from an earlier character sheet. It will be redrawn the next time this style is set up.",
+    cast_sheet_failed: "sheet failed",
+    cast_add: "Add a character, place or prop",
+    cast_add_title: "New in this book",
+    cast_add_name: "Name",
+    cast_add_kind: "Kind",
+    cast_add_desc: "Description (what an illustrator needs to know)",
+    cast_add_note: "Its reference sheet is drawn afterwards via \u201cDraw the missing pictures\u201d.",
+    cast_add_save: "Add",
+    cast_add_name_missing: "It still needs a name.",
+    cast_add_done: "{name} is in the book now.",
+    book_kind_prop: "Prop",
+    nav_lab_title: "Technical comparison of the image models",
+    jobs_title: "All running and recent jobs",
+    pfx_aspect_crop: "The pictures are square and this format is not — about {percent}% of each picture is cropped away. The print-sheet proof shows the actual crop.",
+    pfx_palette_outlier: "Page(s) {pages} sit noticeably apart from the rest of the book in colour — worth a look while flipping through.",
+    pfx_setting_mismatch: "Page(s) {pages}: the check says the location does not match the place reference — worth a look while flipping through.",
+    page_setting_label: "Setting (fixed anchors, in English)",
+    page_setting_hint: "e.g. at the brook, the crooked pine on the left bank",
+    bigrun_chain: "Setting chain — each page sees the last good page (experimental, draws one at a time)",
+    bigrun_chain_title: "Keeps terrain and scenery consistent from page to page. In return the pictures are drawn one after another instead of four at a time — the run takes correspondingly longer.",
     draw_verb: "Draw", job_page_undo: "Page {n} back",
     /* sound, photo page, export */
     sound_title: "Have it read aloud", sound_lede: "One sound track per page and language.",
@@ -1312,6 +1366,8 @@ function applyChrome() {
   $("nav-books").textContent = t("nav_books");
   $("nav-lab").textContent = t("nav_lab");
   $("settings-btn").setAttribute("aria-label", t("settings"));
+  $("nav-lab").title = t("nav_lab_title");
+  $("djobs").title = t("jobs_title");
   $("djobs").textContent = t("jobs");
   $("dtoggle").textContent = t("details");
   $("dcancel").textContent = t("cancel");
@@ -2272,6 +2328,8 @@ async function renderLook() {
             onclick="event.stopPropagation();zoom('${esc(thumb)}')">🔍</button>` : ""}
           ${thumb ? `<img src="${esc(tn(thumb))}" loading="lazy" decoding="async" alt="" style="aspect-ratio:4/3;object-fit:cover">` : ""}
           <div class="cap"><b>${esc(s.name)}</b>
+            ${(s.stale_for || []).includes(S.heroId) ? `<span class="flag warn"
+              title="${t("style_stale_title")}">${t("style_stale")}</span>` : ""}
             <small>${isReady
               ? (s.id === S.styleId ? t("chosen") : t("choose"))
               : t("look_other_figure")}${
@@ -2315,8 +2373,12 @@ async function styleFromImage(file) {
 }
 
 function tryPreset(key) {
-  runJob("style_try", { hero_id: S.heroId, preset: key, previews: 2, ...drawParams() },
-    t("job_style_try"), afterStyle);
+  // A chip click is one stray tap away; every other paid action confirms.
+  confirmModal(t("style_try_q"),
+    ti("style_try_detail", { price: eur(styleTryUsd()) }), t("style_try_verb"),
+    () => runJob("style_try",
+      { hero_id: S.heroId, preset: key, previews: 2, ...drawParams() },
+      t("job_style_try"), afterStyle));
 }
 function afterStyle(job) {
   if (job.result.style_id) { S.styleId = job.result.style_id; store.set("styleId", S.styleId); }
@@ -2415,7 +2477,7 @@ async function renderStory() {
       </div>
 
       <div class="row" style="margin-top:1.3rem">
-        <button class="btn" id="s-go" ${can("writing") ? "" : `disabled title="${t("no_writing_key")}"`}>${book ? t("story_write_new") : t("story_write")}</button>
+        <button class="btn" id="s-go" ${can("writing") ? "" : `disabled title="${t("no_writing_key")}"`}>${book ? t("story_write_new") : t("story_write")} · ${eur(est().story_usd || 0.1)}</button>
         ${book ? `<button class="btn ghost" onclick="go('book')">${t("story_to_pictures")}</button>` : ""}
       </div>
     </div>
@@ -2536,6 +2598,7 @@ function rewrite(index) {
   openModal(`<h3>${ti("rewrite_title", { n: index })}</h3>
     <label class="f"><span>${t("rewrite_label")}</span>
       <textarea id="m-note" rows="3" placeholder="${esc(t("rewrite_placeholder"))}"></textarea></label>
+    <p class="small muted">${ti("est_note", { price: eur(est().rewrite_usd || 0.01) })}</p>
     <div class="row" style="justify-content:flex-end">
       <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
       <button class="btn" id="m-go">${t("rewrite_verb")}</button></div>`);
@@ -2601,20 +2664,23 @@ async function renderBook() {
 
       <div id="review">${referencesBanner(book)}${reviewBanners(book, perImage)}</div>
 
-      ${book.cast.length ? `<details style="margin-top:1rem">
+      <details style="margin-top:1rem">
         <summary class="small muted">${ti("book_cast_summary", { n: book.cast.length })}</summary>
         <div class="grid g4" style="margin-top:.7rem">` + book.cast.map((c, i) => `
           <div class="pick" style="cursor:default">
             ${c.sheet_url ? `<img src="${esc(tn(c.sheet_url))}" loading="lazy" decoding="async" alt="${esc(ti("book_cast_sheet_alt", { name: c.name }))}"
                 onclick="zoom('${esc(c.sheet_url)}')" style="cursor:zoom-in">`
                           : `<div style="aspect-ratio:3/2;background:var(--sunk)"></div>`}
-            <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? t("book_kind_place") : t("book_kind_character")}
-              ${c.sheet_url ? "" : ` · ${t("book_no_sheet")}`}</small>
+            <div class="cap"><b>${esc(c.name)}</b><small>${c.kind === "place" ? t("book_kind_place") : c.kind === "prop" ? t("book_kind_prop") : t("book_kind_character")}
+              ${c.sheet_url ? "" : ` · ${t("book_no_sheet")}`}${c.sheet_error ? ` · <span style="color:var(--bad)" title="${esc(c.sheet_error)}">${t("cast_sheet_failed")}</span>` : ""}</small>
               <div class="acts" style="margin-top:.4rem">
                 <button class="btn ghost tiny" onclick="editCast(${i})">${t("edit")}</button>
                 <button class="btn ghost tiny" onclick="redrawCast(${i})"
                   title="${t("book_new_sheet_title")} · ${eur(perImageUsd('draft'))}">${t("book_sheet_redraw")}</button>
-              </div></div></div>`).join("") + `</div></details>` : ""}
+              </div></div></div>`).join("") + `</div>
+        <div class="row" style="margin-top:.6rem">
+          <button class="btn ghost tiny" onclick="addCastMember()">${t("cast_add")}</button>
+        </div></details>
     </div>
 
     ${drawn === 0 && book.pages.length ? storyboardCard(book, language, missing) : ""}
@@ -2793,6 +2859,38 @@ function costDialog() {
 /* Cast corrections: the story generator invents the recurring cast, and it
    sometimes gets a name, a description or a page list wrong. This is where a
    person fixes it -- including regenerating just the one reference sheet. */
+function addCastMember() {
+  const kinds = [["character", t("book_kind_character")], ["place", t("book_kind_place")],
+                 ["prop", t("book_kind_prop")]];
+  openModal(`<h3>${t("cast_add_title")}</h3>
+    <label class="f"><span>${t("cast_add_name")}</span>
+      <input type="text" id="m-cname"></label>
+    <label class="f"><span>${t("cast_add_kind")}</span>
+      <select id="m-ckind">${kinds.map(([v, label]) => `
+        <option value="${v}">${label}</option>`).join("")}</select></label>
+    <label class="f"><span>${t("cast_add_desc")}</span>
+      <textarea id="m-cdesc" rows="3"></textarea></label>
+    <p class="small muted">${t("cast_add_note")}</p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn ghost" onclick="closeModal()">${t("cancel")}</button>
+      <button class="btn" id="m-go">${t("cast_add_save")}</button></div>`);
+  $("m-go").onclick = async () => {
+    const name = $("m-cname").value.trim();
+    if (!name) return toast(t("cast_add_name_missing"));
+    const member = { add: true, name, kind: $("m-ckind").value,
+                     description: $("m-cdesc").value.trim() };
+    closeModal();
+    try {
+      await api(`/api/book/books/${S.bookId}`,
+        { method: "PUT", body: JSON.stringify({ cast: [member] }) });
+      toast(ti("cast_add_done", { name }));
+      renderBook();
+    } catch (exc) {
+      toast(ti("save_failed", { message: exc.message }));
+    }
+  };
+}
+
 function editCast(index) {
   const member = currentBook.cast[index];
   if (!member) return;
@@ -2899,6 +2997,9 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
     ${gemini ? `<label class="check" style="margin-bottom:1rem">
       <input type="checkbox" id="m-batch">
       <span>${ti("bigrun_batch", { price: eur(batchUsd) })}</span></label>` : ""}
+    <label class="check" style="margin-bottom:1rem" title="${esc(t("bigrun_chain_title"))}">
+      <input type="checkbox" id="m-chain">
+      <span>${t("bigrun_chain")}</span></label>
     <label class="f" style="max-width:260px"><span>${t("bigrun_cap_label")}</span>
       <input type="number" id="m-budget" min="0" step="0.5" placeholder="${esc(t("bigrun_cap_placeholder"))}"></label>
     <div class="row" style="justify-content:flex-end">
@@ -2907,12 +3008,15 @@ function bigRunModal(title, detail, verb, params, jobTitle) {
   $("m-go").onclick = () => {
     const eurCap = parseFloat($("m-budget").value);
     const batch = !!$("m-batch")?.checked;
+    // Batch sends everything to Google at once, so there is no "previous
+    // page" to chain from; the two options exclude each other.
+    const chain = !batch && !!$("m-chain")?.checked;
     closeModal();
     const budget = Number.isFinite(eurCap) && eurCap > 0
       ? { budget_usd: eurCap * (est().usd_per_eur || 1.08) } : {};
     runJob("book_illustrate",
       { book_id: S.bookId, ...params, ...budget, ...(batch ? { batch: true } : {}),
-        ...drawParams() },
+        ...(chain ? { chain: true } : {}), ...drawParams() },
       batch ? ti("job_batch_suffix", { title: jobTitle }) : jobTitle, renderBook);
   };
 }
@@ -3054,6 +3158,9 @@ function editPage(index) {
         <input type="text" id="m-pd" value="${esc(page.direction || "")}"
           placeholder="${esc(t("page_direction_hint"))}"></label>
     </div>
+    <label class="f"><span>${t("page_setting_label")}</span>
+      <input type="text" id="m-ps" value="${esc(page.setting || "")}"
+        placeholder="${esc(t("page_setting_hint"))}"></label>
     <label class="f" style="max-width:320px"><span>${t("layout_label")}</span>
       <select id="m-pl">${layouts}</select></label>
     ${page.seed ? `<p class="small muted" style="margin:-.4rem 0 1rem">${
@@ -3073,7 +3180,8 @@ function editPage(index) {
     for (const code of currentBook.languages) text[code] = $(`m-pt-${code}`).value;
     await api(`/api/book/books/${S.bookId}`, { method: "PUT", body: JSON.stringify({
       pages: [{ index, text, illustration: $("m-pb").value, layout: $("m-pl").value,
-                expression: $("m-pe").value, direction: $("m-pd").value }] }) });
+                expression: $("m-pe").value, direction: $("m-pd").value,
+                setting: $("m-ps").value }] }) });
     closeModal(); toast(ti("page_saved", { n: index })); renderBook();
   };
 }
@@ -3109,9 +3217,13 @@ function illustrate(redraw, only) {
 // confirmation, no cost ceiling and no batch option, while the cheaper repeat
 // actions had all three.
 function illustrateAll() {
-  const missing = currentBook?.missing || {};
+  // Computed, not read off the payload: the API sends no `missing` field,
+  // and the confirm for the most expensive click in the app spent its life
+  // announcing "0 pictures".
+  const missing = currentBook ? missingEst(currentBook) : {};
   bigRunModal(t("draw_missing_q"),
-    ti("draw_missing_detail", { n: missing.images || 0 }),
+    ti("draw_missing_detail", { n: missing.images || 0 })
+      + " " + ti("book_from_price", { price: eur(missing.usd || 0) }),
     t("draw_verb"), { book_id: S.bookId, redraw: false, only: [] },
     t("job_draw_pictures"));
 }
@@ -3222,16 +3334,16 @@ function exportPanel(book) {
     <div id="preflight" aria-live="polite"></div>
     <div class="grid g2">
       <label class="f"><span>${t("export_format")}</span>
-        <select id="e-preset" onchange="refreshPreflight()">${(S.status.print_presets || []).map((p) => `
-          <option value="${p.key}">${esc(srv("pp", p.key, p.name))}</option>`).join("")}</select></label>
+        <select id="e-preset" onchange="rememberExport();refreshPreflight()">${(S.status.print_presets || []).map((p) => `
+          <option value="${p.key}" ${S.exportSel?.preset === p.key ? "selected" : ""}>${esc(srv("pp", p.key, p.name))}</option>`).join("")}</select></label>
       <label class="f"><span>${t("export_font")}</span>
-        <select id="e-font" onchange="refreshPreflight()">${(S.status.fonts || []).map((f) => `
-          <option value="${f.key}">${esc(f.name)}</option>`).join("")}</select></label>
+        <select id="e-font" onchange="rememberExport();refreshPreflight()">${(S.status.fonts || []).map((f) => `
+          <option value="${f.key}" ${S.exportSel?.font === f.key ? "selected" : ""}>${esc(f.name)}</option>`).join("")}</select></label>
     </div>
     <div class="grid g2">
       <label class="f"><span>${t("export_shop")}</span>
-        <select id="e-shop">${(S.status.print_shops || []).map((s) => `
-          <option value="${s.key}">${esc(s.name)} — ${esc(srv("shop", s.key, s.where))}</option>`).join("")}</select></label>
+        <select id="e-shop" onchange="rememberExport()">${(S.status.print_shops || []).map((s) => `
+          <option value="${s.key}" ${S.exportSel?.shop === s.key ? "selected" : ""}>${esc(s.name)} — ${esc(srv("shop", s.key, s.where))}</option>`).join("")}</select></label>
       <div><label class="f"><span>${t("export_languages")}</span></label>
         <div class="chips" id="e-langs">${book.languages.map((code) => {
           const name = (S.status.languages.find((l) => l.code === code) || {}).name || code;
@@ -3402,6 +3514,14 @@ async function loadSetPreview() {
    job -- this fetch exists so the user sees WHY before pressing anything. */
 let preflightState = null;
 
+function rememberExport() {
+  // The whole book screen is rebuilt after every job; without this the
+  // format snapped back to the default and yelled "not ready" over the
+  // fresh PDFs of the format the person had actually chosen.
+  S.exportSel = { preset: $("e-preset")?.value, font: $("e-font")?.value,
+                  shop: $("e-shop")?.value };
+}
+
 async function refreshPreflight() {
   if (!S.bookId || !$("preflight")) return;
   const query = new URLSearchParams({ preset: $("e-preset")?.value || "print_square",
@@ -3431,7 +3551,8 @@ function renderPreflightBox(report) {
   const items =
     report.errors.map((f) => line(f, "✗")).join("")
     + report.unknowns.map((f) => line(f, "?")).join("")
-    + report.warnings.map((f) => line(f, "⚠")).join("");
+    + report.warnings.map((f) => line(f, "⚠")).join("")
+    + (report.notes || []).map((f) => line(f, "·")).join("");
   const jump = [
     ...report.pages_missing, ...report.pages_failed_check, ...report.pages_unknown_check,
   ];
@@ -3475,6 +3596,7 @@ function addLanguage() {
   if (!options.length) return toast(t("lang_all_present"));
   openModal(`<h3>${t("export_add_language")}</h3>
     <p class="lede">${t("lang_add_lede")}</p>
+    <p class="small muted">${ti("lang_price_note", { price: eur(est().language_usd || 0.03) })}</p>
     <div class="chips" style="margin-bottom:1.2rem">${options.map((l) => `
       <label class="chip"><input type="checkbox" value="${l.code}"
         onchange="this.parentNode.classList.toggle('on',this.checked)">${esc(l.name)}</label>`).join("")}

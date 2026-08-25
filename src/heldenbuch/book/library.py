@@ -116,7 +116,10 @@ class Library:
         for path in sorted((self.root / "heroes").glob("*/hero.json")):
             try:
                 found.append(_build(Hero, load_json(path)))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OSError):
+                # OSError: the folder can vanish between glob and read when a
+                # delete races a listing; one stale entry must not 404 the
+                # whole shelf.
                 continue
         return sorted(found, key=lambda h: h.created, reverse=True)
 
@@ -143,7 +146,9 @@ class Library:
         for path in sorted((self.root / "styles").glob("*/style.json")):
             try:
                 found.append(_build(Style, load_json(path)))
-            except (TypeError, ValueError):
+            except (TypeError, ValueError, OSError):
+                # Same race as heroes(): a concurrent delete is one missing
+                # tile, not a failed listing.
                 continue
         return sorted(found, key=lambda s: s.created, reverse=True)
 
@@ -191,14 +196,19 @@ class Library:
     _EDITORIAL_BOOK = ("title", "idea", "age", "languages", "dedication",
                        "rhyme", "render_quality", "narration_voice", "cast",
                        "photo_page", "blurb", "content_rev")
+    # `expression`, `direction` and `setting` are brief fields like
+    # `illustration`: the person writes them, so a job holding a minutes-old
+    # copy must adopt them or its next save silently reverts the edit.
     _EDITORIAL_PAGE = ("text", "text_rev", "illustration", "illustration_rev",
-                       "layout", "cast")
+                       "layout", "cast", "expression", "direction", "setting")
     #: Fields the background jobs write. The editor adopts these from disk so
     #: saving a text edit cannot throw away a page drawn since the screen was
     #: opened.
     _RENDERED_BOOK = ("cover", "cover_check", "spend", "pending_batch")
+    # `seed` belongs to the render like `image` does: without it here, an
+    # editor save could clobber the number a good page was drawn with.
     _RENDERED_PAGE = ("image", "image_from_rev", "check", "history", "error",
-                      "audio", "audio_from_rev")
+                      "audio", "audio_from_rev", "seed")
 
     def save_book(self, book: Book, adopt: str | None = None) -> Book:
         """Write the book, without clobbering the other writer.

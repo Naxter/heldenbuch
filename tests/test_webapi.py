@@ -505,9 +505,11 @@ def test_attach_drops_the_name_when_its_sheet_is_missing(tmp_path):
     cast = [CastMember(name="Pip", sheet="missing.png"),
             CastMember(name="Trixi", sheet="trixi.png")]
 
-    paths, named = _attach(sheet, cast, lambda rel: tmp_path / rel, limit=8)
+    paths, named, dropped = _attach(sheet, cast, lambda rel: tmp_path / rel,
+                                    limit=8)
     assert paths == [sheet, real]
     assert [m.name for m in named] == ["Trixi"]
+    assert dropped == []
 
 
 def test_attach_respects_the_backend_reference_limit(tmp_path):
@@ -519,9 +521,30 @@ def test_attach_respects_the_backend_reference_limit(tmp_path):
         _png(tmp_path / f"{name}.png")
     cast = [CastMember(name=n.upper(), sheet=f"{n}.png") for n in ("a", "b", "c")]
 
-    paths, named = _attach(sheet, cast, lambda rel: tmp_path / rel, limit=2)
+    paths, named, dropped = _attach(sheet, cast, lambda rel: tmp_path / rel,
+                                    limit=2)
     assert len(paths) == 2
     assert [m.name for m in named] == ["A"]
+    assert [m.name for m in dropped] == ["B", "C"]
+
+
+def test_attach_keeps_the_place_when_the_limit_bites(tmp_path):
+    """The place is promised on every page, so characters are cut first --
+    and whoever is cut comes back in the third list, to be said out loud."""
+    from heldenbuch.book.illustrate import _attach
+    from heldenbuch.book.models import CastMember
+
+    sheet = _png(tmp_path / "hero.png")
+    for name in ("pip", "trixi", "garden"):
+        _png(tmp_path / f"{name}.png")
+    cast = [CastMember(name="Pip", kind="character", sheet="pip.png"),
+            CastMember(name="Trixi", kind="character", sheet="trixi.png"),
+            CastMember(name="Garten", kind="place", sheet="garden.png")]
+
+    paths, named, dropped = _attach(sheet, cast, lambda rel: tmp_path / rel,
+                                    limit=3)
+    assert [m.name for m in named] == ["Garten", "Pip"]
+    assert [m.name for m in dropped] == ["Trixi"]
 
 
 # --------------------------------------------------------------------------- the quality gate
@@ -607,3 +630,55 @@ def test_single_scene_does_not_maul_ordinary_prose(brief):
     from heldenbuch.book.models import single_scene
 
     assert single_scene(brief) == brief
+
+
+# --------------------------------------------------------------------------- cast editing
+
+
+def _cast_book(library):
+    from heldenbuch.book.models import CastMember
+
+    return library.save_book(Book(
+        title={"de": "T"},
+        cast=[CastMember(name="Pip", kind="character", sheet="cast/01.png")],
+        pages=[Page(index=1, cast=["Pip"], illustration="Pip feeds the hens.")],
+    ))
+
+
+def test_a_cast_member_can_be_added_to_an_existing_book(api, library):
+    """The prop fix only helps books written after it existed; every earlier
+    book needs a way to pin its drifting bridge without rewriting the story."""
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [
+        {"add": True, "name": "Die Laterne", "kind": "prop",
+         "description": "a small brass lantern"}]})
+    fresh = library.get_book(book.id)
+    assert [(c.name, c.kind) for c in fresh.cast] == [
+        ("Pip", "character"), ("Die Laterne", "prop")]
+    # a duplicate name is ignored, an unknown kind becomes a character
+    api.book_update(book.id, {}, {"cast": [
+        {"add": True, "name": "die laterne", "kind": "prop"},
+        {"add": True, "name": "Ente", "kind": "vehicle"}]})
+    fresh = library.get_book(book.id)
+    assert len(fresh.cast) == 3
+    assert fresh.cast[2].kind == "character"
+
+
+def test_a_rename_follows_into_the_briefs(api, library):
+    """cast_for matches the brief text, so a stale name there detaches the
+    member's sheet from every page that used it."""
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "name": "Max"}]})
+    fresh = library.get_book(book.id)
+    assert fresh.pages[0].illustration == "Max feeds the hens."
+    assert fresh.pages[0].cast == ["Max"]
+    # the picture still shows the same entity: not marked stale
+    assert fresh.pages[0].illustration_rev == 0
+
+
+def test_changing_page_membership_marks_the_picture_stale(api, library):
+    book = _cast_book(library)
+    api.book_update(book.id, {}, {"cast": [{"index": 0, "pages": []}]})
+    fresh = library.get_book(book.id)
+    assert fresh.pages[0].cast == []
+    assert fresh.pages[0].illustration_rev == 1

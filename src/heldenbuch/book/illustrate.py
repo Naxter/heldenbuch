@@ -51,9 +51,16 @@ IDENTITY_FLOOR = 4
 # to 4 instead turned four framing quibbles per book into paid redraws.
 SCENE_FLOOR = 3
 
+# Below this the page's whole look is wrong -- watercolour sheet, flat-shaded
+# page. 3 tolerates a shifted palette (which the identity check already sees on
+# the character); 1 and 2 mean the technique itself changed. Held this low on
+# purpose: on the books on disk it flags exactly one page, whose stored score
+# of 1 is a genuinely broken look.
+STYLE_FLOOR = 3
+
 #: Bumped whenever the pass/fail rule changes, and stored on each verdict, so a
 #: book checked under an older rule can be told apart from one checked today.
-RULES_REV = 2
+RULES_REV = 3
 
 #: Yes/no answers from the checker that fail a page on their own, whatever it
 #: scored. Each is a defect a reader sees immediately and print cannot undo.
@@ -157,15 +164,27 @@ def _who_is_who(hero: Hero, members: list[CastMember]) -> str:
     words competes with the sheet and is what makes a character drift.
     """
     people = [f"{hero.name or 'the hero'} is image 1"]
-    people += [f"{m.name} is image {n}" for n, m in enumerate(members, start=2)]
-    if len(people) == 1:
+    setting = ""
+    for n, m in enumerate(members, start=2):
+        if m.kind == "place":
+            # The place must not join the "draw them as their image shows
+            # them" list: its own reference text says the opposite -- show
+            # whatever part of it the scene needs, never the sheet's view.
+            setting = (f"The scene takes place in {m.name}, shown in "
+                       f"image {n}.\n")
+        else:
+            people.append(f"{m.name} is image {n}")
+    if len(people) == 1 and not setting:
         return ""
-    return (
-        "WHO IS WHO\n"
-        f"Every name in the scene is one of the reference images: {', '.join(people)}. "
-        "Draw each of them as their image shows them -- a name alone never "
-        "means a person. Draw nobody who is not in those images.\n\n"
-    )
+    who = ""
+    if len(people) > 1:
+        who = (
+            f"Every name in the scene is one of the reference images: "
+            f"{', '.join(people)}. Draw each of them as their image shows "
+            "them -- a name alone never means a person. Draw nobody who is "
+            "not in those images.\n"
+        )
+    return f"WHO IS WHO\n{who}{setting}\n"
 
 
 def _reference_block(hero: Hero, members: list[CastMember]) -> tuple[str, list[str]]:
@@ -182,12 +201,21 @@ def _reference_block(hero: Hero, members: list[CastMember]) -> tuple[str, list[s
     ]
     for position, member in enumerate(members, start=2):
         if member.kind == "place":
+            # No demand to keep the light: the sheet is one moment, the book
+            # is many. Freezing "the quality of the light" here fought every
+            # brief that set its own time of day, and the tie went to the
+            # image -- pages came back at the sheet's hour, not the story's.
+            # "One or several views" covers both sheet generations: old
+            # single-view sheets and the newer ones drawn from several sides.
             lines.append(
                 f"Image {position} shows {member.name}, the place this story "
-                "keeps returning to. Keep the kind of plants, the colours and "
-                "the quality of the light the same, and show whatever part of "
-                "it this scene needs -- do not reproduce the same view, and do "
-                "not copy its layout onto every page."
+                "keeps returning to -- one or several views of the same "
+                "single place. Keep its plants, materials and distinctive "
+                "features the same, but light, weather and time of day "
+                "follow the SCENE below. Show whatever part of it this "
+                "scene needs -- do not reproduce the sheet's views, do not "
+                "copy its layout onto every page, and never draw the sheet's "
+                "views side by side as panels."
             )
         elif member.kind == "prop":
             lines.append(
@@ -206,9 +234,33 @@ def _reference_block(hero: Hero, members: list[CastMember]) -> tuple[str, list[s
 
 
 def page_prompt(book: Book, hero: Hero, style: Style, page: Page,
-                members: list[CastMember], insist: bool = False) -> str:
-    """The prompt for one page illustration."""
+                members: list[CastMember], insist: bool = False,
+                feedback: list[str] = (),
+                prev_position: int | None = None) -> str:
+    """The prompt for one page illustration.
+
+    `feedback` carries the checker's concrete notes from a failed attempt into
+    the redraw. The generic "follow image 1 more literally" warning alone gave
+    the second attempt no more to go on than the first had, so the same red
+    jacket could come back twice.
+
+    `prev_position` names the reference slot holding the previous page's
+    finished picture, when the chained render attached one. The model copies
+    what it sees far more reliably than it follows prose, which cuts both
+    ways: strongest setting-continuity signal there is, and the reason the
+    wording must fence off composition and poses.
+    """
     references, _ = _reference_block(hero, members)
+
+    chain_note = ""
+    if prev_position:
+        chain_note = (
+            f"\n\nImage {prev_position} is the page that comes directly "
+            "before this one in the same book, showing the same place. Keep "
+            "the terrain, the plants and the built things where that page "
+            "put them. Do not copy its composition, camera angle or the "
+            "characters' poses -- the SCENE below is its own picture."
+        )
 
     # The layout decides how the *page* is composed, never how the picture is.
     # All the illustrator is told is where the words will sit on top of it.
@@ -234,26 +286,38 @@ def page_prompt(book: Book, hero: Hero, style: Style, page: Page,
             "picture itself is still one single scene, not two."
         )
 
-    warning = (
-        "\n\nThis is a second attempt. The previous try drifted from the "
-        "reference or from the scene. Follow image 1 more literally -- same "
-        "face shape, same hair, same colours, same clothing -- and follow the "
-        "SCENE exactly, including anything it says is missing, lost or "
-        "changed. Draw every character once and only once. Nothing invented.\n"
-        if insist else ""
-    )
+    warning = ""
+    if insist:
+        warning = (
+            "\n\nThis is a second attempt. The previous try drifted from the "
+            "reference or from the scene. Follow image 1 more literally -- same "
+            "face shape, same hair, same colours, same clothing -- and follow the "
+            "SCENE exactly, including anything it says is missing, lost or "
+            "changed. Draw every character once and only once. Nothing invented.\n"
+        )
+        concrete = [str(f).strip() for f in feedback if str(f).strip()]
+        if concrete:
+            warning += (
+                "The previous attempt got these things wrong; each one must be "
+                "right this time:\n"
+                + "".join(f"- {item}\n" for item in concrete[:4])
+            )
 
-    # Face and facing, when the author gave them. Kept out of the SCENE
-    # text so they read as direction rather than as things to draw.
+    # Face, facing and footing, when the author gave them. Kept out of the
+    # SCENE text so they read as direction rather than as things to draw.
     notes = ""
     if page.expression.strip():
         notes += f"The hero's face: {page.expression.strip()}.\n"
     if page.direction.strip():
         notes += f"Direction: {page.direction.strip()}.\n"
+    if page.setting.strip():
+        # The anchors repeat word-for-word across pages that share an area;
+        # that repetition, not hope, is what keeps the place one place.
+        notes += f"Where this stands: {page.setting.strip()}.\n"
 
     return (
         "A single full-page illustration for a children's picture book.\n\n"
-        f"{references}{warning}\n\n"
+        f"{references}{chain_note}{warning}\n\n"
         f"SCENE\n{single_scene(page.illustration)}\n"
         f"{notes}\n"
         f"{_who_is_who(hero, members)}"
@@ -279,7 +343,10 @@ def cover_prompt(book: Book, hero: Hero, style: Style,
     name = hero.name or "the character"
     members = list(members)
     references, _ = _reference_block(hero, members)
-    scene = book.cover_illustration or (
+    # Through single_scene like every page: the cover was the one prompt a
+    # diptych-phrased brief reached unscrubbed, while its *check* was scrubbed
+    # -- graded against words the drawer never saw.
+    scene = single_scene(book.cover_illustration) or (
         f"{name} in the middle of the story's world, looking out at the reader"
     )
     return (
@@ -309,6 +376,7 @@ def check_page(
     spend: dict[str, Any] | None = None,
     cast_sheets: list[Path] = (),
     cast_names: list[str] = (),
+    place_name: str | None = None,
 ) -> dict[str, Any]:
     """Has the hero survived onto this page -- and does the page show the scene?
 
@@ -342,28 +410,47 @@ def check_page(
     # Asked as yes/no rather than folded into a score. The checker reliably
     # *describes* a duplicated character and then unreliably grades it: one
     # page scored 4 while its own notes read "an extra uniformed dog appears".
+    # A hint, not a fatal fact: another view of the same place is expected
+    # and must never fail a page -- only a plainly different location is
+    # worth a human look.
+    setting_block = ""
+    setting_key = ""
+    if place_name:
+        setting_block = (
+            f"setting_consistent: false if the picture's location is plainly "
+            f"not the place shown in the reference for {place_name} -- "
+            "different terrain, different built things. Another view of the "
+            "same place is still true.\n"
+        )
+        setting_key = '"setting_consistent": <true|false>, '
     facts_block = (
         "extra_or_duplicated_character: true if any character appears more "
         "than once in the picture, or if there is a character, animal or "
         "creature that the scene did not ask for.\n"
         "panelled: true if the picture is divided into panels, halves or "
         "side-by-side views, or has a seam or dividing line across it.\n"
+        f"{setting_block}"
     )
     shape = (
         '{"identity": <1-5>, "style": <1-5>, "scene": <1-5>, '
         '"story_state_ok": <true|false>, "extra_or_duplicated_character": '
-        '<true|false>, "panelled": <true|false>, "notes": ["..."]}'
+        f'<true|false>, "panelled": <true|false>, {setting_key}'
+        '"notes": ["..."]}'
         if scene else
         '{"identity": <1-5>, "style": <1-5>, '
         '"extra_or_duplicated_character": <true|false>, '
-        '"panelled": <true|false>, "notes": ["..."]}'
+        f'"panelled": <true|false>, {setting_key}"notes": ["..."]}}'
     )
 
     # The judge used to see the hero sheet and the page, and nothing else, so
     # a drifted dog or a recoloured dinosaur was invisible to it -- it caught
     # them only when it happened to mention one in prose.
-    extra = [p for p in cast_sheets if Path(p).is_file()]
-    names = list(cast_names)[:len(extra)]
+    # Files and names are filtered as pairs: dropping a vanished file but
+    # keeping its name would shift every later label onto the wrong image.
+    pairs = [(Path(p), n) for p, n in zip(cast_sheets, cast_names)
+             if Path(p).is_file()]
+    extra = [p for p, _ in pairs]
+    names = [n for _, n in pairs]
     roster = "".join(
         f"Image {n} is the reference for {name}.\n"
         for n, name in enumerate(names, start=3)
@@ -393,11 +480,24 @@ def check_page(
         verdict["style"] = max(1, min(5, int(payload.get("style", 3))))
         if scene:
             verdict["scene"] = max(1, min(5, int(payload.get("scene", 3))))
+        expected = [f for f in FATAL_FACTS if scene or f != "story_state_ok"]
         for fact in FATAL_FACTS:
             if fact in payload:
                 verdict[fact] = bool(payload[fact])
+        if place_name and "setting_consistent" in payload:
+            verdict["setting_consistent"] = bool(payload["setting_consistent"])
+        # A judge that skips a yes/no it was asked has verified less than it
+        # was paid to. Absent keys used to read as a clean pass -- the least
+        # deserved outcome for the questions that fail a page on their own.
+        missing = [f for f in expected if f not in payload]
+        if missing:
+            verdict["facts_missing"] = missing
         notes = payload.get("notes") or []
         verdict["notes"] = [str(n) for n in (notes if isinstance(notes, list) else [notes])][:6]
+        if verdict.get("setting_consistent") is False:
+            verdict["notes"] = ([f"the location does not match the "
+                                 f"reference for {place_name}"]
+                                + verdict["notes"])[:6]
     except Exception as exc:
         # Fail closed: a checker that timed out or returned junk has verified
         # nothing. "unknown" is not a pass -- the export preflight treats it
@@ -457,6 +557,16 @@ def verdict_from(check: dict[str, Any]) -> str:
     scene = check.get("scene")
     if scene is not None and int(scene) < SCENE_FLOOR:
         return "failed"
+    style = check.get("style")
+    if style is not None and int(style) < STYLE_FLOOR:
+        # The character can match perfectly while the page's whole technique
+        # changed -- watercolour book, one flat-shaded page. Identity and
+        # scene never see that.
+        return "failed"
+    if check.get("facts_missing"):
+        # Nothing failed, but the judge skipped a yes/no that fails a page on
+        # its own. That is an incomplete check, not a clean one.
+        return "unknown"
     return "passed"
 
 
@@ -591,18 +701,29 @@ def draw_page(
     model: str | None = None,
     output: OutputSpec | None = None,
     insist: bool = False,
+    feedback: list[str] = (),
+    previous: Path | None = None,
     resolve=None,
     seed: int | None = None,
 ):
     backend = get_backend(backend_name, model)
-    references, named = _attach(sheet, list(members), resolve,
-                                backend.max_references, solo=True)
+    references, named, _ = _attach(sheet, list(members), resolve,
+                                   backend.max_references, solo=True)
+    # The previous page rides in the last slot, and only when one is free:
+    # the identity and cast sheets outrank it, because a page without its
+    # place sheet drifts harder than a page without its predecessor.
+    prev_pos = None
+    if (previous is not None and previous.is_file()
+            and len(references) < backend.max_references):
+        references = [*references, previous]
+        prev_pos = len(references)
     spec = output or output_for(book.render_quality)
     if seed is not None:
         spec = replace(spec, seed=seed)
     return backend.generate(
         GenRequest(
-            prompt=page_prompt(book, hero, style, page, named, insist=insist),
+            prompt=page_prompt(book, hero, style, page, named, insist=insist,
+                               feedback=feedback, prev_position=prev_pos),
             reference_images=references,
             output=spec,
         ),
@@ -643,33 +764,46 @@ def _write_image(target: Path, data: bytes) -> None:
         raise
 
 
-def _judge(book: Book, hero: Hero, sheet: Path, target: Path, scene: str,
-           members: list[CastMember], resolve, provider: str) -> dict[str, Any]:
-    """One page (or the cover) graded against the whole reference bundle.
+def judge_page(book: Book, hero: Hero, sheet: Path, target: Path, scene: str,
+           members: list[CastMember], resolve, provider: str,
+           ref_limit: int = 6) -> dict[str, Any]:
+    """One page (or the cover) graded against the reference bundle.
 
-    The judge gets more views than the illustrator did -- the full sheets
+    The judge gets fuller views than the illustrator did -- the whole sheets
     rather than the solo crops -- because more views make a better yardstick
-    for a picture that already exists.
+    for a picture that already exists. But it must judge the same *members*
+    the illustrator was given: `ref_limit` is the drawing backend's reference
+    cap, so the checker cannot fail a page over a sheet the artist never saw
+    -- a verdict the retry could only ever repeat, not fix.
     """
-    judge_refs, judge_named = _attach(sheet, members, resolve, 6)
+    judge_refs, judge_named, _ = _attach(sheet, members, resolve,
+                                         min(ref_limit, 6))
+    place = next((m.name for m in judge_named if m.kind == "place"), None)
     return check_page(
         target, sheet, hero, provider=provider,
         scene=single_scene(scene), spend=book.spend,
         cast_sheets=judge_refs[1:], cast_names=[m.name for m in judge_named],
+        place_name=place,
     )
 
 
 def _attach(
     sheet: Path, members: list[CastMember], resolve, limit: int,
     solo: bool = False,
-) -> tuple[list[Path], list[CastMember]]:
-    """Reference images to send, and the cast they correspond to, in lockstep.
+) -> tuple[list[Path], list[CastMember], list[CastMember]]:
+    """Reference images to send, the cast they correspond to, and who fell off.
 
     The prompt numbers the references by position ("Image 3 is Trixi"), so the
-    two lists must not drift apart. A member whose sheet is missing from disk,
-    or one pushed past the backend's reference limit, has to disappear from the
-    prompt as well -- otherwise the numbering slides by one and every name
-    after it points at the wrong picture.
+    first two lists must not drift apart. A member whose sheet is missing from
+    disk, or one pushed past the backend's reference limit, has to disappear
+    from the prompt as well -- otherwise the numbering slides by one and every
+    name after it points at the wrong picture.
+
+    When the limit forces a cut, the place goes first and props next: the
+    setting is promised on every page and an object without its sheet is
+    reinvented, while a character at least survives in the brief's own words.
+    Members cut by the limit come back in the third list so the caller can say
+    so out loud instead of the reference vanishing without a trace.
 
     `solo` swaps each multi-figure sheet for a single cropped figure. Drawing a
     page wants that: a reference showing the character twice is read as an
@@ -679,24 +813,30 @@ def _attach(
     def pick(path: Path) -> Path:
         return solo_reference(path) if solo else path
 
+    rank = {"place": 0, "prop": 1}
+    ordered = sorted(members, key=lambda m: rank.get(m.kind, 2))
+
     paths = [pick(sheet)]
     named: list[CastMember] = []
-    for member in members:
-        if len(paths) >= limit:
-            break
+    dropped: list[CastMember] = []
+    for member in ordered:
         if not (member.sheet and resolve):
             continue
         try:
             path = resolve(member.sheet)
         except (ValueError, FileNotFoundError):
             continue
-        if path.is_file():
-            # A place is one wide establishing view; cropping it would throw
-            # away the setting. `solo_reference` leaves single figures alone,
-            # so this is belt and braces rather than a special case.
-            paths.append(path if member.kind == "place" else pick(path))
-            named.append(member)
-    return paths, named
+        if not path.is_file():
+            continue
+        if len(paths) >= limit:
+            dropped.append(member)
+            continue
+        # A place is one wide establishing view; cropping it would throw
+        # away the setting. `solo_reference` leaves single figures alone,
+        # so this is belt and braces rather than a special case.
+        paths.append(path if member.kind == "place" else pick(path))
+        named.append(member)
+    return paths, named, dropped
 
 
 def draw_cover(
@@ -712,8 +852,8 @@ def draw_cover(
     resolve=None,
 ):
     backend = get_backend(backend_name, model)
-    references, named = _attach(sheet, list(members), resolve,
-                                backend.max_references, solo=True)
+    references, named, _ = _attach(sheet, list(members), resolve,
+                                   backend.max_references, solo=True)
     return backend.generate(
         GenRequest(
             prompt=cover_prompt(book, hero, style, named),
@@ -739,6 +879,7 @@ def illustrate_book(
     workers: int = 4,
     auto_retry: bool = True,
     budget_usd: float | None = None,
+    chain: bool = False,
     resolve=None,
     on_progress=None,
     log=print,
@@ -750,7 +891,9 @@ def illustrate_book(
     already exist to be drawn again. Together they are how a single unhappy
     page gets fixed without paying for the whole book twice. `budget_usd`
     is a hard spending ceiling for this run: once crossed, remaining pages
-    are skipped rather than drawn.
+    are skipped rather than drawn. `chain` additionally shows each page the
+    last accepted page as a reference -- the strongest setting-continuity
+    signal there is, bought with a strictly sequential render.
     """
     stop = should_stop or (lambda: False)
     pages_dir.mkdir(parents=True, exist_ok=True)
@@ -759,7 +902,11 @@ def illustrate_book(
     # Only some services take a seed. Where one does, the number that drew a
     # page is worth keeping; where it does not, recording one would claim a
     # reproducibility the page has not got.
-    records_seed = get_backend(backend_name, model).honours_seed
+    _backend = get_backend(backend_name, model)
+    records_seed = _backend.honours_seed
+    # The judge grades against the members the artist could actually attach,
+    # so a page is never failed over a sheet the drawing call had no room for.
+    ref_limit = _backend.max_references
     # `in_flight` reserves the estimated price of each image while it draws, so
     # the cap counts work already started and not only work already billed.
     _profile = RENDER_PROFILES.get(book.render_quality, RENDER_PROFILES["draft"])
@@ -823,12 +970,15 @@ def illustrate_book(
                 book.cover = f"pages/{target.name}"
                 spend(result.usage, "cover")
                 if check:
-                    # Held to the same standard as a page. It is the image on
-                    # the shelf, and it was the only one nothing looked at.
-                    book.cover_check = check_page(
-                        target, sheet, hero, provider=check_provider,
-                        scene=single_scene(book.cover_illustration or ""),
-                        spend=book.spend,
+                    # Held to the same standard as a page -- including the
+                    # cast bundle. Checked with only the hero sheet, the
+                    # duplicated-pup cover this comment cites would sail
+                    # through: the checker had no picture of the pup to
+                    # notice the second boy with.
+                    book.cover_check = judge_page(
+                        book, hero, sheet, target,
+                        book.cover_illustration or "", list(book.cast),
+                        resolve, check_provider, ref_limit=ref_limit,
                     )
                     if verdict_from(book.cover_check) == "failed":
                         log("  Titelbild: bitte ansehen — "
@@ -848,21 +998,24 @@ def illustrate_book(
         return book
 
     total = len(todo)
-    log(f"{total} Bild(er), {min(workers, total)} gleichzeitig")
+    if chain:
+        log(f"{total} Bild(er), nacheinander")
+    else:
+        log(f"{total} Bild(er), {min(workers, total)} gleichzeitig")
     done = 0
     if on_progress:
         on_progress(0, total)
 
-    def one(page: Page) -> None:
+    def one(page: Page, previous: Path | None = None) -> None:
         nonlocal done
         if stop() or over_budget():
             return
         try:
-            _draw_one(page)
+            _draw_one(page, previous)
         finally:
             settle()
 
-    def _draw_one(page: Page) -> None:
+    def _draw_one(page: Page, previous: Path | None = None) -> None:
         nonlocal done
         target = pages_dir / f"page_{page.index:02d}.png"
         members = book.cast_for(page)
@@ -877,20 +1030,37 @@ def illustrate_book(
             _keep_previous(page, pages_dir, target)
 
         best: tuple[Path, dict[str, Any]] | None = None
+        feedback: list[str] = []
+
+        # Say when the backend's reference budget cuts someone out. The sheet
+        # exists so the member cannot drift; losing it must be loud, because
+        # the page will drift exactly where nobody was told to look.
+        _, _, cut = _attach(sheet, members, resolve, ref_limit, solo=True)
+        if cut:
+            with lock:
+                log(f"  Seite {page.index}: {backend_name} nimmt nur "
+                    f"{ref_limit} Referenzbilder an — ohne Vorlage: "
+                    + ", ".join(m.name for m in cut))
 
         for attempt in (1, 2):
             try:
+                # The revision the prompt is actually built from, read before
+                # the slow call: an edit that lands mid-draw must leave the
+                # page stale, not stamped current against text it never saw.
+                with lock:
+                    brief_rev = page.illustration_rev
                 # A fresh seed per attempt: reusing the page's own seed would
                 # make a redraw return the picture the person just rejected.
                 seed = random.randrange(1, 2**31)
                 result = draw_page(
                     book, hero, style, page, sheet, target, members=members,
                     backend_name=backend_name, model=model,
-                    insist=attempt == 2, resolve=resolve, seed=seed,
+                    insist=attempt == 2, feedback=feedback,
+                    previous=previous, resolve=resolve, seed=seed,
                 )
                 with lock:
                     page.image = f"pages/{target.name}"
-                    page.image_from_rev = page.illustration_rev  # picture matches the brief again
+                    page.image_from_rev = brief_rev
                     page.seed = seed if records_seed else None
                 spend(result.usage, "pages")
             except Exception as exc:
@@ -902,10 +1072,20 @@ def illustrate_book(
             if not check:
                 break
 
-            # The judge gets the same reference bundle the illustrator did, so
-            # it can grade the cast as well as the hero.
-            verdict = _judge(book, hero, sheet, target, page.illustration,
-                             members, resolve, check_provider)
+            # The judge grades the same cast the illustrator could attach.
+            verdict = judge_page(book, hero, sheet, target, page.illustration,
+                             members, resolve, check_provider,
+                             ref_limit=ref_limit)
+            if verdict_from(verdict) == "unknown" and not stop():
+                # A crashed or incomplete check has verified nothing. The
+                # image is already paid for; asking again costs cents and is
+                # the difference between "reviewed" and "shipped unseen".
+                with lock:
+                    log(f"  Seite {page.index}: Prüfung unvollständig — "
+                        "ich frage noch einmal")
+                verdict = judge_page(book, hero, sheet, target, page.illustration,
+                                 members, resolve, check_provider,
+                                 ref_limit=ref_limit)
             with lock:
                 page.check = verdict
             with lock:
@@ -919,6 +1099,10 @@ def illustrate_book(
             if check_status(page) != "failed":
                 break
             if attempt == 1 and auto_retry and not stop():
+                # The redraw carries the judge's concrete complaints, not
+                # just a sterner tone -- "same colours" fixed nothing when
+                # the note knew it was the jacket.
+                feedback = [str(n) for n in (page.check.get("notes") or [])]
                 with lock:
                     log(f"  Seite {page.index}: abgedriftet, zeichne noch einmal nach")
                 continue
@@ -953,7 +1137,27 @@ def illustrate_book(
             if on_progress:  # inside the lock: callers may save the book here
                 on_progress(done, total)
 
-    if workers > 1 and total > 1:
+    if chain:
+        # Deliberately sequential: a page can only borrow its setting from a
+        # predecessor that is finished and accepted, so the chain never
+        # propagates a seam or a wrong lantern down the book. Slower than
+        # four at a time -- the person opted into that trade.
+        log("Schauplatz-Kette: die Seiten entstehen nacheinander, jede sieht "
+            "die letzte gute Seite.")
+        last_good: Path | None = None
+        for page in todo:
+            if last_good is None:
+                # A single-page redraw still gets its neighbour: page 14
+                # chains from page 13 already on disk.
+                prior = pages_dir / f"page_{page.index - 1:02d}.png"
+                if _usable_image(prior):
+                    last_good = prior
+            one(page, previous=last_good)
+            target = pages_dir / f"page_{page.index:02d}.png"
+            if (target.is_file() and not page.error
+                    and check_status(page) != "failed"):
+                last_good = target
+    elif workers > 1 and total > 1:
         with ThreadPoolExecutor(max_workers=min(workers, total)) as pool:
             list(pool.map(one, todo))
     else:
@@ -999,7 +1203,11 @@ def illustrate_book_batch(
 
     todo: list[tuple[Page | None, Path]] = []
     requests = []
+    brief_revs: dict[int, int] = {}
     output = output_for(book.render_quality)
+    # The backend's own limit, not a copy of it: a literal 5 here matched
+    # Gemini only by coincidence and would have desynced silently.
+    ref_limit = gemini_mod.GeminiBackend.max_references
 
     # A batch left behind by an earlier run is collected before anything new is
     # ordered. Google has already been paid for it; submitting a second batch
@@ -1018,7 +1226,8 @@ def illustrate_book_batch(
                     for _ in todo]
 
     if not resume_job and wanted is None and (redraw or not book.cover):
-        references, named = _attach(sheet, list(book.cast), resolve, 5, solo=True)
+        references, named, _ = _attach(sheet, list(book.cast), resolve,
+                                       ref_limit, solo=True)
         requests.append(GenRequest(prompt=cover_prompt(book, hero, style, named),
                                    reference_images=references, output=output))
         todo.append((None, pages_dir / "cover.png"))
@@ -1032,7 +1241,15 @@ def illustrate_book_batch(
         if not redraw and _usable_image(target):
             page.image = f"pages/{target.name}"
             continue
-        references, named = _attach(sheet, book.cast_for(page), resolve, 5, solo=True)
+        references, named, cut = _attach(sheet, book.cast_for(page), resolve,
+                                         ref_limit, solo=True)
+        if cut:
+            log(f"  Seite {page.index}: nur {ref_limit} Referenzbilder "
+                "möglich — ohne Vorlage: " + ", ".join(m.name for m in cut))
+        # The revision this request's prompt was built from; the batch can
+        # take hours, and an edit made while it runs must leave the page
+        # stale rather than stamped current.
+        brief_revs[id(page)] = page.illustration_rev
         requests.append(GenRequest(
             prompt=page_prompt(book, hero, style, page, named),
             reference_images=references, output=output,
@@ -1093,7 +1310,10 @@ def illustrate_book_batch(
             book.cover = f"pages/{target.name}"
         else:
             page.image = f"pages/{target.name}"
-            page.image_from_rev = page.illustration_rev
+            # A resumed batch has no record of the submitting run's revision;
+            # the current one is the best available then.
+            page.image_from_rev = brief_revs.get(id(page),
+                                                 page.illustration_rev)
             page.error = None
         drawn += 1
     log(f"{drawn} von {len(todo)} Bildern angekommen.")
@@ -1107,15 +1327,17 @@ def illustrate_book_batch(
             if page is None:
                 # The cover is held to the same standard here as on the
                 # interactive path; it was the one image nothing looked at.
-                book.cover_check = _judge(book, hero, sheet, target,
+                book.cover_check = judge_page(book, hero, sheet, target,
                                           book.cover_illustration or "",
-                                          list(book.cast), resolve, check_provider)
+                                          list(book.cast), resolve,
+                                          check_provider, ref_limit=ref_limit)
                 if verdict_from(book.cover_check) == "failed":
                     log("  Titelbild: bitte ansehen — "
                         f"{(book.cover_check.get('notes') or ['abgedriftet'])[0]}")
                 continue
-            page.check = _judge(book, hero, sheet, target, page.illustration,
-                                book.cast_for(page), resolve, check_provider)
+            page.check = judge_page(book, hero, sheet, target, page.illustration,
+                                book.cast_for(page), resolve, check_provider,
+                                ref_limit=ref_limit)
             status = check_status(page)
             word = {"passed": "in Ordnung", "failed": "beanstandet",
                     "unknown": "Prüfung fehlgeschlagen"}.get(status, status)

@@ -166,6 +166,13 @@ right", "facing the reader", "looking back over his shoulder"). A picture book
 is read left to right, so setting out faces right and coming home faces left;
 a page that contradicts the page turn feels wrong even to a child who cannot
 say why.
+Give each page a "setting": one short line saying where in the story's world
+this page stands and what fixed features are in view ("at the brook, the
+crooked pine on the left bank"). When several pages play in the same area,
+name the SAME features in the SAME words on each of them -- that repetition
+is what keeps the place recognisable from page to page. Choose two or three
+anchors per area and stick to them; a feature renamed is a feature redrawn
+differently.
 Never ask for text, letters, numbers or speech bubbles in the picture. Vary the
 framing across the book -- close on a face, a wide landscape, a view from
 behind, a small hero in a big space -- so the pages do not all look alike.
@@ -196,6 +203,7 @@ def _shape(languages: list[str], count: int) -> str:
       "illustration": "...",
       "expression": "what the hero's face is doing, two or three words",
       "direction": "which way the picture faces",
+      "setting": "where this page stands, with its fixed anchors named",
       "layout": "full",
       "cast": ["names from the cast list who appear on this page"]
     }}
@@ -214,6 +222,7 @@ def write_story(
     languages: list[str] | None = None,
     pages: int | None = None,
     rhyme: bool = False,
+    spend: dict | None = None,
     provider: str = "openai",
     model: str | None = None,
 ) -> dict[str, Any]:
@@ -235,7 +244,8 @@ def write_story(
         f"Reply with exactly this JSON shape:\n\n{_shape(languages, count)}"
     )
 
-    payload = complete_json(SYSTEM, user, provider=provider, model=model) or {}
+    payload = complete_json(SYSTEM, user, provider=provider, model=model,
+                            spend=spend, what="story") or {}
     return _normalise(payload, languages, count)
 
 
@@ -245,6 +255,7 @@ def revise(
     age: str,
     languages: list[str],
     rhyme: bool = False,
+    spend: dict | None = None,
     provider: str = "openai",
     model: str | None = None,
 ) -> dict[str, Any]:
@@ -281,7 +292,8 @@ Reply as {{"title": {{ {", ".join(f'"{c}": "..."' for c in languages)} }},
 "pages": [{{"index": 1, "text": {{ {", ".join(f'"{c}": "..."' for c in languages)} }}}}],
 "changed": ["short note per page you actually changed"]}}"""
 
-    payload = complete_json(SYSTEM, user, provider=provider, model=model) or {}
+    payload = complete_json(SYSTEM, user, provider=provider, model=model,
+                            spend=spend, what="story") or {}
 
     title = payload.get("title") or {}
     for code in languages:
@@ -343,6 +355,7 @@ def _normalise(payload: dict[str, Any], languages: list[str], count: int) -> dic
                 illustration=single_scene(str(item.get("illustration", ""))),
                 expression=str(item.get("expression", "")).strip(),
                 direction=str(item.get("direction", "")).strip(),
+                setting=str(item.get("setting", "")).strip(),
                 layout=layout if layout in LAYOUTS else "full",
                 cast=appearing,
             )
@@ -397,6 +410,7 @@ def rewrite_page(
     hero: Hero,
     page: Page,
     note: str = "",
+    spend: dict | None = None,
     provider: str = "openai",
     model: str | None = None,
 ) -> Page:
@@ -430,7 +444,8 @@ page after. Per page: {band["sentences"]}, about {band["words_per_page"]}.
 Reply as {{"text": {{ {", ".join(f'"{c}": "..."' for c in book.languages)} }},
 "illustration": "...", "layout": "one of {', '.join(LAYOUTS)}"}}"""
 
-    payload = complete_json(SYSTEM, user, provider=provider, model=model) or {}
+    payload = complete_json(SYSTEM, user, provider=provider, model=model,
+                            spend=spend, what="story") or {}
     text = payload.get("text") or {}
     if isinstance(text, str):
         text = {language: text}
@@ -451,6 +466,7 @@ def add_languages(
     book: Book,
     hero: Hero,
     codes: list[str],
+    spend: dict | None = None,
     provider: str = "openai",
     model: str | None = None,
 ) -> Book:
@@ -484,7 +500,8 @@ Per page: {band["sentences"]}, about {band["words_per_page"]}.
 Reply as {{"title": {{...}}, "dedication": {{...}},
 "pages": [{{"index": 1, "text": {{ {", ".join(f'"{c}": "..."' for c in missing)} }}}}]}}"""
 
-    payload = complete_json(SYSTEM, user, provider=provider, model=model) or {}
+    payload = complete_json(SYSTEM, user, provider=provider, model=model,
+                            spend=spend, what="story") or {}
 
     title = payload.get("title") or {}
     dedication = payload.get("dedication") or {}

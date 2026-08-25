@@ -37,6 +37,31 @@ from .models import LANGUAGES, Book
 #: below this a 300-dpi print preset reads as visibly soft on paper
 DPI_WARN = 280
 
+#: how far a page's palette may sit from the book's own median before it is
+#: worth a human look. Symmetric on purpose: the per-page check compares each
+#: page to the *sheet* and tolerates small deltas, so a page can pass alone
+#: and still sit visibly apart from its neighbours -- on the first finished
+#: book this rule flags exactly one page, and it is one the owner had
+#: complained about before the rule existed.
+PALETTE_DRIFT = 0.15
+
+
+def palette_outliers(book: Book) -> list[int]:
+    """Pages whose colour balance stands apart from the rest of the book.
+
+    Derived from the stored per-page colour metrics, so it costs nothing and
+    reaches books already on disk. Needs enough scored pages for a median to
+    mean anything.
+    """
+    scored = [(p.index, (p.check or {}).get("metrics", {}).get("palette_cosine"))
+              for p in book.pages]
+    values = sorted(v for _, v in scored if isinstance(v, (int, float)))
+    if len(values) < 6:
+        return []
+    median = values[len(values) // 2]
+    return sorted(index for index, v in scored
+                  if isinstance(v, (int, float)) and abs(v - median) > PALETTE_DRIFT)
+
 
 def finding(code: str, text: str, **params: Any) -> dict[str, Any]:
     """One preflight result, in a form both readers can use.
@@ -56,6 +81,7 @@ def validate_export_readiness(
     languages: list[str],
     resolve,
     allow_unknown: bool = False,
+    family: str = "georgia",
 ) -> dict[str, Any]:
     """One structured verdict for the whole export.
 
@@ -68,6 +94,8 @@ def validate_export_readiness(
     errors: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
     unknowns: list[dict[str, Any]] = []
+    #: facts about the chosen format worth knowing, never gating
+    notes: list[dict[str, Any]] = []
     pages_missing: list[int] = []
     pages_failed: list[int] = []
     pages_unknown: list[int] = []
@@ -174,10 +202,56 @@ def validate_export_readiness(
     # falls back from vignette to a full page before giving up, so reaching
     # here means the page is genuinely overfull -- and silently shrinking it
     # instead is what printed 6 pt type for the oldest age band.
+    # The pictures are drawn square; a page far from square fills itself by
+    # cropping them. Said here rather than discovered in the printed book,
+    # where a cut-off composition reads as "the model ignored my prompt".
+    # A note, not a warning: it is a property of the format, true on every
+    # export, and a state that cries "warnung" forever teaches people to
+    # stop reading it.
+    page_w, page_h = preset.page_px()
+    crop_share = 1.0 - min(page_w, page_h) / max(page_w, page_h)
+    if crop_share > 0.10:
+        percent = round(crop_share * 100)
+        notes.append(finding(
+            "aspect_crop",
+            f"Die Bilder sind quadratisch, dieses Format ist es nicht — pro "
+            f"Bild werden etwa {percent} % mittig weggeschnitten. Die "
+            "Druckbogen-Vorschau zeigt den Ausschnitt.",
+            percent=percent))
+
+    # Pages whose check said the location plainly is not the place reference.
+    # A hint like the palette rule: the judge's word alone must not gate an
+    # export, but a person should hear it before ordering the book.
+    mismatched = sorted(
+        page.index for page in book.pages
+        if (page.check or {}).get("setting_consistent") is False)
+    if mismatched:
+        listed = ", ".join(map(str, mismatched))
+        notes.append(finding(
+            "setting_mismatch",
+            f"Seite(n) {listed}: Der Schauplatz passt laut Prüfung nicht zur "
+            "Orts-Referenz — beim Durchblättern prüfen.",
+            pages=listed, count=len(mismatched)))
+
+    # The one cross-page look the pipeline has: every check compares a page to
+    # the reference sheet alone, so drift between pages -- the thing a reader
+    # flipping the book actually sees -- shows up nowhere else.
+    drifted = palette_outliers(book)
+    if drifted:
+        listed = ", ".join(map(str, drifted))
+        notes.append(finding(
+            "palette_outlier",
+            f"Seite(n) {listed} weichen farblich deutlich vom Rest des "
+            "Buches ab — beim Durchblättern prüfen.",
+            pages=listed, count=len(drifted)))
+
+    # Measured in the face the export will actually set, not the default:
+    # Georgia's metrics said "fits" for pages that Comic Sans then overflowed.
     overfull = [
         page.index for page in sorted(book.pages, key=lambda p: p.index)
         if page.layout != "wordless"
-        and not text_fits(join_languages(page.text, languages), preset, book.age)
+        and not text_fits(join_languages(page.text, languages), preset,
+                          book.age, family=family)
     ]
     if overfull:
         listed = ", ".join(map(str, overfull))
@@ -234,7 +308,7 @@ def validate_export_readiness(
         errors.append(finding("no_language", "Keine Sprache ausgewählt."))
 
     return finish(errors, warnings, unknowns, pages_missing, pages_failed,
-                  pages_unknown, is_print, allow_unknown)
+                  pages_unknown, is_print, allow_unknown, notes=notes)
 
 
 def check_font(family: str) -> dict[str, Any] | None:
@@ -252,7 +326,8 @@ def check_font(family: str) -> dict[str, Any] | None:
 
 
 def finish(errors, warnings, unknowns, pages_missing, pages_failed,
-           pages_unknown, is_print: bool, allow_unknown: bool) -> dict[str, Any]:
+           pages_unknown, is_print: bool, allow_unknown: bool,
+           notes=()) -> dict[str, Any]:
     """Fold the findings into one state the UI and the export job both obey."""
     if not is_print:
         # A screen or home-printer file is not a bound book: everything that
@@ -278,6 +353,7 @@ def finish(errors, warnings, unknowns, pages_missing, pages_failed,
         "errors": errors,
         "warnings": warnings,
         "unknowns": unknowns,
+        "notes": list(notes),
         "pages_missing": pages_missing,
         "pages_failed_check": pages_failed,
         "pages_unknown_check": pages_unknown,

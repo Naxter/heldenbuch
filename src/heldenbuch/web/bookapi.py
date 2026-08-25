@@ -6,6 +6,7 @@ pushed through the shared job manager instead.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from ..book.layout import FONT_FAMILIES, available_families
 from ..book.layout import PRESETS as PRINT_PRESETS
 from ..book.library import Library
 from ..book.look import PRESETS as STYLE_PRESETS
-from ..book.models import AGE_BANDS, LANGUAGES, LAYOUTS, slugify
+from ..book.models import AGE_BANDS, LANGUAGES, LAYOUTS, CastMember, slugify
 from ..book.narrate import VOICES
 from ..book.scout import available_backends
 from ..llm import available_providers
@@ -104,6 +105,12 @@ class BookApi:
                 "sheet_usd": image_estimate("high"),      # hero + styled sheets
                 "preview_usd": image_estimate("medium"),  # previews, cast, scout
                 "narration_page_usd": 0.003,              # measured: 12 pages ≈ $0.03
+                # Text calls, list-price ballpark; the ledger records what
+                # they actually cost. Without a number here the story buttons
+                # were the only paid actions with no estimate at all.
+                "story_usd": 0.10,     # write + one revision
+                "rewrite_usd": 0.01,   # one page
+                "language_usd": 0.03,  # one added language
                 "usd_per_eur": USD_PER_EUR,
             },
             #: models the picker offers, with what one image roughly costs.
@@ -208,6 +215,18 @@ class BookApi:
             hero_id: f"/library/{path}" for hero_id, path in style.sheets.items()
         }
         data["reference_url"] = f"/library/{style.reference}" if style.reference else None
+        # Heroes whose character sheet moved on after their styled sheet was
+        # drawn. Unrecorded sources (older styles) are trusted, not flagged.
+        stale = []
+        for hero_id, source in (style.sheets_from or {}).items():
+            if not (source and style.sheets.get(hero_id)):
+                continue
+            try:
+                if self.library.get_hero(hero_id).sheet != source:
+                    stale.append(hero_id)
+            except FileNotFoundError:
+                continue
+        data["stale_for"] = stale
         return data
 
     # ------------------------------------------------------------------- books
@@ -443,7 +462,7 @@ class BookApi:
                 changed = True
             # Face and facing. Editing them changes the next drawing, so they
             # count as a brief change and make the current picture stale.
-            for slot in ("expression", "direction"):
+            for slot in ("expression", "direction", "setting"):
                 if slot in edit:
                     fresh = str(edit[slot]).strip()
                     if fresh != getattr(page, slot):
@@ -451,10 +470,28 @@ class BookApi:
                         page.illustration_rev += 1
                         changed = True
 
-        # Cast corrections: rename, describe, fix page membership, remove.
+        # Cast corrections: add, rename, describe, fix page membership, remove.
         # Renames follow through to every page that names the member --
         # otherwise the pages keep pointing at a name that no longer exists.
         for edit in body.get("cast") or []:
+            if edit.get("add"):
+                # Books written before props existed can only get a reference
+                # for their drifting bridge this way -- the alternative was
+                # re-running the story, which rewrites the text.
+                name = str(edit.get("name") or "").strip()
+                if not name or any(c.name.lower() == name.lower()
+                                   for c in book.cast):
+                    continue
+                kind = edit.get("kind")
+                member = CastMember(
+                    name=name,
+                    kind=kind if kind in ("character", "place", "prop")
+                    else "character",
+                    description=str(edit.get("description") or "").strip(),
+                )
+                book.cast.append(member)
+                changed = True
+                continue
             position = int(edit.get("index", -1))
             if not (0 <= position < len(book.cast)):
                 continue
@@ -469,10 +506,18 @@ class BookApi:
             fresh_name = str(edit.get("name") or "").strip()
             if fresh_name and fresh_name != member.name:
                 old = member.name.lower()
+                pattern = re.compile(rf"\b{re.escape(member.name)}\b",
+                                     re.IGNORECASE)
                 member.name = fresh_name
                 for page in book.pages:
                     page.cast = [fresh_name if n.lower() == old else n
                                  for n in page.cast]
+                    # The brief is what decides which sheets travel with the
+                    # page, so the old name must not linger there. The same
+                    # entity keeps its picture: no staleness bump.
+                    if page.illustration:
+                        page.illustration = pattern.sub(fresh_name,
+                                                        page.illustration)
                 changed = True
             fresh_desc = str(edit.get("description") or "").strip()
             if fresh_desc and fresh_desc != member.description:
@@ -488,6 +533,13 @@ class BookApi:
                     elif page.index not in wanted and named:
                         page.cast = [n for n in page.cast
                                      if n.lower() != member.name.lower()]
+                    else:
+                        continue
+                    # Membership decides which reference sheets travel with
+                    # the page, so a change here is a brief change: the
+                    # current picture no longer matches what a redraw would
+                    # be conditioned on.
+                    page.illustration_rev += 1
                 changed = True
 
         if changed:
@@ -524,8 +576,10 @@ class BookApi:
                 raise ValueError(relative)
             return target
 
-        report = preflight.validate_export_readiness(book, preset, languages, resolve)
-        font_note = preflight.check_font((query.get("font") or ["georgia"])[0])
+        family = (query.get("font") or ["georgia"])[0]
+        report = preflight.validate_export_readiness(book, preset, languages,
+                                                     resolve, family=family)
+        font_note = preflight.check_font(family)
         if font_note:
             report["warnings"] = report["warnings"] + [font_note]
         return report

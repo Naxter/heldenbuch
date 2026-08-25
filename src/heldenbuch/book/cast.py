@@ -25,10 +25,16 @@ CHARACTER_FRAME = (
     "numbers or labels anywhere in the image."
 )
 
+# Several views, like the hero's sheet: one view pins one angle, and every
+# other vantage a page needs is then invented on the spot -- differently each
+# time. Three views pin the geometry of the space itself.
 PLACE_FRAME = (
-    "A location reference for a children's picture book: one wide establishing "
-    "view of the place described below, empty of people, evenly lit, drawn so "
-    "that its layout and its distinctive features are clear. No text, letters, "
+    "A location reference sheet for a children's picture book, showing the "
+    "SAME single place three times on one sheet: one wide establishing view, "
+    "one view from inside it toward its most distinctive feature, and one "
+    "closer corner of it. The same place in all three -- same terrain, same "
+    "plants, same built things, seen from different sides. Empty of people, "
+    "evenly lit, its layout and distinctive features clear. No text, letters, "
     "numbers or labels anywhere in the image."
 )
 
@@ -101,20 +107,25 @@ def generate_all(
     folder.mkdir(parents=True, exist_ok=True)
     base = relative_to or folder.parent
 
+    labels = {"place": "Ort", "prop": "Gegenstand"}
     for index, member in enumerate(cast, start=1):
         if stop() or member.sheet:
             continue
         target = folder / f"cast_{index:02d}.png"
-        kind = "Ort" if member.kind == "place" else "Figur"
-        log(f"  {kind}: {member.name}")
+        log(f"  {labels.get(member.kind, 'Figur')}: {member.name}")
         try:
             result = generate_sheet(
                 member, style, target,
                 backend_name=backend_name, model=model, style_reference=style_reference,
             )
             member.sheet = str(target.relative_to(base)).replace("\\", "/")
+            member.sheet_error = None
             if spend:
                 spend(result.usage)
         except Exception as exc:
+            # The failure is recorded on the member, not only scrolled past in
+            # the log: without a sheet this member drifts on every page, and
+            # the person paying for those pages has to be able to see why.
+            member.sheet_error = str(exc)
             log(f"    fehlgeschlagen: {exc}")
     return cast

@@ -66,3 +66,32 @@ def test_plain_save_keeps_old_semantics(tmp_path):
     library.save_book(copy_b)
 
     assert library.get_book(book_id).idea == "b"
+
+
+def test_face_and_seed_survive_the_other_writers_save(tmp_path):
+    """expression/direction belong to the editor, seed to the render; each
+    used to be missing from its owner's field list and was silently reverted
+    by the other writer's save."""
+    library = Library(tmp_path)
+    book_id = _seed(library)
+
+    render_copy = library.get_book(book_id)
+    editor_copy = library.get_book(book_id)
+
+    editor_copy.pages[0].expression = "close to tears"
+    editor_copy.pages[0].direction = "facing left"
+    library.save_book(editor_copy, adopt="rendered")
+
+    render_copy.pages[0].image = "pages/page_01.png"
+    render_copy.pages[0].seed = 12345
+    library.save_book(render_copy, adopt="editorial")
+
+    final = library.get_book(book_id)
+    assert final.pages[0].expression == "close to tears"
+    assert final.pages[0].direction == "facing left"
+    assert final.pages[0].seed == 12345
+
+    editor_again = library.get_book(book_id)
+    editor_again.pages[0].expression = "smiling"
+    library.save_book(editor_again, adopt="rendered")
+    assert library.get_book(book_id).pages[0].seed == 12345

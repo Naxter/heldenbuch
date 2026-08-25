@@ -18,6 +18,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from .book import cast as cast_mod
 from .book import hero as hero_mod
 from .book import illustrate, look
 from .book.library import Library
@@ -58,42 +59,50 @@ CAST = [
 ]
 
 #: German and English were both written rather than translated, which is what
-#: the app does for a real book too.
+#: the app does for a real book too. The last element lists the cast on that
+#: page -- the briefs say "the lantern" while the prop is registered as "Die
+#: Laterne", which is exactly the wording gap the page list exists to close.
 PAGES = [
     ("Rusty wacht auf, als es noch dunkel ist. Der Wald ist ganz still.",
      "Rusty wakes while it is still dark. The forest is completely quiet.",
      "Rusty sits up in a hollow under a pine root at dawn, ears forward, "
-     "the misty forest behind.", "just woken, ears up", "facing the reader"),
+     "the misty forest behind.", "just woken, ears up", "facing the reader",
+     [], "at the forest edge, the tall split pine on the left"),
     ("Zwischen den Bäumen liegt Nebel. Rusty kann den Weg nicht sehen.",
      "Fog lies between the trees. Rusty cannot see the path.",
      "Rusty stands at the edge of the misty forest, one paw raised, looking "
-     "into thick silver fog.", "uncertain", "moving left to right"),
+     "into thick silver fog.", "uncertain", "moving left to right", [],
+     "at the forest edge, the tall split pine on the left"),
     ("„Ich habe die Laterne\", sagt Rusty. Sie ist kalt und dunkel.",
      "\"I have the lantern,\" says Rusty. It is cold and dark.",
      "Rusty holds up the small brass lantern in both paws, examining the "
-     "cracked pane.", "concentrating", "facing the reader"),
+     "cracked pane.", "concentrating", "facing the reader", ["Die Laterne"],
+     ""),
     ("Rusty sucht ein Streichholz. In der Tasche ist nur Moos.",
      "Rusty looks for a match. There is only moss in the pocket.",
      "Close on Rusty's paws turning out a small pocket, moss falling out, the "
-     "lantern on the ground.", "disappointed", "looking down"),
+     "lantern on the ground.", "disappointed", "looking down",
+     ["Die Laterne"], ""),
     ("Da leuchtet etwas. Ein Glühwürmchen sitzt auf dem Moos.",
      "Then something glows. A firefly is sitting on the moss.",
      "A single firefly glowing on green moss, Rusty's face lit from below, "
-     "eyes wide.", "delighted, wide-eyed", "facing the reader"),
+     "eyes wide.", "delighted, wide-eyed", "facing the reader", [], ""),
     ("Rusty öffnet die Laterne. Das Glühwürmchen fliegt hinein.",
      "Rusty opens the lantern. The firefly flies inside.",
      "Rusty holds the lantern open, the firefly drifting in through the "
      "cracked pane, warm light spilling out.", "careful, hopeful",
-     "moving left to right"),
+     "moving left to right", ["Die Laterne"], ""),
     ("Jetzt sieht Rusty den Weg. Er führt zwischen den Bäumen hindurch.",
      "Now Rusty can see the path. It runs between the trees.",
      "Wide view of the misty forest with a narrow path revealed by lantern "
      "light, Rusty small in the middle of it.", "relieved",
-     "moving left to right"),
+     "moving left to right", ["Die Laterne"],
+     "at the forest edge, the tall split pine on the left"),
     ("Zu Hause lässt Rusty das Glühwürmchen wieder frei. Gute Nacht.",
      "At home Rusty lets the firefly go again. Good night.",
      "Rusty at the mouth of a burrow at first light, holding the open lantern "
-     "up, the firefly flying out.", "content, sleepy", "facing left"),
+     "up, the firefly flying out.", "content, sleepy", "facing left",
+     ["Die Laterne"], ""),
 ]
 
 TITLE = {"de": "Rusty und das Licht im Nebel", "en": "Rusty and the Light in the Fog"}
@@ -133,6 +142,7 @@ def build(root: Path, fresh: bool = False, log=print) -> Book:
     hero_mod.generate_styled_sheet(hero, style, library.resolve(hero.sheet), styled,
                                    backend_name="stub")
     style.sheets[hero.id] = library.relative(styled)
+    style.sheets_from[hero.id] = hero.sheet
     style.previews = [style.sheets[hero.id]]
     library.save_style(style)
 
@@ -147,12 +157,24 @@ def build(root: Path, fresh: bool = False, log=print) -> Book:
               for c in CAST],
         pages=[
             Page(index=i, text={"de": de, "en": en}, illustration=brief,
-                 expression=face, direction=facing,
-                 layout="vignette" if i == 4 else "full")
-            for i, (de, en, brief, face, facing) in enumerate(PAGES, start=1)
+                 expression=face, direction=facing, cast=list(on_page),
+                 setting=where, layout="vignette" if i == 4 else "full")
+            for i, (de, en, brief, face, facing, on_page, where)
+            in enumerate(PAGES, start=1)
         ],
     )
     library.lock_references(book, hero, style)
+    library.save_book(book)
+
+    # Sheets before pages, the same order the app's own render job uses: a
+    # page drawn while its cast has no sheet is conditioned on nothing, and
+    # the forest and the lantern come out different on every page.
+    log("Drawing the cast sheets ...")
+    cast_mod.generate_all(
+        book.cast, style, library.book_dir(book.id) / "cast",
+        backend_name="stub", relative_to=library.book_dir(book.id),
+        log=lambda *a: None,
+    )
     library.save_book(book)
 
     log("Drawing the pages ...")

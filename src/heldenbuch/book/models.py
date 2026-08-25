@@ -147,6 +147,11 @@ class Style:
     #: what the pages actually reference, so identity and look are locked
     #: together in one image instead of fighting each other every page.
     sheets: dict[str, str] = field(default_factory=dict)
+    #: hero_id -> the character sheet the styled sheet was drawn *from*.
+    #: Without this, switching the hero to a better variant left every future
+    #: book silently rendering from the old likeness -- the styled sheet was
+    #: drawn once and nothing ever noticed its source had moved on.
+    sheets_from: dict[str, str] = field(default_factory=dict)
     #: previews, styled sheets and any scout run for this style. Shared the
     #: same way a hero's sheets are.
     spend: dict[str, Any] = field(default_factory=dict)
@@ -155,6 +160,12 @@ class Style:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+
+#: Leading articles stripped when matching a cast member's registered name
+#: against an illustration brief -- "Die Laterne" has to find "Laterne".
+_ARTICLES = {"der", "die", "das", "den", "dem", "des",
+             "ein", "eine", "einem", "einen", "einer",
+             "the", "a", "an"}
 
 #: The last page's word, per language. Printed on the closing page and read
 #: out by the narration, so it lives here rather than inside either one.
@@ -247,8 +258,12 @@ class CastMember:
 
     name: str = ""
     description: str = ""
-    kind: str = "character"  # character | place
+    kind: str = "character"  # character | place | prop
     sheet: str | None = None
+    #: why the last attempt to draw this member's sheet failed. A swallowed
+    #: failure used to leave the member silently unreferenced for the rest of
+    #: the book -- the exact drift the sheet exists to prevent, with no trace.
+    sheet_error: str | None = None
     #: page numbers this one appears on
     pages: list[int] = field(default_factory=list)
 
@@ -307,6 +322,12 @@ class Page:
     #: right, so going onward faces right and coming home faces left. Get it
     #: wrong and a spread fights the page turn.
     direction: str = ""
+    #: Where this page stands in the story's world, with its fixed anchors
+    #: named: "at the brook, the crooked pine on the left bank". Pages that
+    #: share an area repeat the same anchors in the same words -- planned
+    #: continuity, instead of hoping the model invents the same clearing
+    #: twice. Empty on older books, which changes nothing for them.
+    setting: str = ""
     #: The seed this picture was drawn with, on a service that takes one.
     #: Without it a page that came out well could not be reproduced: the next
     #: attempt at the same prompt is simply a different picture, and the good
@@ -416,38 +437,54 @@ class Book:
     def cast_for(self, page: Page) -> list[CastMember]:
         """The sheets that should be referenced when drawing this page.
 
-        A member is attached when the page lists them *or* when the brief names
-        them. Attaching everyone was how a page whose scene mentioned only the
-        boy and the dinosaur got the dog's sheet as well, drew him, and was
-        then failed by the checker for "a dog that is not mentioned in the
-        scene" -- the pipeline inventing a character and marking itself down
-        for it.
+        Characters follow the brief: it is the only thing the illustrator is
+        told to draw, so where it names someone, that is the guest list.
+        Attaching everyone from the author's page list was how a page whose
+        scene mentioned only the boy and the dinosaur got the dog's sheet as
+        well, drew him, and was then failed by the checker for "a dog that is
+        not mentioned in the scene". A brief that names no character falls
+        back to the page list, so a reference is never silently dropped.
 
-        A prop is attached only when it is actually named, for the same reason.
+        Props follow the brief *or* the page list. Briefs describe objects
+        rather than naming them -- "the small brass lantern" for a prop
+        registered as "Die Laterne", often in a different language -- and a
+        prop that slips through unmatched is reinvented on every page, which
+        is the drift its sheet exists to prevent. An extra prop reference on
+        a page that turns out not to show it is the cheaper mistake.
+
         The place stays on every page: it is the setting, not a participant.
         """
         brief = (page.illustration or "").lower()
         drawable = [m for m in self.cast if m.sheet]
+        listed = {n.lower() for n in page.cast}
 
         def in_brief(member: CastMember) -> bool:
-            return re.search(rf"\b{re.escape(member.name.lower())}\b", brief) is not None
+            # Try the full name and the name without a leading article:
+            # authors register "Die Laterne", briefs write "Laterne".
+            name = member.name.lower().strip()
+            variants = {name}
+            first, _, rest = name.partition(" ")
+            if rest and first in _ARTICLES:
+                variants.add(rest.strip())
+            return any(
+                re.search(rf"\b{re.escape(v)}\b", brief) for v in variants if v
+            )
 
-        # The brief is the contract: it is the only thing the illustrator is
-        # told to draw. Where it names anyone, that is the guest list. The
-        # author's own page.cast is a hint and can disagree with it -- on one
-        # page it listed the dog while the brief mentioned only the boy and
-        # the dinosaur, so the dog's sheet went along, the dog got drawn, and
-        # the checker failed the page for "a dog not mentioned in the scene".
-        named = [m for m in drawable if m.kind != "place" and in_brief(m)]
-        if not named:
-            # A brief that names nobody (or an older book without one) falls
-            # back to the list, so a reference is never silently dropped.
-            listed = {n.lower() for n in page.cast}
-            named = [m for m in drawable
-                     if m.kind == "character" and m.name.lower() in listed]
-
+        characters = [m for m in drawable if m.kind == "character" and in_brief(m)]
+        if not characters:
+            characters = [m for m in drawable
+                          if m.kind == "character" and m.name.lower() in listed]
+        props = [m for m in drawable if m.kind == "prop"
+                 and (in_brief(m) or m.name.lower() in listed)]
         places = [m for m in drawable if m.kind == "place"]
-        return [m for m in drawable if m in named or m in places]
+        if len(places) > 1:
+            # A story that moves between areas must not get every area's
+            # sheet on every page -- two competing settings in one prompt is
+            # its own kind of drift. With one place the old promise holds.
+            chosen = [m for m in places if in_brief(m) or m.name.lower() in listed]
+            places = chosen or places[:1]
+        keep = {id(m) for m in (*characters, *props, *places)}
+        return [m for m in drawable if id(m) in keep]
 
     @property
     def primary_language(self) -> str:
@@ -498,7 +535,9 @@ def save_json(path: Path, payload: Any) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, indent=2, ensure_ascii=False)
-    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    # Unique per call, not only per process: two threads saving the same hero
+    # would otherwise share one temp path and interleave into a torn file.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
     try:
         tmp.write_text(text, encoding="utf-8")
         os.replace(tmp, path)

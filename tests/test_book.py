@@ -471,3 +471,76 @@ class TestWhatEachPageIsShown:
         assert "OBJECT: Stammbrücke" in prompt
         assert "plain off-white background" in prompt
         assert "with nobody in the picture" in prompt
+
+    def test_a_prop_listed_on_the_page_is_attached_without_a_name_match(self):
+        """Briefs describe objects instead of naming them -- "the small brass
+        lantern" for a prop registered as "Die Laterne", often in another
+        language. The page list closes that gap; without it the prop is
+        reinvented on every page, which is what its sheet exists to prevent.
+        """
+        Book, cast, Page = self._book()
+        page = Page(index=1, cast=["Pip", "Stammbrücke"],
+                    illustration="Pip drags a mossy log across the water.")
+        got = [m.name for m in Book(cast=cast).cast_for(page)]
+        assert "Stammbrücke" in got
+
+    def test_a_leading_article_does_not_hide_a_name(self):
+        from heldenbuch.book.models import Book, CastMember, Page
+
+        book = Book(cast=[CastMember(name="Die Laterne", kind="prop",
+                                     sheet="cast/01.png")])
+        page = Page(index=1, illustration="Rusty holds the Laterne up high.")
+        assert [m.name for m in book.cast_for(page)] == ["Die Laterne"]
+
+
+class TestVerdictRules:
+    """The gate's floors, including the ones added after the first books."""
+
+    @staticmethod
+    def _base():
+        return {"identity": 5, "scene": 4, "style": 5, "story_state_ok": True,
+                "extra_or_duplicated_character": False, "panelled": False,
+                "notes": []}
+
+    def test_a_broken_style_fails_the_page(self):
+        from heldenbuch.book.illustrate import verdict_from
+
+        check = self._base() | {"style": 1}
+        assert verdict_from(check) == "failed"
+        assert verdict_from(self._base()) == "passed"
+
+    def test_a_tolerable_style_still_passes(self):
+        from heldenbuch.book.illustrate import verdict_from
+
+        assert verdict_from(self._base() | {"style": 3}) == "passed"
+
+    def test_missing_fatal_facts_are_not_a_pass(self):
+        """A judge that skips a yes/no it was asked has verified less than it
+        was paid to; the page is unreviewed, not clean."""
+        from heldenbuch.book.illustrate import verdict_from
+
+        check = self._base() | {"facts_missing": ["panelled"]}
+        assert verdict_from(check) == "unknown"
+
+    def test_old_checks_without_the_style_score_still_pass(self):
+        from heldenbuch.book.illustrate import verdict_from
+
+        check = self._base()
+        del check["style"]
+        assert verdict_from(check) == "passed"
+
+
+def test_retry_prompt_carries_the_judges_notes():
+    """The redraw quotes what the check actually complained about; "follow the
+    reference more literally" alone let the same red jacket come back twice."""
+    from heldenbuch.book.illustrate import page_prompt
+    from heldenbuch.book.models import Book, Hero, Page, Style
+
+    book, hero, style = Book(), Hero(name="Rusty"), Style(description="ink")
+    page = Page(index=1, illustration="Rusty climbs the stile.")
+    prompt = page_prompt(book, hero, style, page, [], insist=True,
+                         feedback=["jacket is red, reference shows blue"])
+    assert "jacket is red, reference shows blue" in prompt
+    plain = page_prompt(book, hero, style, page, [], insist=False,
+                        feedback=["jacket is red, reference shows blue"])
+    assert "jacket is red" not in plain

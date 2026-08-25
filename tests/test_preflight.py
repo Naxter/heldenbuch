@@ -256,3 +256,51 @@ def test_a_book_with_no_cover_verdict_is_not_nagged(library):
     assert cover_flagged(book) is False
     report = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
     assert not any(e["code"] == "cover_flagged" for e in report["errors"])
+
+
+def test_text_fit_is_measured_in_the_chosen_font(library, monkeypatch):
+    """Georgia's metrics said "fits" for pages a wider face then overflowed."""
+    from heldenbuch.book import preflight
+
+    seen = []
+
+    def fake_fits(text, preset, age="", family="georgia"):
+        seen.append(family)
+        return True
+
+    monkeypatch.setattr(preflight, "text_fits", fake_fits)
+    book, resolve = _book(library, check=PASSED)
+    validate_export_readiness(book, PRESETS["screen"], ["de"], resolve,
+                              family="comic")
+    assert seen and set(seen) == {"comic"}
+
+
+def test_a_cropping_format_gets_a_note_not_a_warning(library):
+    """The crop is a property of the format, true on every export; a state
+    stuck on "warnung" forever teaches people to stop reading it."""
+    book, resolve = _book(library, check=PASSED)
+    report = validate_export_readiness(book, PRESETS["screen"], ["de"], resolve)
+    assert report["state"] == "bereit"
+    assert any(f["code"] == "aspect_crop" for f in report["notes"])
+
+    square = validate_export_readiness(book, PRESETS["print_square"], ["de"],
+                                       resolve)
+    assert not any(f["code"] == "aspect_crop" for f in square["notes"])
+
+
+def test_palette_outliers_compare_pages_to_the_book_not_the_sheet():
+    """Every check judges a page against the sheet alone; a page can pass
+    alone and still sit visibly apart from its neighbours. The outlier rule
+    is the one cross-page look, derived from stored metrics for free."""
+    from heldenbuch.book.models import Book, Page
+    from heldenbuch.book.preflight import palette_outliers
+
+    def page(i, cosine):
+        return Page(index=i, check={"metrics": {"palette_cosine": cosine}})
+
+    steady = [page(i, 0.58 + i * 0.001) for i in range(1, 8)]
+    book = Book(pages=steady + [page(8, 0.80)])
+    assert palette_outliers(book) == [8]
+
+    # too few scored pages: no median worth trusting, no flags
+    assert palette_outliers(Book(pages=steady[:4])) == []

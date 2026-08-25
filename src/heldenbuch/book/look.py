@@ -96,11 +96,14 @@ PRESETS: dict[str, dict[str, str]] = {
     "nachtblau": {
         "name": "Nachtblau",
         "hint": "ruhig, für Gute-Nacht-Geschichten",
+        # Palette and technique only. The first version also asked for "stars
+        # and warm windows" and "dark calm space" -- scenery, not style -- and
+        # every page inherited the same night sky whatever its brief said.
         "description": (
             "Quiet bedtime picture book illustration in a deep blue and warm "
-            "amber palette. Soft painterly shapes, glowing light sources, lots "
-            "of dark calm space, stars and warm windows. Gentle and hushed. No "
-            "bright saturated primaries, no busy detail, no harsh contrast."
+            "amber palette. Soft painterly shapes, muted edges, generous calm "
+            "negative space. Gentle and hushed. No bright saturated primaries, "
+            "no busy detail, no harsh contrast."
         ),
     },
 }

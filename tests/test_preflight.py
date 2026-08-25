@@ -219,7 +219,7 @@ def test_check_status_maps_books_written_before_the_status_field():
     assert check_status(Page(check={"identity": 2})) == "failed"
 
 
-def test_a_beanstandetes_titelbild_blocks_the_export(library):
+def test_a_flagged_cover_blocks_the_export(library):
     """The cover is the image on the shelf and the one a buyer sees first.
 
     It was drawn, paid for, and never checked -- which is how a book called

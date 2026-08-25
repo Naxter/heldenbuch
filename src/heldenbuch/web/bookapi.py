@@ -291,6 +291,8 @@ class BookApi:
                     with Image.open(book_root / page.image) as im:
                         raw["image_px"] = max(im.size)
                 except Exception:
+                    # Only the pixel size is unavailable; the page itself is
+                    # fine and the preflight reports a broken file properly.
                     pass
         for member, raw in zip(book.cast, data["cast"]):
             raw["sheet_url"] = f"{prefix}/{member.sheet}" if member.sheet else None

@@ -114,6 +114,10 @@ class Hero:
     #: uploaded reference photos, relative to the hero folder. Never leave the
     #: machine except for the one call that makes the character sheet.
     photos: list[str] = field(default_factory=list)
+    #: what the character sheets for this hero cost. The money is spent once,
+    #: before any book exists, and is shared by every book that uses them --
+    #: so it is recorded here rather than charged to whichever book came first.
+    spend: dict[str, Any] = field(default_factory=dict)
     created: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
@@ -143,18 +147,15 @@ class Style:
     #: what the pages actually reference, so identity and look are locked
     #: together in one image instead of fighting each other every page.
     sheets: dict[str, str] = field(default_factory=dict)
+    #: previews, styled sheets and any scout run for this style. Shared the
+    #: same way a hero's sheets are.
+    spend: dict[str, Any] = field(default_factory=dict)
     created: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-# How a *page* is composed -- where the picture and the words sit on the paper.
-# None of these describe the picture itself, and the wording has to keep saying
-# so: "split" once read to the author as an instruction about the artwork, and
-# it duly wrote "A split composition: on one side..." into the illustration
-# brief. The illustrator obeyed, and three pages printed with a seam down the
-# middle. See `single_scene()` for the net that catches it if it happens again.
 #: The last page's word, per language. Printed on the closing page and read
 #: out by the narration, so it lives here rather than inside either one.
 CLOSERS = {"de": "Ende", "en": "The End", "ru": "Конец", "fr": "Fin",
@@ -166,6 +167,12 @@ def closing_word(language: str) -> str:
     return CLOSERS.get(language, CLOSERS["de"])
 
 
+# How a *page* is composed -- where the picture and the words sit on the paper.
+# None of these describe the picture itself, and the wording has to keep saying
+# so: "split" once read to the author as an instruction about the artwork, and
+# it duly wrote "A split composition: on one side..." into the illustration
+# brief. The illustrator obeyed, and three pages printed with a seam down the
+# middle. See `single_scene()` for the net that catches it if it happens again.
 LAYOUTS = {
     "full": "picture fills the page, text sits in a quiet corner of it",
     "split": "picture on the upper part of the page, text on plain paper below it",

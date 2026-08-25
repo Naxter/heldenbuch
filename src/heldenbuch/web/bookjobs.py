@@ -153,6 +153,21 @@ class BookJobs:
         return self.library.resolve(fallback)
 
     @staticmethod
+    def _report_shared_spend(spend: dict, log) -> None:
+        """What a hero or a style cost. Said once, where it is spent.
+
+        This money buys something every book made from it reuses, so it is
+        never charged to a single book -- but it used to be reported nowhere
+        at all, which made a first book look cheaper than it was.
+        """
+        total = spend_summary(spend)
+        if total["calls"]:
+            log(f"Dafür bezahlt: ~{total['usd']:.2f} $ / ~{total['eur']:.2f} € "
+                f"({total['images']} Bilder, geschätzt). Das gilt für jedes "
+                "Buch, das damit gemacht wird.")
+            log("")
+
+    @staticmethod
     def _report_spend(book: Book, log) -> None:
         total = spend_summary(book.spend)
         if total["calls"]:
@@ -189,7 +204,7 @@ class BookJobs:
             log("Ich schaue mir an, was ein Illustrator wissen muss …")
             hero.description = hero_mod.describe_from_photos(
                 photos, name, age_hint=params.get("age_hint", ""),
-                provider=self._provider(job),
+                provider=self._provider(job), spend=hero.spend,
             )
             log("")
             log(hero.description)
@@ -202,7 +217,9 @@ class BookJobs:
         made = hero_mod.generate_variants(
             hero, folder, count=max(1, min(4, int(params.get("variants") or 3))),
             backend_name=self._backend(job), model=job.params.get("model"),
-            photo_paths=photos, log=log,
+            photo_paths=photos,
+            spend=lambda usage: add_spend(hero.spend, usage, "hero_sheet"),
+            log=log,
         )
         hero.variants = [self.library.relative(p) for p in made]
         hero.sheet = hero.variants[0]
@@ -210,6 +227,7 @@ class BookJobs:
 
         job.result["hero_id"] = hero.id
         log("")
+        self._report_shared_spend(hero.spend, log)
         log("Fertig. Such dir die Version aus, die am besten passt.")
 
     def hero_more(self, job: Job, log) -> None:
@@ -220,7 +238,9 @@ class BookJobs:
         made = hero_mod.generate_variants(
             hero, folder, count=max(1, min(4, int(job.params.get("variants") or 2))),
             backend_name=self._backend(job), model=job.params.get("model"),
-            photo_paths=photos, log=log,
+            photo_paths=photos,
+            spend=lambda usage: add_spend(hero.spend, usage, "hero_sheet"),
+            log=log,
         )
         hero.variants += [self.library.relative(p) for p in made]
         self.library.save_hero(hero)
@@ -253,7 +273,7 @@ class BookJobs:
                 raise ValueError("Diese Bilddatei konnte ich nicht lesen.")
             log("Ich schaue mir an, wie dieses Bild gemacht ist …")
             described = look.describe_style_from_image(
-                reference_path, provider=self._provider(job)
+                reference_path, provider=self._provider(job), spend=style.spend
             )
             style.name = described["name"]
             style.description = described["description"]
@@ -263,9 +283,13 @@ class BookJobs:
             log("")
         elif wish:
             log(f"Ich übersetze „{wish}“ in eine Stilbeschreibung …")
-            described = look.describe_custom_style(wish, provider=self._provider(job))
+            # The style does not exist yet, so its ledger starts here and is
+            # carried over once it does.
+            wish_spend: dict = {}
+            described = look.describe_custom_style(wish, provider=self._provider(job),
+                                                   spend=wish_spend)
             style = Style(name=described["name"], description=described["description"],
-                          preset="custom")
+                          preset="custom", spend=wish_spend)
             log("")
             log(style.description)
             log("")
@@ -281,20 +305,24 @@ class BookJobs:
             hero, style, base, folder,
             count=max(1, min(3, int(params.get("previews") or 2))),
             backend_name=self._backend(job), model=params.get("model"),
-            style_reference=reference_path, log=log,
+            style_reference=reference_path,
+            spend=lambda usage: add_spend(style.spend, usage, "style_preview"),
+            log=log,
         )
         style.previews = [self.library.relative(p) for p in previews]
 
         log("Ich zeichne das Charakterblatt in diesem Stil …")
         styled = folder / f"sheet_{hero.id}.png"
-        hero_mod.generate_styled_sheet(hero, style, base, styled,
-                                       backend_name=self._backend(job),
-                                       model=params.get("model"))
+        hero_mod.generate_styled_sheet(
+            hero, style, base, styled,
+            backend_name=self._backend(job), model=params.get("model"),
+            spend=lambda usage: add_spend(style.spend, usage, "styled_sheet"))
         style.sheets[hero.id] = self.library.relative(styled)
         self.library.save_style(style)
 
         job.result["style_id"] = style.id
         log("")
+        self._report_shared_spend(style.spend, log)
         log("Fertig. Wenn dir der Look gefällt, geht es zur Geschichte.")
 
     def style_adopt(self, job: Job, log) -> None:
@@ -319,6 +347,7 @@ class BookJobs:
         hero_mod.generate_styled_sheet(
             hero, style, self.library.resolve(hero.sheet), styled,
             backend_name=self._backend(job, style), model=job.params.get("model"),
+            spend=lambda usage: add_spend(style.spend, usage, "styled_sheet"),
         )
         style.sheets[hero.id] = self.library.relative(styled)
         self.library.save_style(style)
@@ -339,6 +368,7 @@ class BookJobs:
             hero, style, self.library.resolve(sheet_rel),
             self.library.style_dir(style.id) / "scout",
             check_provider=self._checker(job, self.image_backend),
+            spend=style.spend,
             log=log, should_stop=lambda: job.cancelled,
         )
         style.recommended_backend = outcome["winner"]

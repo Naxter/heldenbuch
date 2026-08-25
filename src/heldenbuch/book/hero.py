@@ -59,6 +59,7 @@ def describe_from_photos(
     age_hint: str = "",
     provider: str = "openai",
     model: str | None = None,
+    spend: dict | None = None,
 ) -> str:
     """Write the illustrator's brief for a child, from their photos."""
     from ..llm import complete_json
@@ -76,7 +77,8 @@ def describe_from_photos(
         "plain, concrete sentences. Write it in English regardless of the "
         "language of this request."
     )
-    payload = complete_json(DESCRIBE_SYSTEM, user, images=photos, provider=provider, model=model)
+    payload = complete_json(DESCRIBE_SYSTEM, user, images=photos, provider=provider,
+                            model=model, spend=spend, what="hero")
     description = (payload or {}).get("description", "").strip()
     if not description:
         raise RuntimeError("the model returned an empty character description")
@@ -117,8 +119,13 @@ def generate_sheet(
     photo_paths: list[Path] | None = None,
     style_description: str | None = None,
     output: OutputSpec | None = None,
+    spend=None,
 ) -> Path:
-    """Draw one character sheet and write it to `target`."""
+    """Draw one character sheet and write it to `target`.
+
+    `spend` is called with the provider's usage. Sheets are drawn before any
+    book exists, so without it this money was spent and recorded nowhere.
+    """
     backend = get_backend(backend_name, model)
     photos = photo_paths or []
     request = GenRequest(
@@ -127,7 +134,9 @@ def generate_sheet(
         output=output or OutputSpec(aspect_ratio="3:2", image_size="2K", quality="high"),
         kind="sheet",
     )
-    backend.generate(request, target)
+    result = backend.generate(request, target)
+    if spend is not None:
+        spend(result.usage)
     return target
 
 
@@ -138,6 +147,7 @@ def generate_variants(
     backend_name: str = "openai",
     model: str | None = None,
     photo_paths: list[Path] | None = None,
+    spend=None,
     log=print,
 ) -> list[Path]:
     """Draw several sheets so there is something to choose between.
@@ -158,6 +168,7 @@ def generate_variants(
                 backend_name=backend_name,
                 model=model,
                 photo_paths=photo_paths,
+                spend=spend,
             )
             made.append(target)
         except Exception as exc:
@@ -187,6 +198,7 @@ def generate_styled_sheet(
     backend_name: str = "openai",
     model: str | None = None,
     output: OutputSpec | None = None,
+    spend=None,
 ) -> Path:
     """Lock identity and look into a single reference the pages can point at."""
     backend = get_backend(backend_name, model)
@@ -196,5 +208,7 @@ def generate_styled_sheet(
         output=output or OutputSpec(aspect_ratio="3:2", image_size="2K", quality="high"),
         kind="sheet",
     )
-    backend.generate(request, target)
+    result = backend.generate(request, target)
+    if spend is not None:
+        spend(result.usage)
     return target
